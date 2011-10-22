@@ -1,0 +1,23 @@
+
+lparallel
+=========
+
+lparallel is a library for parallelism in Common Lisp.
+
+See http://lparallel.com for documentation and examples.
+
+lparallel should run on any Common Lisp implementation supported by
+bordeaux-threads. The following implementations successfully pass the
+test suite:
+
+  * ABCL
+  * Allegro
+  * Clozure
+  * LispWorks
+  * SBCL
+
+These are the only implementations which have been tested so far.
+
+To run the tests, load lparallel-test.asd and call lparallel-test:execute.
+
+Author: James M. Lawrence <llmjjmll@gmail.com>
