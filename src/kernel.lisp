@@ -379,10 +379,8 @@ sent to that kernel (regardless of subsequent values of `*kernel*')."
 
 (defun submit-raw-task (task kernel)
   (ecase *kernel-task-priority*
-    (:default
-     (push-biased-queue     task (tasks kernel)))
-    (:low
-     (push-biased-queue/low task (tasks kernel)))))
+    (:default (push-biased-queue     task (tasks kernel)))
+    (:low     (push-biased-queue/low task (tasks kernel)))))
 
 (defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."
