@@ -50,21 +50,6 @@ clause which is executed when the `main' clause does not finish."
              (unwind-protect ,abort
                ,cleanup))))))
 
-(defmacro with-return-hook (&body body)
-  "Defines `return-hook' which returns from the implicit block then
-calls the given function. Used for exiting a locked region with a
-post-exit action."
-  (with-gensyms (outer inner fn args)
-    `(block ,outer
-       (let ((,fn nil) (,args nil))
-         (multiple-value-prog1 (block ,inner
-                                 (flet ((return-hook (fn &rest args)
-                                          (setf ,fn fn ,args args)
-                                          (return-from ,inner)))
-                                   ,@body))
-           (when ,fn
-             (return-from ,outer (apply ,fn ,args))))))))
-
 (defmacro make-tuple (&rest forms)
   `(lambda () (values ,@forms)))
 
