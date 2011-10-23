@@ -95,8 +95,9 @@
  (make-queue
   "Create a queue. 
 
-`initial-capacity' may be specified as an optimization. It does not
-affect `queue-count' and does not limit the queue size.")
+As an optimization, an internal size may be given with
+`initial-capacity'. This does not affect `queue-count' and does not
+limit the queue size.")
 
  (peek-queue
   "If `queue' is non-empty, return (values element t) where `element'

@@ -342,9 +342,11 @@ bindings (see bordeaux-threads:*default-special-bindings*)."
   (length (workers *kernel*)))
 
 (defun make-channel (&optional initial-capacity)
-  "Create a channel for submitting and receiving tasks. Upon creation
-a channel stores the value of `*kernel*', and submissions are always
-sent to that kernel (regardless of subsequent values of `*kernel*')."
+  "Create a channel for submitting and receiving tasks. The current
+value of `*kernel*' is stored for use in `submit-task'.
+
+As an optimization, an internal size may be given with
+`initial-capacity'. This does not limit the channel size."
   (check-kernel)
   (make-channel-instance
    :kernel *kernel*
