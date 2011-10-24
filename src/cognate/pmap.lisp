@@ -139,12 +139,10 @@ manually."
      ;; CLHS: "The types vector and the type list are disjoint
      ;; subtypes of type sequence, but are not necessarily an
      ;; exhaustive partition of sequence."
-     (warn "Sequence type ~a not supported; copying to an array."
+     (warn "Result sequence type ~a not supported for pmap-into.~%~
+            Using intermediate vector."
            (type-of result-sequence))
-     (let1 fallback (make-array (length result-sequence)
-                                :initial-contents result-sequence)
-       (pmap-into/unparsed #'map-into fallback function sequences)
-       (replace result-sequence fallback))))
+     (replace result-sequence (apply #'pmap 'vector function sequences))))
   result-sequence)
 
 (defun pmap-iterate/parts (map fn seqs size parts-hint)
