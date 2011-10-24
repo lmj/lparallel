@@ -29,7 +29,7 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defsystem :lparallel
-  :version "1.0.1"
+  :version "1.0.2"
   :depends-on (:bordeaux-threads)
   :serial t
   :components ((:file "packages")
