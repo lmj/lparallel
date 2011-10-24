@@ -1,0 +1,21 @@
+
+lparallel Changes
+=================
+
+= 1.0.3
+
+* benchmarks now working with ABCL
+* better handling of non-array/non-list result sequences in pmap-into
+
+= 1.0.2
+
+* fix non-array/non-list result sequences in pmap-into
+
+= 1.0.1
+
+* clarify docs
+* trivial cleanup
+
+= 1.0.0
+
+* birthday
