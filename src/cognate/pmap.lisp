@@ -142,9 +142,7 @@ manually."
      (warn "Sequence type ~a not supported; copying to an array."
            (type-of result-sequence))
      (let1 fallback (make-array (length result-sequence)
-                                :initial-contents result-sequence
-                                :element-type (array-element-type
-                                               result-sequence))
+                                :initial-contents result-sequence)
        (pmap-into/unparsed #'map-into fallback function sequences)
        (replace result-sequence fallback))))
   result-sequence)
