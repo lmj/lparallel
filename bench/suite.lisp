@@ -34,7 +34,9 @@
 
 (defparameter *rehearsals* 8)
 
-(defparameter *repeat-gc* 20)
+(defparameter *repeat-gc* #-abcl 20
+                          ;; (gc) hangs on abcl
+                          #+abcl  0)
 
 (defparameter *benches* '(bench-pmap
                           bench-psort
