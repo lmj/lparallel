@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.0.5
+
+* better README and .asd description
+
 = 1.0.4
 
 * add description fields to .asd file and augment README
