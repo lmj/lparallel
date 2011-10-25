@@ -29,7 +29,34 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defsystem :lparallel
-  :version "1.0.2"
+  :version "1.0.4"
+  :description "Parallelism for Common Lisp"
+  :long-description
+"lparallel provides low-level and high-level tools for writing
+efficient parallel programs in Common Lisp.
+
+lparallel's low-level API represents an abstract parallel machine. The
+current implementation of this API uses a group of worker threads,
+though in principle other implementations are possible (for instance
+an interface to a distributed system).
+
+lparallel also provides higher-level facilities including:
+
+* asynchronous condition handling for both error and non-error conditions
+
+* parallel versions map, reduce, sort, remove, and many others
+
+* promises, futures, and delayed evaluation constructs
+
+* computation trees for parallelizing interconnected tasks
+
+* a task-killing mechanism
+
+* efficient vector-based FIFO queues
+
+Author: James M. Lawrence <llmjjmll@gmail.com>
+"
+  :licence "BSD"
   :depends-on (:bordeaux-threads)
   :serial t
   :components ((:file "packages")

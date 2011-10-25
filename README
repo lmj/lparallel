@@ -6,6 +6,9 @@ lparallel is a library for parallelism in Common Lisp.
 
 See http://lparallel.com for documentation and examples.
 
+Running
+-------
+
 lparallel should run on any Common Lisp implementation supported by
 bordeaux-threads. The following implementations successfully pass the
 test suite:
@@ -19,5 +22,30 @@ test suite:
 These are the only implementations which have been tested so far.
 
 To run the tests, load lparallel-test.asd and call lparallel-test:execute.
+
+Overview
+--------
+
+lparallel provides low-level and high-level tools for writing
+efficient parallel programs in Common Lisp.
+
+lparallel's low-level API represents an abstract parallel machine. The
+current implementation of this API uses a group of worker threads,
+though in principle other implementations are possible (for instance
+an interface to a distributed system).
+
+lparallel also provides higher-level facilities including:
+
+* asynchronous condition handling for both error and non-error conditions
+
+* parallel versions map, reduce, sort, remove, and many others
+
+* promises, futures, and delayed evaluation constructs
+
+* computation trees for parallelizing interconnected tasks
+
+* a task-killing mechanism
+
+* efficient vector-based FIFO queues
 
 Author: James M. Lawrence <llmjjmll@gmail.com>
