@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.0.4
+
+* add description fields to .asd file and augment README
+* error for an invalid task priority is now correctable
+
 = 1.0.3
 
 * benchmarks now working with ABCL
