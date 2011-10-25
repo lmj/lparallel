@@ -380,7 +380,7 @@ As an optimization, an internal size may be given with
                  :store-error store))))
 
 (defun submit-raw-task (task kernel)
-  (ecase *kernel-task-priority*
+  (ccase *kernel-task-priority*
     (:default (push-biased-queue     task (tasks kernel)))
     (:low     (push-biased-queue/low task (tasks kernel)))))
 
