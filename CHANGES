@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.0.7
+
+* minor cleanup
+
 = 1.0.6
 
 * remove needless kernel handler in delay
