@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.0.6
+
+* remove needless kernel handler in delay
+* various minor cleanup
+
 = 1.0.5
 
 * better README and .asd description
