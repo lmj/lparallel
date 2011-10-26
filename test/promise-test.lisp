@@ -34,10 +34,6 @@
   (let ((a (future 3))
         (b (future 4)))
     (is (= 7 (+ (force a) (force b)))))
-  #+z
-  (let ((a (make-future (lambda (x) (* x x)) 3))
-        (b (make-future (lambda (x) (* 10 x)) 4)))
-    (is (= 49 (+ (force a) (force b)))))
   (let1 a (future 5)
     (sleep 0.1)
     (is (fulfilledp a))
@@ -119,11 +115,6 @@
        (is (= 1 *memo*)))
      (let1 a (mapcar (lambda (x) (,defer (* x x))) '(3 4 5))
        (is (equal '(9 16 25) (mapcar #'force a))))
-     #+z
-     (let1 a (funcall ',(intern
-                         (concatenate 'string (string '#:make-) (string defer)))
-                      (lambda (x) (* x x)) 9)
-       (is (= 81 (force a))))
      (kernel-handler-bind ((foo-error (lambda (e)
                                         (invoke-restart 'transfer-error e))))
        (let1 a (,defer (error 'foo-error))
