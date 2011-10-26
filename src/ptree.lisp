@@ -140,7 +140,7 @@
 (defun/ftype find-children-results (node) (function (node) t)
   "For non-nil children, sets children-results upon first success."
   (declare #.*full-optimize*)
-  (with-node-slots (children children-results computed result) node
+  (with-node-slots (children children-results) node
     (or (null children)               ; vacuously true for no children
         children-results
         (setf children-results (progn

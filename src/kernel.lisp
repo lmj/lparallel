@@ -266,7 +266,7 @@ message from appearing in the future (N is the number of workers):
        (worker-loop kernel worker)))))
 
 (defun make-worker (kernel)
-  (with-kernel-slots (tasks worker-bindings worker-context worker-name) kernel
+  (with-kernel-slots (worker-bindings worker-name) kernel
     (let* ((worker (make-worker-instance :thread nil))
            (blocker (make-queue))
            (worker-thread (with-thread (:bindings worker-bindings

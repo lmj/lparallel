@@ -123,7 +123,7 @@ and `fulfill' returns false."
   (declare #.*normal-optimize*)
   (with-unfulfilled/wait promise
     (force-hook promise))
-  (with-promise-base-slots (lock result) promise
+  (with-promise-base-slots (result) promise
     (restart-case (apply #'values (unwrap-result (first result)) (rest result))
       (store-value (&rest values)
         :report "Fulfill promise now."
