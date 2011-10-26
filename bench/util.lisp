@@ -28,7 +28,7 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel-test)
+(in-package #:lparallel-bench)
 
 (defmacro collect-n (n &body body)
   "Execute `body' `n' times, collecting the results into a list."

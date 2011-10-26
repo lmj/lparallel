@@ -32,7 +32,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; generic utils
+;;; helpers
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -48,14 +48,6 @@
     (destructuring-bind (right &rest lefts) (reverse fns)
       (let1 left (reduce #'compose2 lefts)
         (lambda (&rest args) (funcall left (apply right args)))))))
-
-(defmacro curry (fn &rest captured)
-  (with-gensyms (free)
-    `(lambda (&rest ,free)
-       (apply ,fn ,@captured ,free))))
-
-(defun uncurry (fn)
-  (lambda (x) (declare (ignore x)) (funcall fn)))
 
 (defun groups-of (n list)
   (loop
@@ -74,27 +66,10 @@
 (defun flatten (list)
   (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; benchmark utils
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defun wall-time (fn args)
   (let1 start (get-internal-real-time)
     (apply fn args)
     (- (get-internal-real-time) start)))
-
-(defun make-random-seq (type size)
-  (let1 seq (make-sequence type size)
-    (map-into seq (uncurry (curry 'random 1.0)) seq)))
-
-(defun make-random-vector (size)
-  (let1 seq (make-array size :element-type 'single-float)
-    (map-into seq (uncurry (curry 'random 1.0)) seq)))
-
-(defun make-random-list (size)
-  (make-random-seq 'list size))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

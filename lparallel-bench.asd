@@ -35,5 +35,6 @@
   :components ((:file "packages-bench")
                (:module "bench"
                 :serial t
-                :components ((:file "bench")
+                :components ((:file "util")
+                             (:file "bench")
                              (:file "suite")))))
