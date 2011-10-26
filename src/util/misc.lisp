@@ -57,12 +57,6 @@
   `(let ((,var ,value))
      ,@body))
 
-(defun compose (&rest fns)
-  (flet ((compose2 (f g) (lambda (x) (funcall g (funcall f x)))))
-    (destructuring-bind (right &rest lefts) (reverse fns)
-      (let1 left (reduce #'compose2 lefts)
-        (lambda (&rest args) (funcall left (apply right args)))))))
-
 (defun interact (&rest prompt)
   "Read from user and eval."
   (apply #'format *query-io* prompt)
