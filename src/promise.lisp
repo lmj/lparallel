@@ -254,7 +254,8 @@ fulfilled by the caller of `force'."
   (fulfill-plan delay values))
 
 (defmethod force-hook ((delay delay))
-  (force-plan delay))
+  (with-delay-slots (fn) delay
+    (fulfill-plan delay (multiple-value-list (funcall fn)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
