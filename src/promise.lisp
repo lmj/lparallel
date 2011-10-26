@@ -126,8 +126,8 @@ and `fulfill' returns false."
   (with-promise-base-slots (result) promise
     (restart-case (apply #'values (unwrap-result (first result)) (rest result))
       (store-value (&rest values)
-        :report "Fulfill promise now."
-        :interactive (lambda () (interact "Fulfill promise with values: "))
+        :report "Set promise value(s)."
+        :interactive (lambda () (interact "Set promise value(s): "))
         (values-list (setf result values))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
