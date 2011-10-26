@@ -35,28 +35,22 @@
 "lparallel provides low-level and high-level tools for writing
 efficient parallel programs in Common Lisp.
 
-The low-level API of lparallel is an abstraction of a parallel
-machine. The current implementation of the API uses a group of worker
-threads. In principle other implementations are possible (for instance
-an interface to a distributed system).
+The low-level API of lparallel is meant to describe parallelism in a
+generic manner. The current implementation of the API uses a group of
+worker threads, though in principle other implementations are
+possible (for instance an interface to a distributed system).
 
 lparallel also provides higher-level facilities including:
 
 * asynchronous condition handling across thread boundaries
-
 * parallel versions of map, reduce, sort, remove, and many others
-
 * promises, futures, and delayed evaluation constructs
-
 * computation trees for parallelizing interconnected tasks
-
-* targeted task-killing by category
-
+* targeted task killing by category
 * vector-based FIFO queues
-
-Author: James M. Lawrence <llmjjmll@gmail.com>
 "
   :licence "BSD"
+  :author "James M. Lawrence <llmjjmll@gmail.com>"
   :depends-on (:bordeaux-threads)
   :serial t
   :components ((:file "packages")
