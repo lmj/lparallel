@@ -169,12 +169,6 @@ unknown at the time it is created."
     (setf result values
           fn nil)))
 
-(defun force-plan (plan)
-  (with-plan-slots (fn) plan
-    ;; Since computation can possibly can occur in the calling thread,
-    ;; ensure that handlers are in place.
-    (fulfill-plan plan (multiple-value-list (call-with-kernel-handler fn)))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; future
@@ -183,6 +177,12 @@ unknown at the time it is created."
 
 (defslots future (plan)
   ((canceledp :initform nil :type boolean)))
+
+(defun force-future (future)
+  (with-future-slots (fn) future
+    ;; Since computation can possibly can occur in the calling thread,
+    ;; ensure that handlers are in place.
+    (fulfill-plan future (multiple-value-list (call-with-kernel-handler fn)))))
 
 (defmethod fulfill-hook ((future future) values)
   (with-future-slots (canceledp) future
@@ -193,7 +193,7 @@ unknown at the time it is created."
   (with-future-slots (canceledp) future
     ;; If we are here then we've stolen the task from the kernel.
     (setf canceledp t)
-    (force-plan future)))
+    (force-future future)))
 
 (defmacro with-unfulfilled-future/no-wait (future &body body)
   (with-gensyms (lock canceledp result)
@@ -213,7 +213,7 @@ unknown at the time it is created."
                        (make-task
                         :client-fn (lambda ()
                                      (with-unfulfilled-future/no-wait future
-                                       (force-plan future)))
+                                       (force-future future)))
                         :store-error store-error))
                      *kernel*)
     future))
