@@ -312,3 +312,20 @@
       (submit-task channel (lambda () 3))
       (is (eql 3 (receive-result channel)))
       (is (eq 'timeout (receive-result channel))))))
+
+(define-condition foo-condition-2 (condition) ())
+
+(lp-test signaling-after-signal-test
+  (let1 q (make-queue)
+    (kernel-handler-bind ((foo-condition-2 (lambda (c)
+                                             (declare (ignore c))
+                                             (push-queue 'outer q))))
+      (kernel-handler-bind ((foo-condition (lambda (c)
+                                             (declare (ignore c))
+                                             (push-queue 'inner q)
+                                             (signal 'foo-condition-2))))
+        (let1 channel (make-channel)
+          (submit-task channel (lambda () (signal 'foo-condition)))
+          (receive-result channel))))
+    (is (equal '(inner outer)
+               (extract-queue q)))))

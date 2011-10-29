@@ -135,7 +135,7 @@ control (or not)."
      :for pos         :on *client-handlers*
      :do (when (subtypep (type-of con) name)
            (let1 *client-handlers* (cdr pos)
-             (handler-bind ((error #'condition-handler))
+             (handler-bind ((condition #'condition-handler))
                (funcall fn con))))))
 
 (defun make-debugger-hook ()
