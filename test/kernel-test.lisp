@@ -188,7 +188,7 @@
         (receive-result channel)))))
 
 (lp-base-test active-worker-replacement-test
-  (sleep 0.1)
+  (sleep 0.2)
   (let1 old-thread-count (length (bordeaux-threads:all-threads))
     (with-new-kernel (2)
       (kernel-handler-bind ((foo-error (lambda (e)
@@ -200,12 +200,12 @@
                                  (error 'foo-error)))
           (signals task-killed-error
             (receive-result channel))))
-      (sleep 0.1)
+      (sleep 0.2)
       (is (every #'bordeaux-threads:thread-alive-p
                  (map 'list
                       #'lparallel.kernel::thread
                       (lparallel.kernel::workers *kernel*)))))
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
 (lp-base-test sleeping-worker-replacement-test
@@ -222,7 +222,7 @@
         (bordeaux-threads:destroy-thread 
          (lparallel.kernel::thread
           (aref (lparallel.kernel::workers *kernel*) 0)))
-        (sleep 0.1)
+        (sleep 0.2)
         (test-all-alive)
         (bordeaux-threads:destroy-thread 
          (lparallel.kernel::thread
@@ -230,9 +230,9 @@
         (bordeaux-threads:destroy-thread 
          (lparallel.kernel::thread
           (aref (lparallel.kernel::workers *kernel*) 1)))
-        (sleep 0.1)
+        (sleep 0.2)
         (test-all-alive)))
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
 (define-condition foo-condition () ())
@@ -250,7 +250,7 @@
 
 #-abcl
 (lp-base-test custom-kill-task-test
-  (sleep 0.1)
+  (sleep 0.2)
   (let1 old-thread-count (length (bordeaux-threads:all-threads))
     (with-new-kernel (2)
       (let1 channel (make-channel)
@@ -261,11 +261,11 @@
           (submit-task channel (lambda ()
                                  (setf *error-output* (make-broadcast-stream))
                                  (infinite-loop))))
-        (sleep 0.1)
+        (sleep 0.2)
         (submit-task channel (lambda () 'survived))
-        (sleep 0.1)
+        (sleep 0.2)
         (emergency-kill-tasks 'blah)
-        (sleep 0.1)
+        (sleep 0.2)
         (let ((errors nil)
               (regulars nil))
           (repeat 3
@@ -274,12 +274,12 @@
                 (push e errors))))
           (is (= 2 (length errors)))
           (is (equal '(survived) regulars)))))
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
 #-abcl
 (lp-base-test default-kill-task-test
-  (sleep 0.1)
+  (sleep 0.2)
   (let1 old-thread-count (length (bordeaux-threads:all-threads))
     (with-new-kernel (2)
       (let1 channel (make-channel)
@@ -289,11 +289,11 @@
         (submit-task channel (lambda ()
                                (setf *error-output* (make-broadcast-stream))
                                (infinite-loop)))
-        (sleep 0.1)
+        (sleep 0.2)
         (submit-task channel (lambda () 'survived))
-        (sleep 0.1)
+        (sleep 0.2)
         (emergency-kill-tasks *kernel-task-category*)
-        (sleep 0.1)
+        (sleep 0.2)
         (let ((errors nil)
               (regulars nil))
           (repeat 3
@@ -302,7 +302,7 @@
                 (push e errors))))
           (is (= 2 (length errors)))
           (is (equal '(survived) regulars)))))
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
 (lp-base-test submit-timeout-test
