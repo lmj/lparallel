@@ -42,9 +42,9 @@ clause which is executed when the `main' clause does not finish."
   (with-gensyms (finishedp)
     `(let1 ,finishedp nil
        ,@(unsplice prepare)
-       (unwind-protect (progn
-                          ,main
-                          (setf ,finishedp t))
+       (unwind-protect (progn  ; m-v-b-prog1 in real life
+                         ,main
+                         (setf ,finishedp t))
          (if ,finishedp
              ,cleanup
              (unwind-protect ,abort
