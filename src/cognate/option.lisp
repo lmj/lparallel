@@ -58,6 +58,8 @@
   (check-type size symbol)
   (check-type parts-hint symbol)
   `(multiple-value-bind (,parts-hint ,size) (pop-keyword-args ,seqs parts size)
+     (unless ,seqs
+       (error "Input sequence(s) for parallelization not found."))
      (unless ,size
        (setf ,size (if ,result-size
                        (min ,result-size (find-min-length ,seqs))
