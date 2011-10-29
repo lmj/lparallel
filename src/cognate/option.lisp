@@ -30,6 +30,13 @@
 
 (in-package #:lparallel.cognate)
 
+(defun get-parts-hint (parts-hint)
+  (cond (parts-hint
+         (check-type parts-hint (integer 1))
+         parts-hint)
+        (t
+         (kernel-worker-count))))
+
 (defmacro pop-plist (list)
   (check-type list symbol)
   `(loop 
@@ -44,25 +51,17 @@
        (destructuring-bind (&key ,@keys) ,plist
          (values ,@keys)))))
 
-(defun get-parts-hint (parts-hint)
-  (cond (parts-hint
-         (check-type parts-hint (integer 1))
-         parts-hint)
-        (t
-         (kernel-worker-count))))
+(defmacro pop-options (list)
+  `(pop-keyword-args ,list size parts))
 
-(defmacro/once with-parsed-options ((seqs size parts-hint
-                                     &key &once result-size)
-                                    &body body)
+(defmacro with-parsed-options ((seqs size parts-hint) &body body)
   (check-type seqs symbol)
   (check-type size symbol)
   (check-type parts-hint symbol)
-  `(multiple-value-bind (,parts-hint ,size) (pop-keyword-args ,seqs parts size)
+  `(multiple-value-bind (,size ,parts-hint) (pop-options ,seqs)
      (unless ,seqs
        (error "Input sequence(s) for parallelization not found."))
      (unless ,size
-       (setf ,size (if ,result-size
-                       (min ,result-size (find-min-length ,seqs))
-                       (find-min-length ,seqs))))
+       (setf ,size (find-min-length ,seqs)))
      (setf ,parts-hint (get-parts-hint ,parts-hint))
      ,@body))

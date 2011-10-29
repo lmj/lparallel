@@ -121,13 +121,29 @@ manually."
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
   (flet ((fill-pointer-p () (and (arrayp result-seq)
                                  (array-has-fill-pointer-p result-seq))))
-    (with-parsed-options
-        (seqs size parts-hint :result-size (if (fill-pointer-p)
-                                               (array-total-size result-seq)
-                                               (length result-seq)))
-      (prog1 (pmap-into/parsed map-into result-seq fn seqs size parts-hint)
-        (when (fill-pointer-p)
-          (setf (fill-pointer result-seq) size))))))
+    (multiple-value-bind (size parts-hint) (pop-options seqs)
+      (let* ((result-size (if (fill-pointer-p)
+                              (array-total-size result-seq)
+                              (length result-seq)))
+             (parts-hint  (get-parts-hint parts-hint))
+             (size        (if seqs
+                              (min result-size (or size (find-min-length seqs)))
+                              (if size (min result-size size) result-size))))
+        (prog1
+            (if seqs
+                (pmap-into/parsed map-into result-seq fn seqs size parts-hint)
+                (locally
+                  (declare #.*normal-optimize*)
+                  (pmap-into/parsed map-into
+                                    result-seq
+                                    (lambda (x)
+                                      (declare (ignore x))
+                                      (funcall fn))
+                                    (list result-seq)
+                                    size
+                                    parts-hint)))
+          (when (fill-pointer-p)
+            (setf (fill-pointer result-seq) size)))))))
 
 (defun pmap-into (result-sequence function &rest sequences)
   "Parallel version of `map-into'. Keyword arguments `parts' and
