@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.0.9
+
+* non-error conditions now recognized during recursive handling
+
 = 1.0.8
 
 * handle zero-arity special case for pmap-into and pmaplist-into
