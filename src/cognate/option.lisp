@@ -30,22 +30,19 @@
 
 (in-package #:lparallel.cognate)
 
-(defun initial-plist-size (list)
-  (loop
-     :for x :in list :by #'cddr
-     :for count :from 0 :by 2
-     :while (typep x 'keyword)
-     :finally (return count)))
-
-(defmacro pop-options (list)
+(defmacro pop-plist (list)
   (check-type list symbol)
-  (with-gensyms (plist-size)
-    `(let1 ,plist-size (initial-plist-size ,list)
-       (when (plusp ,plist-size)
-         (multiple-value-prog1 (apply (lambda (&key parts size)
-                                        (values parts size))
-                                      (subseq ,list 0 ,plist-size))
-           (setf ,list (nthcdr ,plist-size ,list)))))))
+  `(loop 
+      :while (keywordp (car ,list))
+      :collect (pop ,list)
+      :collect (pop ,list)))
+
+(defmacro pop-keyword-args (list &rest keys)
+  (check-type list symbol)
+  (with-gensyms (plist)
+    `(when-let (,plist (pop-plist ,list))
+       (destructuring-bind (&key ,@keys) ,plist
+         (values ,@keys)))))
 
 (defun get-parts-hint (parts-hint)
   (cond (parts-hint
@@ -54,17 +51,16 @@
         (t
          (kernel-worker-count))))
 
-(defmacro with-parsed-options ((seqs size parts-hint &key result-size)
-                               &body body)
+(defmacro/once with-parsed-options ((seqs size parts-hint
+                                     &key &once result-size)
+                                    &body body)
   (check-type seqs symbol)
   (check-type size symbol)
   (check-type parts-hint symbol)
-  (with-gensyms (tmp)
-    `(multiple-value-bind (,parts-hint ,size) (pop-options ,seqs)
-       (unless ,size
-         (setf ,size (let1 ,tmp ,result-size
-                       (if ,tmp
-                           (min ,tmp (find-min-length ,seqs))
-                           (find-min-length ,seqs)))))
-       (setf ,parts-hint (get-parts-hint ,parts-hint))
-       ,@body)))
+  `(multiple-value-bind (,parts-hint ,size) (pop-keyword-args ,seqs parts size)
+     (unless ,size
+       (setf ,size (if ,result-size
+                       (min ,result-size (find-min-length ,seqs))
+                       (find-min-length ,seqs))))
+     (setf ,parts-hint (get-parts-hint ,parts-hint))
+     ,@body))
