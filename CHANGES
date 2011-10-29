@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.0.8
+
+* handle zero-arity special case for pmap-into and pmaplist-into
+
 = 1.0.7
 
 * minor cleanup
