@@ -187,10 +187,18 @@
       (signals task-killed-error
         (receive-result channel)))))
 
+(defun all-workers-alive-p ()
+  (sleep 0.2)
+  (every #'bordeaux-threads:thread-alive-p
+         (map 'list
+              #'lparallel.kernel::thread
+              (lparallel.kernel::workers *kernel*))))
+
 (lp-base-test active-worker-replacement-test
   (sleep 0.2)
   (let1 old-thread-count (length (bordeaux-threads:all-threads))
     (with-new-kernel (2)
+      (is (all-workers-alive-p))
       (kernel-handler-bind ((foo-error (lambda (e)
                                          (declare (ignore e))
                                          (invoke-abort-thread))))
@@ -200,11 +208,7 @@
                                  (error 'foo-error)))
           (signals task-killed-error
             (receive-result channel))))
-      (sleep 0.2)
-      (is (every #'bordeaux-threads:thread-alive-p
-                 (map 'list
-                      #'lparallel.kernel::thread
-                      (lparallel.kernel::workers *kernel*)))))
+      (is (all-workers-alive-p)))
     (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
@@ -213,25 +217,18 @@
   (let1 old-thread-count (length (bordeaux-threads:all-threads))
     (with-new-kernel (2 :bindings (list (cons '*error-output*
                                               (make-broadcast-stream))))
-      (flet ((test-all-alive ()
-               (is (every #'bordeaux-threads:thread-alive-p
-                          (map 'list
-                               #'lparallel.kernel::thread
-                               (lparallel.kernel::workers *kernel*))))))
-        (test-all-alive)
-        (bordeaux-threads:destroy-thread 
-         (lparallel.kernel::thread
-          (aref (lparallel.kernel::workers *kernel*) 0)))
-        (sleep 0.2)
-        (test-all-alive)
-        (bordeaux-threads:destroy-thread 
-         (lparallel.kernel::thread
-          (aref (lparallel.kernel::workers *kernel*) 0)))
-        (bordeaux-threads:destroy-thread 
-         (lparallel.kernel::thread
-          (aref (lparallel.kernel::workers *kernel*) 1)))
-        (sleep 0.2)
-        (test-all-alive)))
+      (is (all-workers-alive-p))
+      (bordeaux-threads:destroy-thread 
+       (lparallel.kernel::thread
+        (aref (lparallel.kernel::workers *kernel*) 0)))
+      (is (all-workers-alive-p))
+      (bordeaux-threads:destroy-thread 
+       (lparallel.kernel::thread
+        (aref (lparallel.kernel::workers *kernel*) 0)))
+      (bordeaux-threads:destroy-thread 
+       (lparallel.kernel::thread
+        (aref (lparallel.kernel::workers *kernel*) 1)))
+      (is (all-workers-alive-p)))
     (sleep 0.2)
     (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
 
