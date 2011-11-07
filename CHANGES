@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.0.10
+
+* fixed a test (sleeping-worker-replacement-test)
+
 = 1.0.9
 
 * non-error conditions now recognized during recursive handling
