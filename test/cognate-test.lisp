@@ -363,16 +363,13 @@
     (let1 v (make-random-seq 'vector size)
       (is (eq v (sort v #'<)))))
 
-  (let1 source (make-random-vector
-                #-abcl 10000
-                #+abcl
-                (progn
-                  (warn "Using smaller psort size for ABCL recursion issue.")
-                  5000))
+  ;; abcl workarounds for worse-case sort bug
+  (let1 source (make-random-vector 10000)
     (let ((a (copy-seq source))
           (b (copy-seq source)))
       (is (equalp ( sort a #'<)
                   (psort b #'<)))
+      #-abcl
       (is (equalp ( sort a #'<)
                   (psort b #'<))))
     (let ((a (copy-seq source))
@@ -382,6 +379,7 @@
                          #'<
                          :min-part-size 100
                          :max-part-size 1000)))
+      #-abcl
       (is (equalp ( sort a #'<)
                   (psort b
                          #'<
@@ -393,8 +391,10 @@
               (b (copy-seq source)))
           (is (equalp ( sort a #'<)
                       (psort b #'< :parts i)))
+          #-abcl
           (is (equalp ( sort a #'<)
                       (psort b #'< :parts i)))
+          #-abcl
           (is (equalp ( sort a #'>)
                       (psort b #'> :parts i))))))
     (let1 source (vector 5 1 9 3 6 0 1 9)
@@ -403,6 +403,7 @@
               (b (copy-seq source)))
           (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
                       (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
+          #-abcl
           (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
                       (psort b #'< :key (lambda (x) (* -1 x)) :parts i))))))
     (let1 source (make-array 50 :initial-element 5)
@@ -411,8 +412,10 @@
               (b (copy-seq source)))
           (is (equalp ( sort a #'<)
                       (psort b #'< :parts i)))
+          #-abcl
           (is (equalp ( sort a #'<)
                       (psort b #'< :parts i)))
+          #-abcl
           (is (equalp ( sort a #'>)
                       (psort b #'> :parts i))))))))
 
