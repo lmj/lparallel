@@ -87,3 +87,13 @@
 (defun infinite-loop ()
   (handler-bind ((warning (lambda (w) (muffle-warning w))))
     (loop)))
+
+(defmacro with-thread-count-check (&body body)
+  (with-gensyms (old-thread-count)
+    `(progn
+       (sleep 0.2)
+       (let1 ,old-thread-count (length (bordeaux-threads:all-threads))
+         ,@body
+         (sleep 0.2)
+         (is (eql ,old-thread-count
+                  (length (bordeaux-threads:all-threads))))))))

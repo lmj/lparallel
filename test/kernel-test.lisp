@@ -195,8 +195,7 @@
               (lparallel.kernel::workers *kernel*))))
 
 (lp-base-test active-worker-replacement-test
-  (sleep 0.2)
-  (let1 old-thread-count (length (bordeaux-threads:all-threads))
+  (with-thread-count-check
     (with-new-kernel (2)
       (is (all-workers-alive-p))
       (kernel-handler-bind ((foo-error (lambda (e)
@@ -208,13 +207,10 @@
                                  (error 'foo-error)))
           (signals task-killed-error
             (receive-result channel))))
-      (is (all-workers-alive-p)))
-    (sleep 0.2)
-    (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
+      (is (all-workers-alive-p)))))
 
 (lp-base-test sleeping-worker-replacement-test
-  (sleep 0.2)
-  (let1 old-thread-count (length (bordeaux-threads:all-threads))
+  (with-thread-count-check
     (with-new-kernel (2 :bindings (list (cons '*error-output*
                                               (make-broadcast-stream))))
       (is (all-workers-alive-p))
@@ -228,9 +224,7 @@
       (bordeaux-threads:destroy-thread 
        (lparallel.kernel::thread
         (aref (lparallel.kernel::workers *kernel*) 1)))
-      (is (all-workers-alive-p)))
-    (sleep 0.2)
-    (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
+      (is (all-workers-alive-p)))))
 
 (define-condition foo-condition () ())
 
@@ -247,8 +241,7 @@
 
 #-abcl
 (lp-base-test custom-kill-task-test
-  (sleep 0.2)
-  (let1 old-thread-count (length (bordeaux-threads:all-threads))
+  (with-thread-count-check
     (with-new-kernel (2)
       (let1 channel (make-channel)
         (let1 *kernel-task-category* 'blah
@@ -270,14 +263,11 @@
               (task-killed-error (e)
                 (push e errors))))
           (is (= 2 (length errors)))
-          (is (equal '(survived) regulars)))))
-    (sleep 0.2)
-    (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
+          (is (equal '(survived) regulars)))))))
 
 #-abcl
 (lp-base-test default-kill-task-test
-  (sleep 0.2)
-  (let1 old-thread-count (length (bordeaux-threads:all-threads))
+  (with-thread-count-check
     (with-new-kernel (2)
       (let1 channel (make-channel)
         (submit-task channel (lambda ()
@@ -298,9 +288,7 @@
               (task-killed-error (e)
                 (push e errors))))
           (is (= 2 (length errors)))
-          (is (equal '(survived) regulars)))))
-    (sleep 0.2)
-    (is (eql old-thread-count (length (bordeaux-threads:all-threads))))))
+          (is (equal '(survived) regulars)))))))
 
 (lp-base-test submit-timeout-test
   (with-new-kernel (2)
