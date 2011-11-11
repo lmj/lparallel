@@ -81,6 +81,7 @@
 (lp-base-test speculations-test
   (setf *memo* (make-queue))
   (with-new-kernel (2)
+    (sleep 0.2)
     (future (sleep 0.25))
     (future (sleep 0.50))
     (sleep 0.125)
@@ -229,6 +230,7 @@
                             (when-let (r (find-restart 'muffle-warning w))
                               (invoke-restart r)))))
     (with-new-kernel (2)
+      (sleep 0.2)
       (let1 main-thread (current-thread)
         (kernel-handler-bind
             ((foo-error (lambda (e)
