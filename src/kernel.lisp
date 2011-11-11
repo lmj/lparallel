@@ -363,7 +363,7 @@ As an optimization, an internal size may be given with
          (lambda ()
            ,@body))))
 
-(defmacro/once make-task (&key &once client-fn store-error)
+(defmacro make-task (&key client-fn store-error)
   (with-gensyms (task-category)
     `(let ((,task-category *kernel-task-category*))
        (make-tuple ,client-fn
@@ -373,11 +373,11 @@ As an optimization, an internal size may be given with
 (defun make-channeled-task (channel fn args)
   (let1 queue (channel-queue channel)
     (macrolet ((store (code) `(push-queue ,code queue)))
-      (make-task :client-fn (make-client-fn
-                              ;; handler already established inside
-                              ;; worker threads
-                              (store (with-task-context (apply fn args))))
-                 :store-error store))))
+      (let1 client-fn (make-client-fn
+                        ;; handler already established inside
+                        ;; worker threads
+                        (store (with-task-context (apply fn args))))
+        (make-task :client-fn client-fn :store-error store)))))
 
 (defun submit-raw-task (task kernel)
   (ccase *kernel-task-priority*
