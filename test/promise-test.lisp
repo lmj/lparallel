@@ -93,12 +93,12 @@
 
 (lp-test flood-test
   (let* ((a (promise))
-         (futures (collect-n 20 (future (force a)))))
-    (is (every (complement #'fulfilledp) futures))
-    (sleep 0.1)
-    (is (every (complement #'fulfilledp) futures))
+         (futures (collect-n 100 (future (force a)))))
+    (is (notany #'fulfilledp futures))
+    (sleep 0.5)
+    (is (notany #'fulfilledp futures))
     (fulfill a 4)
-    (sleep 0.1)
+    (sleep 1.0)
     (is (every #'fulfilledp futures))
     (is (every (lambda (x) (= x 4)) (mapcar #'force futures)))))
 
