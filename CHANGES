@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.0.12
+
+* improved some tests (pmap-into-test, flood-test)
+* minor cleanup
+
 = 1.0.11
 
 * slightly smaller footprint for futures and speculations
