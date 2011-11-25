@@ -301,7 +301,7 @@ the string returned by `bordeaux-threads:thread-name'."
   (check-type worker-count (integer 1))
   (let1 kernel (make-kernel-instance
                 :tasks (make-biased-queue 64)
-                :workers (make-array worker-count :fill-pointer 0 :adjustable t)
+                :workers (make-array worker-count)
                 :workers-lock (make-lock)
                 :worker-bindings (nconc (copy-alist bindings)
                                         (acons '*debugger-hook* *debugger-hook*
@@ -311,8 +311,7 @@ the string returned by `bordeaux-threads:thread-name'."
                 :worker-name name)
     (with-kernel-slots (workers worker-bindings) kernel
       (setf worker-bindings (acons '*kernel* kernel worker-bindings))
-      (repeat worker-count
-        (vector-push (make-worker kernel) workers)))
+      (map-into workers (lambda () (make-worker kernel))))
     kernel))
 
 (defun check-kernel ()
