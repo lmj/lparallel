@@ -318,3 +318,11 @@
 (lp-test print-kernel-test
   (is (plusp (length (with-output-to-string (s)
                        (print *kernel* s))))))
+
+(lp-base-test end-kernel-wait-test
+  (with-thread-count-check
+    (let1 *kernel* (make-kernel 3)
+      (unwind-protect
+           (let1 channel (make-channel)
+             (submit-task channel (lambda () (sleep 1))))
+        (is (eql 3 (length (end-kernel :wait t))))))))

@@ -487,23 +487,42 @@ return value is the number of tasks that would have been killed if
       (repeat (length workers)
         (push-biased-queue/no-lock nil tasks)))))
 
-(defun end-kernel ()
+(defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
 
-But hang on -- are you certain you wish to do this? The kernel was
+But hang on -- are you certain you wish to do this? `end-kernel' is an
+expensive operation involving heavy locking to detect a finished
+state. Creating and destroying threads is also expensive. A kernel is
 meant to be your trusted friend for the lifetime of the Lisp process.
 Having more than one kernel is fine; simply use `let' to bind a kernel
 instance to `*kernel*' when you need it. Use `emergency-kill-tasks' to
 terminate deadlocked or infinite looping tasks.
 
-`end-kernel' returns immediately. Current tasks are waited upon by a
-separate shutdown manager thread. A list of the implementation-defined
-worker thread objects is returned (plus the manager thread at the
-head)."
+If `wait' is nil (the default) then `end-kernel' returns immediately.
+Current tasks are waited upon by a separate shutdown manager thread. 
+
+If `wait' is non-nil then `end-kernel' blocks until all tasks are
+complete. No shutdown manager thread is created. If you are merely
+waiting on tasks then you almost certainly want to use
+`receive-result' instead. However there are rare cases where waiting
+on a temporary kernel is warranted, for example when benchmarking with
+a variety of kernels.
+
+A list of the implementation-defined worker thread objects is
+returned. If `wait' is nil then the shutdown manager thread is also
+returned as the first element in the list."
   (when *kernel*
     (let ((kernel *kernel*)
           (channel (make-channel)))
       (setf *kernel* nil)
-      (cons (with-thread (:name "lparallel kernel shutdown manager")
-              (shutdown channel kernel))
-            (mapcar #'thread (coerce (workers kernel) 'list))))))
+      (labels ((call-shutdown ()
+                 (shutdown channel kernel))
+               (spawn-shutdown ()
+                 (make-thread #'call-shutdown
+                              :name "lparallel kernel shutdown manager")))
+        (let1 threads (map 'list #'thread (workers kernel))
+          (cond (wait
+                 (call-shutdown)
+                 threads)
+                (t
+                 (cons (spawn-shutdown) threads))))))))
