@@ -314,3 +314,7 @@
           (receive-result channel))))
     (is (equal '(inner outer)
                (extract-queue q)))))
+
+(lp-test print-kernel-test
+  (is (plusp (length (with-output-to-string (s)
+                       (print *kernel* s))))))

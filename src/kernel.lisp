@@ -57,6 +57,12 @@ clause which is executed when the `main' clause does not finish."
   `(multiple-value-bind ,vars (funcall ,tuple)
      ,@body))
 
+(defmacro define-circular-print-object (type)
+  `(defmethod print-object :around ((object ,type) stream)
+     (declare (ignore object stream))
+     (let1 *print-circle* t
+       (call-next-method))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; error handling
@@ -222,6 +228,8 @@ message from appearing in the future (N is the number of workers):
    (kernel :reader channel-kernel :type kernel)))
 
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")
+
+(define-circular-print-object kernel)
 
 (defun replace-worker (kernel worker)
   (with-kernel-slots (workers workers-lock) kernel
