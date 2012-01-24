@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 1.1.0
+
+* add :wait option to end-kernel -- block until the kernel has shut down
+  (please read the documentation for end-kernel before using)
+* bind *print-circle* to t when printing a kernel -- avoids SBCL + SLIME
+  crash when evaluating the single form (setf *kernel* (make-kernel ...))
+
 = 1.0.12
 
 * improved some tests (pmap-into-test, flood-test)
