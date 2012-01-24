@@ -122,7 +122,7 @@ results are riffled for comparison."
 (defun call-with-temp-kernel (worker-count fn)
   (let1 *kernel* (make-kernel worker-count)
     (unwind-protect (funcall fn)
-      (end-kernel))))
+      (end-kernel :wait t))))
 
 (defun run-suite (worker-count reset-fn &rest fns)
   (when fns
