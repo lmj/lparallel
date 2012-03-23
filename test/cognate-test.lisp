@@ -406,52 +406,52 @@
                   (psort b
                          #'>
                          :min-part-size 100
-                         :max-part-size 1000))))
-    (let1 source (vector 5 1 9 3 6 0 1 9)
-      (dolist (i (loop :for i :from 1 :upto 8 :collect i))
-        (let ((a (copy-seq source))
-              (b (copy-seq source)))
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :parts i))))))
-    (let1 source (vector 5 1 9 3 6 0 1 9)
-      (dolist (i (loop :for i :from 1 :upto 8 :collect i))
-        (let ((a (copy-seq source))
-              (b (copy-seq source)))
-          (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                      (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                      (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                      (psort b #'> :key (lambda (x) (* -1 x)) :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                      (psort b #'> :key (lambda (x) (* -1 x)) :parts i))))))
-    (let1 source (make-array 50 :initial-element 5)
-      (dolist (i (loop :for i :from 1 :upto 8 :collect i))
-        (let ((a (copy-seq source))
-              (b (copy-seq source)))
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :parts i)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :parts i))))))))
+                         :max-part-size 1000)))))
+  (let1 source (vector 5 1 9 3 6 0 1 9)
+    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+      (let ((a (copy-seq source))
+            (b (copy-seq source)))
+        (is (equalp ( sort a #'<)
+                    (psort b #'< :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'<)
+                    (psort b #'< :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'>)
+                    (psort b #'> :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'>)
+                    (psort b #'> :parts i))))))
+  (let1 source (vector 5 1 9 3 6 0 1 9)
+    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+      (let ((a (copy-seq source))
+            (b (copy-seq source)))
+        (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
+                    (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
+                    (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
+                    (psort b #'> :key (lambda (x) (* -1 x)) :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
+                    (psort b #'> :key (lambda (x) (* -1 x)) :parts i))))))
+  (let1 source (make-array 50 :initial-element 5)
+    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+      (let ((a (copy-seq source))
+            (b (copy-seq source)))
+        (is (equalp ( sort a #'<)
+                    (psort b #'< :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'<)
+                    (psort b #'< :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'>)
+                    (psort b #'> :parts i)))
+        #-abcl
+        (is (equalp ( sort a #'>)
+                    (psort b #'> :parts i)))))))
 
 (lp-test premove-if-test
   (loop
