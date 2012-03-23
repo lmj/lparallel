@@ -298,6 +298,24 @@
       (is (eql 3 (receive-result channel)))
       (is (eq 'timeout (receive-result channel))))))
 
+(lp-base-test cancel-timeout-test
+  (with-new-kernel (2)
+    (let* ((channel (make-channel))
+           (timeout (submit-timeout channel 999 'timeout)))
+      (sleep 0.2)
+      (cancel-timeout timeout 'a)
+      (is (eq 'a (receive-result channel))))))
+
+(lp-base-test kill-timeout-test
+  (with-new-kernel (2)
+    (let* ((channel (make-channel))
+           (timeout (submit-timeout channel 999 'timeout)))
+      (sleep 0.2)
+      (lparallel.kernel::with-timeout-slots (lparallel.kernel::thread) timeout
+        (bordeaux-threads:destroy-thread lparallel.kernel::thread))
+      (signals task-killed-error
+        (receive-result channel)))))
+
 (define-condition foo-condition-2 (condition) ())
 
 (lp-test signaling-after-signal-test

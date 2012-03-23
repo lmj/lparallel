@@ -162,6 +162,7 @@
            #:make-channel
            #:submit-task
            #:submit-timeout
+           #:cancel-timeout
            #:receive-result
            #:do-fast-receives
            #:emergency-kill-tasks ; deprecated -- same as kill-tasks

@@ -396,20 +396,6 @@ As an optimization, an internal size may be given with
   (submit-raw-task (make-channeled-task channel function args)
                    (channel-kernel channel)))
 
-(defun submit-timeout (channel timeout-seconds timeout-result)
-  "Effectively equivalent to
-
-  (submit-task channel (lambda () (sleep timeout-seconds) timeout-result))
-
-The difference is that `submit-timeout' does not occupy a worker thread."
-  (let1 queue (channel-queue channel)
-    (with-thread (:name "submit-timeout")
-      (enhanced-unwind-protect
-         :main  (sleep timeout-seconds)
-         :abort (push-queue (wrap-error 'task-killed-error) queue))
-      (push-queue timeout-result queue)))
-  nil)
-
 (defun receive-result (channel)
   "Remove a result from `channel'. If nothing is available the call
 will block until a result is received."
@@ -531,3 +517,64 @@ returned as the first element in the list."
                  threads)
                 (t
                  (cons (spawn-shutdown) threads))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; timeout
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defslots timeout ()
+  ((canceled-result)
+   (thread)
+   (lock :initform (make-lock))))
+
+(defun submit-timeout (channel timeout-seconds timeout-result)
+  "Effectively equivalent to
+
+  (submit-task channel (lambda () (sleep timeout-seconds) timeout-result))
+
+The difference is that `submit-timeout' does not occupy a worker
+thread. A new thread is created for the timeout.
+
+A timeout object is returned, which may be passed to `cancel-timeout'.
+
+If the internal timeout thread is interrupted by means other than
+`cancel-timeout' then the channel will receive a `task-killed-error'.
+The error is signaled at the point `receive-result' is called."
+  (let ((timeout (make-timeout-instance
+                  :canceled-result 'not-canceled :thread nil))
+        (pushedp nil))
+    (with-channel-slots (queue) channel
+      (with-timeout-slots (canceled-result thread lock) timeout
+        (macrolet ((push-result (form)
+                     ;; Ensure that only one result is pushed.
+                     ;; 
+                     ;; We must check the canceled result inside the
+                     ;; lock, so delay evaluation via macrolet.
+                     `(with-lock-predicate/wait lock (not pushedp)
+                        (push-queue ,form queue)
+                        (setf pushedp t))))
+          (setf thread (with-thread (:name "lparallel-timeout")
+                         (enhanced-unwind-protect
+                          :main  (sleep timeout-seconds)
+                          :abort (push-result
+                                  (if (eq canceled-result 'not-canceled)
+                                      (wrap-error 'task-killed-error)
+                                      canceled-result)))
+                         (push-result timeout-result))))))
+    timeout))
+
+(defun cancel-timeout (timeout timeout-result)
+  "Attempt to cancel a timeout. If successful, the channel passed to
+`submit-timeout' will receive `timeout-result'.
+
+At most one call to `cancel-timeout' will succeed; others will be
+ignored. If the timeout has expired on its own then `cancel-timeout'
+will have no effect."
+  (with-timeout-slots (canceled-result thread lock) timeout
+    ;; ensure that only one cancel succeeds
+    (with-lock-predicate/wait lock (eq canceled-result 'not-canceled)
+      (setf canceled-result timeout-result)
+      (destroy-thread thread)))
+  nil)
