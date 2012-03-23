@@ -59,27 +59,24 @@ time from errors signaled inside `call-with-kernel-handler'.")
 
 (defmacro kernel-handler-bind (clauses &body body)
   "Like `handler-bind' but reaches into kernel worker threads."
-  `(let ((*client-handlers*
-          (nconc (list
-                  ,@(loop
-                       :for clause :in clauses
-                       :for (name fn more) := clause
-                       :do (unless (and (symbolp name) (not more))
-                             (error "Wrong format in `kernel-handler-bind' ~
-                                    clause: ~a"
-                                    clause))
-                       :collect `(cons ',name ,fn)))
-                 *client-handlers*)))
-     ,@body))
+  (let1 forms (loop
+                 :for clause :in clauses
+                 :for (name fn more) := clause
+                 :do (unless (and (symbolp name) (not more))
+                       (error "Wrong format in `kernel-handler-bind' clause: ~a"
+                              clause))
+                 :collect `(cons ',name ,fn))
+    `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)
+       ,@body)))
 
 (defun condition-handler (con)
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
   (loop
-     :for (name . fn) :in *client-handlers*
-     :for pos         :on *client-handlers*
+     :for (name . fn)  :in *client-handlers*
+     :for (nil . tail) :on *client-handlers*
      :do (when (subtypep (type-of con) name)
-           (let1 *client-handlers* (cdr pos)
+           (let1 *client-handlers* tail
              (handler-bind ((condition #'condition-handler))
                (funcall fn con))))))
 
