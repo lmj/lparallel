@@ -29,7 +29,7 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defsystem :lparallel-test
-  :depends-on (:fiveam
+  :depends-on (:eos
                :lparallel)
   :serial t
   :components ((:file "packages-test")

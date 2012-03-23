@@ -40,7 +40,7 @@
         #:lparallel.ptree)
   (:import-from #:bordeaux-threads
                 #:current-thread)
-  (:import-from #:fiveam
+  (:import-from #:eos
                 #:def-suite
                 #:in-suite
                 #:run!
