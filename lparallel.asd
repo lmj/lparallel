@@ -32,7 +32,8 @@
   :version "1.1.0"
   :description "Parallelism for Common Lisp"
   :long-description
-"lparallel provides low-level and high-level tools for writing
+"
+lparallel provides low-level and high-level tools for writing
 efficient parallel programs in Common Lisp.
 
 The low-level API of lparallel is meant to describe parallelism in a
@@ -46,8 +47,12 @@ lparallel also provides higher-level facilities including:
 * parallel versions of map, reduce, sort, remove, and many others
 * promises, futures, and delayed evaluation constructs
 * computation trees for parallelizing interconnected tasks
-* targeted task killing by category
+* high and low priority tasks
+* task killing by category
+* integrated timeouts
 * vector-based FIFO queues
+
+See http://lparallel.com for documentation and examples.
 "
   :licence "BSD"
   :author "James M. Lawrence <llmjjmll@gmail.com>"
