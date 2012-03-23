@@ -108,22 +108,23 @@ error will be signaled."))
                           ,initform
                           ,@(when type `(:type ,type)))))))
 
-  (defmacro define-reader (public private)
-    (with-gensyms (instance)
-      `(progn
-         (setf (symbol-function ',public) #',private)
-         (define-compiler-macro ,public (,instance)
-           `(,',private ,,instance)))))
+  (defmacro define-reader (public private type struct)
+    `(progn 
+       (declaim (ftype (function (,struct) ,(or type t)) ,public))
+       (alias-function ,public ,private)))
 
-  (defmacro define-readers (conc-name slots)
+  (defmacro define-readers (struct conc-name slots)
     `(progn
        ,@(loop
             :for slot      :in slots
             :for slot-name := (first slot)
             :for plist     := (rest slot)
             :for private   := (intern-conc conc-name slot-name)
-            :append (mapcar (lambda (public) `(define-reader ,public ,private))
-                            (repeated-properties plist :reader)))))
+            :for type      := (getf plist :type)
+            :nconc (loop
+                      :for public :in (repeated-properties plist :reader)
+                      :collect `(define-reader
+                                    ,public ,private ,type ,struct)))))
 
   (defmacro defslots (name supers slots &rest options)
     #.*defslots-doc*
@@ -135,7 +136,7 @@ error will be signaled."))
         `(progn
            (define-struct ,name ,supers ,slots ,options ,conc-name ,constructor)
            (define-with-slots-macro ,with-slots-macro-name ,package ,conc-name)
-           (define-readers ,conc-name ,slots)
+           (define-readers ,name ,conc-name ,slots)
            ',name)))))
 
 #+lparallel.with-debug

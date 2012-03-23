@@ -40,7 +40,8 @@
            #:when-let
            #:while-let
            #:rebind
-           #:let1)
+           #:let1
+           #:alias-function)
   (:export #:defun/inline
            #:defun/ftype)
   (:export #:defslots)

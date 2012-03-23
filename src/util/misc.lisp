@@ -62,3 +62,9 @@
   (apply #'format *query-io* prompt)
   (finish-output *query-io*)
   (multiple-value-list (eval (read *query-io*))))
+
+(defmacro alias-function (alias fn)
+  `(progn
+     (setf (symbol-function ',alias) #',fn)
+     (define-compiler-macro ,alias (&rest args)
+       `(,',fn ,@args))))

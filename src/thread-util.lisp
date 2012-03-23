@@ -87,4 +87,4 @@
   (thread-yield))
 
 #-allegro
-(setf (symbol-function 'condition-notify-and-yield) #'condition-notify)
+(alias-function condition-notify-and-yield condition-notify)
