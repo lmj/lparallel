@@ -4,9 +4,9 @@ lparallel Changes
 
 = 1.1.0
 
-* add :wait option to end-kernel -- block until the kernel has shut down
+* added :wait option to end-kernel -- block until the kernel has shut down
   (please read the documentation for end-kernel before using)
-* bind *print-circle* to t when printing a kernel -- avoids SBCL + SLIME
+* bound *print-circle* to t when printing a kernel -- avoids SBCL + SLIME
   crash when evaluating the single form (setf *kernel* (make-kernel ...))
 
 = 1.0.12
@@ -37,7 +37,7 @@ lparallel Changes
 
 = 1.0.6
 
-* remove needless kernel handler in delay
+* removed needless kernel handler in delay
 * various minor cleanup
 
 = 1.0.5
@@ -46,7 +46,7 @@ lparallel Changes
 
 = 1.0.4
 
-* add description fields to .asd file and augment README
+* added description fields to .asd file and augment README
 * error for an invalid task priority is now correctable
 
 = 1.0.3
@@ -60,7 +60,7 @@ lparallel Changes
 
 = 1.0.1
 
-* clarify docs
+* clarified docs
 * trivial cleanup
 
 = 1.0.0
