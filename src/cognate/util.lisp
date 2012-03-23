@@ -52,3 +52,8 @@
 
 (defun nconc/many (seq)
   (reduce #'nconc seq :from-end t))
+
+(defun ensure-function (fn)
+  (if (functionp fn)
+      fn
+      (fdefinition fn)))
