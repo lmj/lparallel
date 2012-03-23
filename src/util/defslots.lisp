@@ -67,8 +67,8 @@ error will be signaled."))
                (or (null options)
                    (eq (caar options) :documentation))))
   (loop
-     :for slot :in slots
-     :for keys := (plist-keys (rest slot))
+     :for (nil . plist) :in slots
+     :for keys := (plist-keys plist)
      :do (assert (null (set-difference keys '(:initform :type :reader)))))
   (values (intern-conc '#:make- name '#:-instance)
           (intern-conc '#:with- name '#:-slots)))
@@ -98,15 +98,12 @@ error will be signaled."))
                          ,@(unsplice (when supers `(:include ,(first supers)))))
          ,@(unsplice (getf (first options) :documentation))
          ,@(loop
-              :for slot     :in slots
-              :for plist    := (rest slot)
+              :for (slot-name . plist) :in slots
               :for initform := (getf plist :initform
                                      `(error "slot ~a in ~a not initialized"
-                                             ',(first slot) ',name))
-              :for type     := (getf plist :type)
-              :collect `(,(first slot)
-                          ,initform
-                          ,@(when type `(:type ,type)))))))
+                                             ',slot-name ',name))
+              :for type := (getf plist :type)
+              :collect `(,slot-name ,initform ,@(when type `(:type ,type)))))))
 
   (defmacro define-reader (public private type struct)
     `(progn 
@@ -116,11 +113,9 @@ error will be signaled."))
   (defmacro define-readers (struct conc-name slots)
     `(progn
        ,@(loop
-            :for slot      :in slots
-            :for slot-name := (first slot)
-            :for plist     := (rest slot)
-            :for private   := (intern-conc conc-name slot-name)
-            :for type      := (getf plist :type)
+            :for (slot-name . plist) :in slots
+            :for private := (intern-conc conc-name slot-name)
+            :for type := (getf plist :type)
             :nconc (loop
                       :for public :in (repeated-properties plist :reader)
                       :collect `(define-reader
