@@ -50,7 +50,10 @@
                 (part-size   () ,part-size)
                 (part-offset () ,part-offset)
                 (num-parts   () ,num-parts))
-           (declare (inline part-size part-offset num-parts))
+           (declare (inline part-size part-offset num-parts)
+                    (ignorable (function part-size)
+                               (function part-offset)
+                               (function num-parts)))
            ,@body)))))
 
 (defun/inline make-displaced-array (array part-offset part-size)

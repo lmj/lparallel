@@ -99,7 +99,7 @@
         (progn
           (unless function
             (check-node node))
-          (setf result (apply function children-results)
+          (setf result (apply (the function function) children-results)
                 computed t))
       (error (err) (setf computed err))))
   node)
