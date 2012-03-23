@@ -51,23 +51,8 @@
 
 (defpackage #:lparallel.thread-util
   (:use #:cl
-        #:lparallel.util)
-  ;; re-exported (just for convenience)
-  (:import-from #:bordeaux-threads
-                #:make-thread
-                #:make-lock
-                #:make-recursive-lock
-                #:make-condition-variable
-                #:with-lock-held
-                #:with-recursive-lock-held
-                #:acquire-lock
-                #:release-lock
-                #:condition-wait)
-  ;; not re-exported
-  (:import-from #:bordeaux-threads
-                #:condition-notify
-                #:thread-yield
-                #:*default-special-bindings*)
+        #:lparallel.util
+        #:bordeaux-threads)
   (:export #:with-thread
            #:with-lock-predicate/wait
            #:with-lock-predicate/no-wait
@@ -75,6 +60,7 @@
            #:define-locking-fn
            #:define-simple-locking-fn
            #:condition-notify-and-yield)
+  ;; exported from bordeaux-threads
   (:export #:make-thread
            #:make-lock
            #:make-recursive-lock
@@ -263,15 +249,15 @@
 
 (macrolet ((define-merged-package (name packages)
              `(defpackage ,name
-                (:use #:cl ,@packages)
+                (:use ,@packages)
                 (:export
                  ,@(loop
                       :for pkg :in packages
                       :nconc (loop
                                 :for sym :being :the :external-symbols :in pkg
                                 :collect (make-symbol (string sym))))))))
-  (define-merged-package
-      #:lparallel (#:lparallel.kernel
-                   #:lparallel.promise
-                   #:lparallel.cognate
-                   #:lparallel.ptree)))
+  (define-merged-package #:lparallel
+      (#:lparallel.kernel
+       #:lparallel.promise
+       #:lparallel.cognate
+       #:lparallel.ptree)))
