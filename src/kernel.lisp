@@ -457,13 +457,14 @@ return value is the number of tasks that would have been killed if
   (when *kernel*
     (with-kernel-slots (workers tasks) *kernel*
       (with-locked-biased-queue tasks
-        (let1 victims (map 'list #'thread (remove-if-not
-                                           (lambda (worker)
-                                             (eq (running-category worker)
-                                                 task-category))
-                                           workers))
+        (let1 victims (map 'vector 
+                           #'thread 
+                           (remove-if-not (lambda (worker)
+                                            (eq (running-category worker)
+                                                task-category))
+                                          workers))
           (unless dry-run
-            (mapcar #'destroy-thread victims))
+            (map nil #'destroy-thread victims))
           (length victims))))))
 
 ;; TODO: remove sometime
