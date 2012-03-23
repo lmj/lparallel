@@ -48,16 +48,13 @@
     `(lambda (&rest free-args)
        (apply ,fn ,@args free-args))))
 
-(defun uncurry (fn)
-  (lambda (x) (declare (ignore x)) (funcall fn)))
-
 (defun make-random-seq (type size)
   (let1 seq (make-sequence type size)
-    (map-into seq (uncurry (curry 'random 1.0)) seq)))
+    (map-into seq (lambda () (random 1.0)))))
 
 (defun make-random-list (size)
   (make-random-seq 'list size))
 
 (defun make-random-vector (size)
   (let1 seq (make-array size :element-type 'single-float)
-    (map-into seq (uncurry (curry 'random 1.0)) seq)))
+    (map-into seq (lambda () (random 1.0)))))
