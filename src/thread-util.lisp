@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.thread-util)
 
-(defmacro with-thread ((&key bindings name) &body body)
+(defmacro/once with-thread ((&key &once bindings &once name) &body body)
   `(let1 *default-special-bindings* ,bindings
      (make-thread (lambda () ,@body) :name ,name)))
 
