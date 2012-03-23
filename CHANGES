@@ -2,6 +2,14 @@
 lparallel Changes
 =================
 
+= 1.2.0
+
+* added function cancel-timeout; submit-timeout now returns a timeout object
+* renamed emergency-kill-tasks to kill-tasks; old name is still available
+* minor optimization to ptrees
+* added type checks to psort arguments
+* switched test framework to eos
+
 = 1.1.0
 
 * added :wait option to end-kernel -- block until the kernel has shut down
