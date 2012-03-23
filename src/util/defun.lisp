@@ -41,7 +41,7 @@
   (defmacro defun/ftype (name params ftype-declaration &body body)
     "Shortcut for (declare (ftype ftype-declaration) foo) (defun foo ...)."
     (assert (not (some (lambda (x) (find x lambda-list-keywords)) params)))
-    (with-preamble (preamble body)
+    (with-parsed-body (preamble body)
       `(progn
          (declaim (ftype ,ftype-declaration ,name))
          (defun ,name ,params
@@ -71,7 +71,7 @@
                                          (gensym (symbol-name x))
                                          (gensym)))
                                    return-types)))
-        (with-preamble (preamble body)
+        (with-parsed-body (preamble body)
           `(defun ,name ,params
              ,@preamble
              ,@(loop

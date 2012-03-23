@@ -72,7 +72,7 @@
 (defun has-declare-p (body)
   (and (consp (car body)) (eq (caar body) 'declare)))
 
-(defmacro with-preamble ((preamble body-var) &body body)
+(defmacro with-parsed-body ((preamble body-var) &body body)
   "Pop docstring and declarations off `body-var' and assign them to `preamble'."
   `(let ((,preamble (loop
                        :while (or (has-docstring-p ,body-var)

@@ -49,7 +49,7 @@ by `&once' are passed to a `once-only' call which surrounds `body'."
                              (t
                               nil)))
                      params)))
-    (with-preamble (preamble body)
+    (with-parsed-body (preamble body)
       `(defmacro ,name ,(remove-once-keywords params)
          ,@preamble
          (once-only ,(find-once-params params)
