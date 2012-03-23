@@ -89,7 +89,7 @@ time from errors signaled inside `call-with-kernel-handler'.")
     `kernel-handler-bind' in the calling thread.")
 
   (*kernel-task-category* :default
-   "Thread-local. See `emergency-kill-tasks'. Default value is `:default'.")
+   "Thread-local. See `kill-tasks'. Default value is `:default'.")
 
   (*kernel-task-priority* :default
    "Thread-local. When bound to `:low', the kernel schedules submitted
@@ -428,7 +428,7 @@ will block until a result is received."
              ,@body))))))
 
 #-abcl
-(defun emergency-kill-tasks (task-category &key dry-run)
+(defun kill-tasks (task-category &key dry-run)
   "This is an expensive function which should only be used in
 exceptional circumstances.
 
@@ -436,9 +436,9 @@ A task category is any object suitable for `eq' comparison. When a
 task is submitted, it is assigned the category of
 `*kernel-task-category*' (which has a default value of `:default').
 
-`emergency-kill-tasks' rudely interrupts running tasks whose category
-is `eq' to `task-category'. The corresponding worker threads are
-killed and replaced.
+`kill-tasks' rudely interrupts running tasks whose category is `eq' to
+`task-category'. The corresponding worker threads are killed and
+replaced.
 
 Pending tasks are not affected.
 
@@ -453,7 +453,7 @@ If `dry-run' is non-nil then no tasks are killed. In this case the
 return value is the number of tasks that would have been killed if
 `dry-run' were nil.
 
-`emergency-kill-tasks' is not available in ABCL."
+`kill-tasks' is not available in ABCL."
   (when *kernel*
     (with-kernel-slots (workers tasks) *kernel*
       (with-locked-biased-queue tasks
@@ -465,6 +465,10 @@ return value is the number of tasks that would have been killed if
           (unless dry-run
             (mapcar #'destroy-thread victims))
           (length victims))))))
+
+;; TODO: remove sometime
+#-abcl
+(alias-function emergency-kill-tasks kill-tasks)
 
 (defun kernel-idle-p (kernel)
   (with-kernel-slots (tasks workers) kernel
@@ -495,8 +499,8 @@ expensive operation involving heavy locking to detect a finished
 state. Creating and destroying threads is also expensive. A kernel is
 meant to be your trusted friend for the lifetime of the Lisp process.
 Having more than one kernel is fine; simply use `let' to bind a kernel
-instance to `*kernel*' when you need it. Use `emergency-kill-tasks' to
-terminate deadlocked or infinite looping tasks.
+instance to `*kernel*' when you need it. Use `kill-tasks' to terminate
+deadlocked or infinite looping tasks.
 
 If `wait' is nil (the default) then `end-kernel' returns immediately.
 Current tasks are waited upon by a separate shutdown manager thread. 

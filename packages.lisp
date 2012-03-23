@@ -164,7 +164,8 @@
            #:submit-timeout
            #:receive-result
            #:do-fast-receives
-           #:emergency-kill-tasks)
+           #:emergency-kill-tasks ; deprecated -- same as kill-tasks
+           #:kill-tasks)
   (:export #:*kernel*
            #:*kernel-task-category*
            #:*kernel-task-priority*)
