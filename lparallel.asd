@@ -69,7 +69,13 @@ lparallel also provides higher-level facilities including:
                              (:file "queue")
                              (:file "counter")
                              (:file "biased-queue")
-                             (:file "kernel")
+                             (:module "kernel"
+                              :serial t
+                              :components ((:file "util")
+                                           (:file "thread-locals")
+                                           (:file "handling")
+                                           (:file "core")
+                                           (:file "timeout")))
                              (:file "kernel-util")
                              (:file "promise")
                              (:file "ptree")
