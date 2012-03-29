@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.2.1
+
+* more consistent end-kernel behavior -- ensured that no more tasks
+  are executed once an idle state is detected
+
 = 1.2.0
 
 * added function cancel-timeout; submit-timeout now returns a timeout object
