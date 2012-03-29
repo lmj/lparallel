@@ -144,10 +144,11 @@ are recursed upon.
 `max-part-size' defaults to (/ (length sequence) parts). 
 
 `parts' defaults to (kernel-worker-count)."
-  (when min-part-size (check-type min-part-size fixnum))
-  (when max-part-size (check-type max-part-size fixnum))
   (typecase sequence
     (vector
+     (check-type parts         (or null fixnum))
+     (check-type min-part-size (or null fixnum))
+     (check-type max-part-size (or null fixnum))
      (let* ((predicate  (ensure-function predicate))
             (parts-hint (get-parts-hint parts))
             (min        (or min-part-size 2))
