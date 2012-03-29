@@ -274,11 +274,15 @@ return value is the number of tasks that would have been killed if
 #-abcl
 (alias-function emergency-kill-tasks kill-tasks)
 
+(defun kernel-idle-p/no-lock (kernel)
+  (with-kernel-slots (tasks workers) kernel
+    (and (biased-queue-empty-p/no-lock tasks)
+         (notany #'running-category workers))))
+
 (defun kernel-idle-p (kernel)
   (with-kernel-slots (tasks workers) kernel
     (with-locked-biased-queue tasks
-      (and (biased-queue-empty-p/no-lock tasks)
-           (notany #'running-category workers)))))
+      (kernel-idle-p/no-lock kernel))))
 
 (defun wait-for-tasks (channel kernel)
   (loop
@@ -288,10 +292,18 @@ return value is the number of tasks that would have been killed if
        (submit-task channel (lambda ())))
      (receive-result channel)))
 
+(defmacro/once with-idle-kernel (&once channel &once kernel &body body)
+  (with-gensyms (retry)
+    `(tagbody ,retry
+        (wait-for-tasks ,channel ,kernel)
+        (with-locked-biased-queue (tasks ,kernel)
+          (unless (kernel-idle-p/no-lock ,kernel)
+            (go ,retry))
+          ,@body))))
+
 (defun shutdown (channel kernel)
-  (wait-for-tasks channel kernel)
   (with-kernel-slots (tasks workers) kernel
-    (with-locked-biased-queue tasks
+    (with-idle-kernel channel kernel
       (repeat (length workers)
         (push-biased-queue/no-lock nil tasks)))))
 
