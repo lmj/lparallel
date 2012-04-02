@@ -280,7 +280,7 @@ return value is the number of tasks that would have been killed if
          (notany #'running-category workers))))
 
 (defun kernel-idle-p (kernel)
-  (with-kernel-slots (tasks workers) kernel
+  (with-kernel-slots (tasks) kernel
     (with-locked-biased-queue tasks
       (kernel-idle-p/no-lock kernel))))
 
