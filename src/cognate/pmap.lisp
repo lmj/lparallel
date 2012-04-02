@@ -184,8 +184,8 @@ manually."
 
 (defun pmap-iterate (map fn seqs size parts-hint)
   (if (eql size (find-num-parts size parts-hint))
-      (pmap-iterate/parts  map fn seqs size parts-hint)
-      (pmap-iterate/powder map fn seqs size))
+      (pmap-iterate/powder map fn seqs size)
+      (pmap-iterate/parts  map fn seqs size parts-hint))
   nil)
 
 (defun pmap/parsed (result-type function sequences size parts-hint)
