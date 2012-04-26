@@ -29,7 +29,7 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defsystem :lparallel
-  :version "1.2.2"
+  :version "1.2.3"
   :description "Parallelism for Common Lisp"
   :long-description
 "

@@ -4,7 +4,8 @@ lparallel Changes
 
 = 1.2.3
 
-* fix promises created with (promise) did not handle spurious wakeups
+* for promises created with (promise), fixed intermittent error during
+  high contention on some SBCL Linux machines; fixes flood-test failure
  
 = 1.2.2
 
