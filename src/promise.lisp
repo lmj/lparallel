@@ -151,8 +151,11 @@ unknown at the time it is created."
       (condition-notify-and-yield cvar))))
 
 (defmethod force-hook ((promise promise))
-  (with-promise-slots (lock cvar) promise
-    (condition-wait (or cvar (setf cvar (make-condition-variable))) lock)
+  (with-promise-slots (result cvar lock) promise
+    (loop
+       :do (condition-wait (or cvar (setf cvar (make-condition-variable)))
+                           lock)
+       :while (eq result 'no-result))
     (condition-notify-and-yield cvar)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

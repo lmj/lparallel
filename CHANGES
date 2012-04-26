@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.2.3
+
+* fix promises created with (promise) did not handle spurious wakeups
+ 
 = 1.2.2
 
 * (pmap nil ...) was accidentally pessimized in the many-parts case
