@@ -41,16 +41,19 @@
 (defparameter *benches* '(bench-pmap
                           bench-psort
                           bench-preduce
-                          bench-fib))
+                          bench-fib
+                          bench-mm))
 
 (defparameter *sizes* '(10 100 500 1000 5000 10000 50000 100000 200000))
 
 (defparameter *fib-n* '(5 10 15 20 25 30 35))
 
+(defparameter *mm-n* '(10 50 100 200))
+
 (defun desc (size op fn time)
   (format nil "~&size ~6d | op ~8,a | ~10,a ~10,d~%" size op fn time))
 
-(defun desc-fib (n fn time)
+(defun desc-n (n fn time)
   (format nil "~&n ~6d | ~15,a ~8,d~%" n fn time))
 
 (defmacro with-fns (fns &body body)
@@ -192,7 +195,78 @@
                :exec-fn (lambda (n)
                           (funcall fn n))
                :desc-fn (lambda (time)
-                          (desc-fib n fn time)))))))))))
+                          (desc-n n fn time)))))))))))
+
+;;; mm (matrix mulitply) adapted from Vladimir Sedach's eager-future2,
+;;; which in turn credits the following:
+;;; 
+;;; benchmarks from Appendix A of Marc Feeley's PhD dissertation:
+;;; Marc Feeley. An Efficient and General Implementation of Futures on
+;;; Large Scale Shared-Memory Multiprocessors. PhD thesis, Brandeis
+;;; University, April 1993.
+;;; http://www.iro.umontreal.ca/~feeley/papers/FeeleyPhD.pdf
+
+(defmacro define-mm (name def xlet)
+  `(,def ,name (n m1 m2 m3)               ; m1 * m2 -> m3
+     (declare (optimize (speed 3)))
+     (labels
+         ((compute-entry (row col)     ; loop to compute inner product
+            (labels ((compute-loop (i j sum)
+                       (if (>= j 0)
+                           (compute-loop (- i 1)
+                                         (- j n)
+                                         (+ sum (* (aref m1 i) (aref m2 j))))
+                           (setf (aref m3 (+ i 1 col)) sum))))
+              (compute-loop (+ row n -1) (+ (* n (1- n)) col) 0)))
+
+          (compute-cols-between (row i j) ; DAC over columns
+            (if (= i j)
+                (compute-entry row i)
+                (let1 mid (floor (+ i j) 2)
+                  (,xlet ((half1 (compute-cols-between row i mid)))
+                    (compute-cols-between row (+ mid 1) j)
+                    half1))))
+
+          (compute-rows-between (i j)   ; DAC over rows
+            (if (= i j)
+                (compute-cols-between (* i n) 0 (- n 1))
+                (let1 mid (floor (+ i j) 2)
+                  (,xlet ((half1 (compute-rows-between i mid)))
+                    (compute-rows-between (+ mid 1) j)
+                    half1)))))
+
+       (compute-rows-between 0 (1- n)))))
+
+(define-mm mm defun let)
+(define-mm pmm defpar plet)
+
+(defun run-mm (fn n)
+  (funcall fn
+           n
+           (make-array (* n n) :initial-element 2)
+           (make-array (* n n) :initial-element 2)
+           (make-array (* n n) :initial-element nil)))
+
+(defun bench-mm ()
+  (let ((fns        '(mm pmm))
+        (trials     *trials*)
+        (rehearsals *rehearsals*))
+    (bench
+     (length fns)
+     trials
+     rehearsals
+     (collecting1
+      (dolist (fn fns)
+        (dolist (n *mm-n*)
+          (rebind (fn n)
+            (collect-trials trials
+              (make-bench-spec
+               :args-fn (lambda ()
+                          (list n))
+               :exec-fn (lambda (n)
+                          (run-mm fn n))
+               :desc-fn (lambda (time)
+                          (desc-n n fn time)))))))))))
 
 (defun execute (num-workers)
   (apply #'run-suite num-workers #'reset *benches*))
