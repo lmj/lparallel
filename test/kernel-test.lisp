@@ -239,6 +239,9 @@
         (receive-result channel)))
     (is (eq :called result))))
 
+(defparameter *nil* nil)
+(defun infinite-loop () (loop :until *nil*))
+
 #-abcl
 (lp-base-test custom-kill-task-test
   (with-thread-count-check

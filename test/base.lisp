@@ -50,7 +50,7 @@
 
 (defmacro lp-base-test (name &body body)
   `(progn
-     (test ,name
+     (test (,name :compile-at :definition-time)
        (format t "~&~a~%" ',name)
        ,@body)
      (defun ,name ()
@@ -83,10 +83,6 @@
 (defun invoke-abort-thread ()
   (invoke-restart #-sbcl 'abort
                   #+sbcl 'sb-thread:terminate-thread))
-
-(defun infinite-loop ()
-  (handler-bind ((warning (lambda (w) (muffle-warning w))))
-    (loop)))
 
 (defmacro with-thread-count-check (&body body)
   (with-gensyms (old-thread-count)
