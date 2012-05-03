@@ -49,14 +49,13 @@
     (loop
        :with index := start
        :while (next-part)
-       :do (rebind (index)
-             (submit-cancelable #'find-if
-                                predicate
-                                sequence
-                                :from-end from-end
-                                :start index
-                                :end (+ index (part-size))
-                                :key key))
+       :do (submit-cancelable #'find-if
+                              predicate
+                              sequence
+                              :from-end from-end
+                              :start index
+                              :end (+ index (part-size))
+                              :key key)
        :do (incf index (part-size)))))
 
 (defun pfind-if/list (predicate sequence
@@ -65,13 +64,12 @@
     (loop
        :with sublist := (nthcdr start sequence)
        :while (next-part)
-       :do (rebind (sublist)
-             (submit-cancelable #'find-if
-                                predicate
-                                sublist
-                                :from-end from-end
-                                :end (part-size)
-                                :key key))
+       :do (submit-cancelable #'find-if
+                              predicate
+                              sublist
+                              :from-end from-end
+                              :end (part-size)
+                              :key key)
        :do (setf sublist (nthcdr (part-size) sublist)))))
 
 (defun pfind-if (predicate sequence
