@@ -34,15 +34,18 @@
   `(let1 *default-special-bindings* ,bindings
      (make-thread (lambda () ,@body) :name ,name)))
 
-(defmacro/once with-lock-predicate/no-wait (&once lock predicate &body body)
+(defmacro with-lock-predicate/no-wait (lock predicate &body body)
   ;; predicate intentionally evaluated twice
-  `(when (and ,predicate (acquire-lock ,lock nil))
-     (unwind-protect
-          (when ,predicate
-            ,@body)
-       (release-lock ,lock))))
+  (with-gensyms (lock-var)
+    `(when ,predicate
+       (let1 ,lock-var ,lock
+         (when (acquire-lock ,lock-var nil)
+           (unwind-protect
+                (when ,predicate
+                  ,@body)
+             (release-lock ,lock-var)))))))
 
-(defmacro/once with-lock-predicate/wait (&once lock predicate &body body)
+(defmacro with-lock-predicate/wait (lock predicate &body body)
   ;; predicate intentionally evaluated twice
   `(when ,predicate
      (with-lock-held (,lock)
