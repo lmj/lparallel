@@ -30,52 +30,39 @@
 
 (in-package #:lparallel.cognate)
 
-(defun zip/vector (seqs)
-  (apply #'map 'vector (lambda (&rest args) args) seqs))
+(defun pcount-if (predicate sequence &key from-end (start 0) end key parts)
+  "Parallel version of `count-if'."
+  (let1 subsize (subsize sequence (length sequence) start end)
+    (if (zerop subsize)
+        0
+        (let1 predicate (ensure-function predicate)
+          (flet ((maybe-inc (acc x)
+                   (declare #.*full-optimize*
+                            (fixnum acc)
+                            (ftype (function (fixnum t) fixnum) maybe-inc))
+                   (if (funcall predicate x)
+                       (the fixnum (1+ acc))
+                       acc)))
+            (reduce #'+ (preduce/common #'maybe-inc
+                                        sequence
+                                        subsize
+                                        :initial-value 0
+                                        :from-end from-end
+                                        :start start
+                                        :key key
+                                        :parts parts
+                                        :partial t)))))))
 
-(defun find-min-length (seqs)
-  (reduce #'min seqs :key #'length))
+(defun pcount-if-not (predicate sequence
+                      &rest args
+                      &key from-end start end key parts)
+  "Parallel version of `count-if-not'."
+  (declare (dynamic-extent args)
+           (ignore from-end start end key parts))
+  (apply #'pcount-if (complement predicate) sequence args))
 
-(defmacro/once build-vector (&once n &body body)
-  "Execute `body' `n' times, collecting the results into a vector."
-  (with-gensyms (result index)
-    `(let1 ,result (make-array ,n)
-       (dotimes (,index ,n ,result)
-         (setf (aref ,result ,index) (progn ,@body))))))
-
-(defun/inline any->boolean (x) (if x t nil))
-
-(defun nconc/many (seq)
-  (reduce #'nconc seq :from-end t))
-
-(defun/type ensure-function (fn) (t) function
-  (if (functionp fn)
-      fn
-      (fdefinition fn)))
-
-(defun item-predicate (item test test-not)
-  (when (and test test-not)
-    (error "Both `:test' and `:test-not' options given."))
-  (when test-not
-    (setf test (complement test-not))
-    (setf test-not nil))
-  (if test
-      (lambda (x) (funcall test item x))
-      (typecase item
-        ((or number character)
-         (lambda (x) (eql item x)))
-        (otherwise
-         (lambda (x) (eq item x))))))
-
-(defun subsize (seq size start end)
-  (let1 result (- (or end size) start)
-    (when (or (minusp result) (> result size))
-      (error "Bad interval for sequence operation on ~a -- start: ~a end: ~a"
-             seq start end))
-    result))
-
-(defun remove-prop (target-key plist)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :unless (eq key target-key)
-     :nconc (list key value)))
+(defun pcount (item sequence
+               &key from-end (start 0) end key test test-not parts)
+  "Parallel version of `count'."
+  (pcount-if (item-predicate item test test-not) sequence
+             :from-end from-end :start start :end end :key key :parts parts))

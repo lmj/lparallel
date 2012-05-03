@@ -234,7 +234,13 @@
            #:plet-if
            #:pfuncall
            #:pand
-           #:por))
+           #:por
+           #:pcount
+           #:pcount-if
+           #:pcount-if-not
+           #:pfind
+           #:pfind-if
+           #:pfind-if-not))
 
 (defpackage #:lparallel.defpar
   (:use #:cl

@@ -97,6 +97,8 @@ See http://lparallel.com for documentation and examples.
                                            (:file "pqualifier")
                                            (:file "preduce")
                                            (:file "premove")
+                                           (:file "pfind")
+                                           (:file "pcount")
                                            (:file "psort")))
                              (:file "defpar")))))
 

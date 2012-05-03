@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.cognate)
 
-(defmacro with-submit-indexed-helper (size parts &body body)
+(defmacro with-preduce-context (size parts &body body)
   (with-gensyms (results)
     `(with-parts ,size ,parts
        (let1 ,results (make-array (num-parts))
@@ -41,7 +41,7 @@
 (defun preduce-partial/array (function sequence start size parts
                               &rest keyword-args)
   (declare (dynamic-extent keyword-args))
-  (with-submit-indexed-helper size parts
+  (with-preduce-context size parts
     (loop
        :for result-index :from 0
        :while (next-part)
@@ -57,7 +57,7 @@
 (defun preduce-partial/list (function sequence start size parts
                              &rest keyword-args)
   (declare (dynamic-extent keyword-args))
-  (with-submit-indexed-helper size parts
+  (with-preduce-context size parts
     (loop
        :with subseq := (nthcdr start sequence)
        :for result-index :from 0
@@ -81,44 +81,48 @@
     (list  (apply #'preduce-partial/list
                   function sequence start size parts keyword-args))))
 
-(defun preduce/common (function sequence
+(defun preduce/common (function sequence subsize
                        &key
                        key
                        from-end
                        (start 0)
-                       (end nil)
+                       end
                        (initial-value nil initial-value-given-p)
                        parts
                        recurse
-                       return-partials)
-  (let1 size (- (or end (length sequence)) start)
-    (if (zerop size)
-        (if initial-value-given-p
-            initial-value
-            (funcall function))
-        (let* ((parts-hint (get-parts-hint parts))
-               (results    (apply #'%preduce-partial
-                                  function sequence start size parts-hint
-                                  :key key
-                                  :from-end from-end
-                                  (when initial-value-given-p
-                                    (list :initial-value initial-value)))))
-          (if return-partials
-              results
-              (let1 new-size (length results)
-                (if (and recurse (>= new-size 4))
-                    (apply #'preduce/common
-                           function
-                           results
-                           :from-end from-end
-                           :parts (min parts-hint (floor new-size 2))
-                           :recurse recurse
-                           (when initial-value-given-p
-                             (list :initial-value initial-value)))
-                    (reduce function results))))))))
+                       partial)
+  (declare (ignore end))
+  (cond ((zerop subsize)
+         (when partial
+           (error "`preduce-partial' given zero-length sequence"))
+         (if initial-value-given-p
+             initial-value
+             (funcall function)))
+        (t
+         (let* ((parts-hint (get-parts-hint parts))
+                (results    (apply #'%preduce-partial
+                                   function sequence start subsize parts-hint
+                                   :key key
+                                   :from-end from-end
+                                   (when initial-value-given-p
+                                     (list :initial-value initial-value)))))
+           (if partial
+               results
+               (let1 new-size (length results)
+                 (if (and recurse (>= new-size 4))
+                     (apply #'preduce/common
+                            function
+                            results
+                            new-size
+                            :from-end from-end
+                            :parts (min parts-hint (floor new-size 2))
+                            :recurse recurse
+                            (when initial-value-given-p
+                              (list :initial-value initial-value)))
+                     (reduce function results))))))))
 
 (defun preduce (function sequence &rest args
-                &key key from-end start end initial-value parts recurse)
+                &key key from-end (start 0) end initial-value parts recurse)
   "Parallel version of `reduce'.
 
 `preduce' subdivides the input sequence into `parts' number of parts
@@ -136,17 +140,29 @@ the first pass only.
 `from-end' means \"from the end of each part\".
 
 `initial-value' means \"initial value of each part\"."
-  (declare (ignore key from-end start end initial-value parts recurse))
+  (declare (ignore key from-end initial-value parts recurse))
   (declare (dynamic-extent args))
-  (apply #'preduce/common function sequence args))
+  (apply #'preduce/common
+         function
+         sequence
+         (subsize sequence (length sequence) start end)
+         args))
 
 (defun preduce-partial (function sequence &rest args
-                        &key key from-end start end initial-value parts)
-  (declare (ignore key from-end start end initial-value parts))
+                        &key key from-end (start 0) end initial-value parts)
+  "Like `preduce' but only does a single reducing pass.
+
+The length of `sequence' must not be zero.
+
+Returns the partial results as a vector."
+  (declare (ignore key from-end initial-value parts))
   (declare (dynamic-extent args))
-  "Like `preduce' but only does a single reducing pass. Return the
-partial results."
-  (apply #'preduce/common function sequence :return-partials t args))
+  (apply #'preduce/common
+         function
+         sequence
+         (subsize sequence (length sequence) start end)
+         :partial t
+         args))
 
 ;;; deprecated
 (alias-function preduce/partial preduce-partial)
