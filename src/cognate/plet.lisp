@@ -69,13 +69,23 @@ For each (var init-form) pair, a future is created which executes
 `force' form for the corresponding future.
 
 Each `var-no-init' is bound to nil and each `var' without `init-form'
-is bound to nil (no future is created)."
+is bound to nil (no future is created).
+
+`plet' is subject to optimization inside `defpun'."
   `(future-let :future future
                :force force
                :bindings ,bindings
                :body ,body))
 
 (defmacro plet-if (predicate bindings &body body)
+  "The syntax of `plet-if' matches that of `let' except for the
+addition of the `predicate' form.
+
+If `predicate' evaluates to true, the behavior is the same as `plet'.
+
+If `predicate' evaluates to false, the behavior is the same as `let'.
+
+`plet-if' is subject to optimization inside `defpun'."
   `(if ,predicate
        (plet ,bindings ,@body)
        (let  ,bindings ,@body)))
@@ -84,7 +94,7 @@ is bound to nil (no future is created)."
   "Parallel version of `funcall'. Arguments in `args' may be executed
 in parallel, though not necessarily at the same time.
 
-`pfuncall' is subject to optimization by `with-task-optimizer'."
+`pfuncall' is subject to optimization inside `defpun'."
   (let1 vars (loop
                 :for index :below (length args)
                 :collect (gensym (format nil "~a-~a-" '#:pfuncall-arg index)))
