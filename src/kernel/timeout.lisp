@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.kernel)
 
+#.(import 'bordeaux-threads:destroy-thread)
+
 (defslots timeout ()
   ((canceled-result)
    (thread)

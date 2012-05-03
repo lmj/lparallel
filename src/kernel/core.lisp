@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.kernel)
 
+#.(import 'bordeaux-threads:destroy-thread)
+
 (define-circular-print-object kernel)
 
 (defun replace-worker (kernel worker)

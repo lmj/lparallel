@@ -130,8 +130,6 @@
         #:lparallel.thread-util
         #:lparallel.queue
         #:lparallel.biased-queue)
-  (:import-from #:bordeaux-threads
-                #:destroy-thread)
   (:export #:make-kernel
            #:kernel-worker-count
            #:check-kernel
