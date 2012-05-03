@@ -138,10 +138,10 @@
 
 `sequence' is sorted recursively in parts in parallel. A part is
 sorted in parallel if its size is between `min-part-size' and
-`max-part-size'. Smaller parts are sorted immediately; larger parts
-are recursed upon.
+`max-part-size' inclusive. Smaller parts are sorted immediately;
+larger parts are recursed upon.
 
-`min-part-size' defaults to some small number. 
+`min-part-size' defaults to 3. 
 
 `max-part-size' defaults to (/ (length sequence) parts). 
 
@@ -153,7 +153,7 @@ are recursed upon.
      (check-type max-part-size (or null fixnum))
      (let* ((predicate  (ensure-function predicate))
             (parts-hint (get-parts-hint parts))
-            (min        (or min-part-size 2))
+            (min        (or min-part-size 3))
             (max        (or max-part-size (floor (length sequence) parts-hint)))
             (last       (1- (length sequence))))
        (with-submit-dynamic-counted
