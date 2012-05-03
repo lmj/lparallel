@@ -52,13 +52,14 @@
   "A variation of map-into."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
-  (apply #'mapl
-         (lambda (result &rest args)
-           (declare (dynamic-extent args))
-           (setf (car result) (apply fn args)))
-         result-list
-         lists)
-  result-list)
+  (let1 fn (ensure-function fn)
+    (apply #'mapl
+           (lambda (result &rest args)
+             (declare (dynamic-extent args))
+             (setf (car result) (apply fn args)))
+           result-list
+           lists)
+    result-list))
 
 (defun/type map-iterate (map size fn seqs) ((function integer function list)
                                             null)
@@ -67,6 +68,8 @@ Without a result to delineate sublist boundaries, we must enforce them
 manually."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
+  ;; list length not always fixnum?
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let1 index 0
     (declare (type integer index))
     (apply map
@@ -120,7 +123,8 @@ manually."
 
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
   (multiple-value-bind (size parts-hint) (pop-options seqs)
-    (let* ((has-fill-p  (and (arrayp result-seq)
+    (let* ((fn          (ensure-function fn))
+           (has-fill-p  (and (arrayp result-seq)
                              (array-has-fill-pointer-p result-seq)))
            (result-size (if has-fill-p
                             (array-total-size result-seq)

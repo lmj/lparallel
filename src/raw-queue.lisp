@@ -35,7 +35,7 @@
 (in-package #:lparallel.raw-queue)
 
 (deftype raw-queue () 'cons)
-(deftype raw-queue-count () '(integer 0 *))
+(deftype raw-queue-count () '(integer 0))
 
 (defun/inline make-raw-queue (&optional initial-capacity)
   (declare (ignore initial-capacity))

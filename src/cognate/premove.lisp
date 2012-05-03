@@ -34,17 +34,18 @@
   (declare (ignore start end key parts))
   (declare (dynamic-extent args))
   (declare #.*full-optimize*)
-  (reduce #'nreconc
-          (apply #'preduce-partial
-                 (lambda (acc x)
-                   (if (funcall test x)
-                       (cons x acc)
-                       acc))
-                 list
-                 :initial-value nil
-                 args)
-          :initial-value nil
-          :from-end t))
+  (let1 test (ensure-function test)
+    (reduce #'nreconc
+            (apply #'preduce-partial
+                   (lambda (acc x)
+                     (if (funcall test x)
+                         (cons x acc)
+                         acc))
+                   list
+                   :initial-value nil
+                   args)
+            :initial-value nil
+            :from-end t)))
 
 (defun premove-if-not (test sequence &rest args &key start end key parts)
   "Parallel version of `remove-if-not'. Note the `count' and

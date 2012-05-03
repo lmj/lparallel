@@ -84,6 +84,8 @@
            ,@(unsplice key-type))
           null)
        (declare #.*full-optimize*)
+       ;; cannot use svref due to displaced array -- silence notes
+       #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
        (when (> hi lo)
          (let* ((mid (the fixnum (midpoint lo hi)))
                 (i lo)

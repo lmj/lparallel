@@ -78,10 +78,12 @@
   (and (raw-queue-empty-p (high queue))
        (raw-queue-empty-p (low queue))))
 
-(define-simple-locking-fn
-    biased-queue-count (queue) ((biased-queue) integer) lock
-  (+ (raw-queue-count (high queue))
-     (raw-queue-count (low queue))))
+(locally #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (define-simple-locking-fn
+      biased-queue-count (queue) ((biased-queue) (integer 0)) lock
+    ;; muffle add
+    (+ (raw-queue-count (high queue))
+       (raw-queue-count (low queue)))))
 
 (defmacro with-locked-biased-queue (queue &body body)
   `(with-lock-held ((lock ,queue))
