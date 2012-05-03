@@ -56,3 +56,14 @@ is bound to nil (no future is created)."
                               :for (name nil) :in pairs
                               :collect `(,name (force ,var)))
            ,@body)))))
+
+(defmacro pfuncall (function &rest args)
+  "Parallel version of `funcall'. Arguments in `args' may be executed
+in parallel, though not necessarily at the same time.
+
+`pfuncall' is subject to optimization by `with-task-optimizer'."
+  (let1 vars (loop
+                :for index :below (length args)
+                :collect (gensym (format nil "~a-~a-" '#:pfuncall-arg index)))
+    `(plet ,(mapcar #'list vars args)
+       (funcall ,function ,@vars))))

@@ -232,6 +232,7 @@
            #:pnotevery
            #:pnotany
            #:plet
+           #:pfuncall
            #:pand
            #:por))
 

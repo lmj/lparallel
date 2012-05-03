@@ -640,3 +640,13 @@
              (pmaplist-into (list 1 2 3 4) (constantly 99) :size 2)))
   (is (equal '(99 99 99 99)
              (pmaplist-into (list 1 2 3 4) (constantly 99) :size 9999))))
+
+(lp-test pfuncall-test
+  (is (= 7 (pfuncall '+ 3 4)))
+  (let1 memo (make-queue)
+    (is (= 7 (pfuncall
+              #'+
+              (progn (sleep 0.2) (push-queue 3 memo) 3)
+              (progn (sleep 0.2) (push-queue 4 memo) 4))))
+    (sleep 0.3)
+    (is (= 2 (queue-count memo)))))
