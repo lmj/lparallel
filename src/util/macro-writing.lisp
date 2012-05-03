@@ -72,10 +72,16 @@
 (defun has-declare-p (body)
   (and (consp (car body)) (eq (caar body) 'declare)))
 
-(defmacro with-parsed-body ((preamble body-var) &body body)
-  "Pop docstring and declarations off `body-var' and assign them to `preamble'."
+(defmacro with-parsed-body ((preamble
+                             body-var
+                             &key (docstring nil docstring-given-p))
+                            &body body)
+  "Pop declarations and maybe docstring off `body-var' and assign them
+to `preamble'."
+  (unless docstring-given-p
+    (error "`with-parsed-body' requires `:docstring' argument."))
   `(let ((,preamble (loop
-                       :while (or (has-docstring-p ,body-var)
+                       :while (or (and ,docstring (has-docstring-p ,body-var))
                                   (has-declare-p ,body-var))
                        :collect (pop ,body-var))))
      ,@body))

@@ -45,7 +45,7 @@
        (declaim (ftype (function arg-types return-type) foo) 
        (defun foo ...)."
     (assert (not (some (lambda (x) (find x lambda-list-keywords)) params)))
-    (with-parsed-body (preamble body)
+    (with-parsed-body (preamble body :docstring t)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
          (defun ,name ,params
