@@ -121,9 +121,14 @@ returns true.
 
 If the promise is already fulfilled then `body' will not be executed
 and `fulfill' returns false."
-  `(with-unfulfilled/no-wait ,promise
-     (fulfill-hook ,promise (multiple-value-list (progn ,@body)))
-     t))
+  `(typecase ,promise
+     (promise-base
+      (with-unfulfilled/no-wait ,promise
+        (fulfill-hook ,promise (multiple-value-list (progn ,@body)))
+        t))
+     (otherwise
+      ;; non-promises are always fulfilled
+      nil)))
 
 (defmethod force ((promise promise-base))
   (declare #.*normal-optimize*)
