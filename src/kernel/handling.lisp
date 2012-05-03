@@ -91,9 +91,8 @@ control (or not)."
         (let1 *debugger-error* condition
           (invoke-debugger condition)))))
 
-(defmacro with-task-context (&body body)
-  `(catch 'current-task
-     ,@body))
+(defun transfer-error-report (stream)
+  (format stream "Transfer this error to dependent threads, if any."))
 
 (defun transfer-error-restart (&optional (err *debugger-error*))
   (throw 'current-task
@@ -102,23 +101,32 @@ control (or not)."
                (condition err)
                (symbol (make-condition err))))))
 
-(defun transfer-error-report (stream)
-  (format stream "Transfer this error to dependent threads, if any."))
+#-lparallel.without-task-handling
+(progn
+  (defmacro with-task-context (&body body)
+    `(catch 'current-task
+       ,@body))
 
-(defun %call-with-task-handler (fn)
-  (let ((*handler-active-p* t)
-        (*debugger-hook* (make-debugger-hook)))
-    (handler-bind ((condition #'condition-handler))
-      (restart-bind ((transfer-error #'transfer-error-restart
-                       :report-function #'transfer-error-report))
-        (funcall fn)))))
+  (defun %call-with-task-handler (fn)
+    (let ((*handler-active-p* t)
+          (*debugger-hook* (make-debugger-hook)))
+      (handler-bind ((condition #'condition-handler))
+        (restart-bind ((transfer-error #'transfer-error-restart
+                         :report-function #'transfer-error-report))
+          (funcall fn)))))
 
-(defun/type call-with-task-handler (fn) (function) (values &rest t)
-  (declare #.*normal-optimize*)
-  (with-task-context
-    (if *handler-active-p*
-        (funcall fn)
-        (%call-with-task-handler fn))))
+  (defun/type call-with-task-handler (fn) (function) (values &rest t)
+    (declare #.*normal-optimize*)
+    (with-task-context
+      (if *handler-active-p*
+          (funcall fn)
+          (%call-with-task-handler fn)))))
+
+#+lparallel.without-task-handling
+(progn
+  (defmacro with-task-context (&body body) `(progn ,@body))
+  (alias-function %call-with-task-handler funcall)
+  (alias-function call-with-task-handler  funcall))
 
 (define-condition task-killed-error (error) ())
 
