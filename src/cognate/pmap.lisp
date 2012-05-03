@@ -267,7 +267,7 @@ are also accepted (see `pmap')."
 (defun pmap-reduce (map-function reduce-function sequence
                     &rest args
                     &key start end initial-value parts recurse)
-  "Equivalent to (preduce reduce-function :key map-function ...)."
+  "Equivalent to (preduce reduce-function sequence :key map-function ...)."
   (declare (ignore start end initial-value parts recurse))
   (declare (dynamic-extent args))
   (apply #'preduce reduce-function sequence :key map-function args))
