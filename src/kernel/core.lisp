@@ -69,7 +69,7 @@
   ;; 
   ;; All but ABCL execute unwind-protect for bordeaux-threads:destroy-thread.
   ;; 
-  ;; This function is inside `call-with-kernel-handler' (or
+  ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
   (let1 scheduler (scheduler kernel)
     (unwind-protect/ext
@@ -84,7 +84,7 @@
        :abort (replace-worker kernel worker))))
 
 (defun call-with-worker-context (worker-context fn)
-  (funcall worker-context (lambda () (%call-with-kernel-handler fn))))
+  (funcall worker-context (lambda () (%call-with-task-handler fn))))
 
 (defun enter-worker-loop (kernel worker)
   (with-kernel-slots (worker-info) kernel

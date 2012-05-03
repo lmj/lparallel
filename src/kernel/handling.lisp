@@ -32,13 +32,13 @@
 
 (defvar *debugger-lock* (make-recursive-lock)
   "Global. For convenience -- allows only one debugger prompt at a
-time from errors signaled inside `call-with-kernel-handler'.")
+time from errors signaled inside `call-with-task-handler'.")
 
 (defslots wrapped-error ()
   ((object :type condition))
   (:documentation
    "This is a container for transferring an error that occurs inside
-   `call-with-kernel-handler' to the calling thread."))
+   `call-with-task-handler' to the calling thread."))
 
 (defun wrap-error (error-name)
   (make-wrapped-error-instance :object (make-condition error-name)))
@@ -108,7 +108,7 @@ control (or not)."
 (defun transfer-error-report (stream)
   (format stream "Transfer this error to dependent threads, if any."))
 
-(defun %call-with-kernel-handler (fn)
+(defun %call-with-task-handler (fn)
   (let ((*handler-active-p* t)
         (*debugger-hook* (make-debugger-hook)))
     (handler-bind ((condition #'condition-handler))
@@ -116,11 +116,11 @@ control (or not)."
                        :report-function #'transfer-error-report))
         (funcall fn)))))
 
-(defun call-with-kernel-handler (fn)
+(defun call-with-task-handler (fn)
   (with-task-context
     (if *handler-active-p*
         (funcall fn)
-        (%call-with-kernel-handler fn))))
+        (%call-with-task-handler fn))))
 
 (define-condition task-killed-error (error) ())
 

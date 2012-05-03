@@ -42,7 +42,7 @@
 #.(import '(lparallel.kernel::unwrap-result
             lparallel.kernel::make-task-fn
             lparallel.kernel::make-task
-            lparallel.kernel::call-with-kernel-handler
+            lparallel.kernel::call-with-task-handler
             lparallel.kernel::submit-raw-task))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -193,7 +193,7 @@ unknown at the time it is created."
   (with-future-slots (fn) future
     ;; Since computation can possibly can occur in the calling thread,
     ;; ensure that handlers are in place.
-    (fulfill-plan future (multiple-value-list (call-with-kernel-handler fn)))))
+    (fulfill-plan future (multiple-value-list (call-with-task-handler fn)))))
 
 (defmethod fulfill-hook ((future future) values)
   (with-future-slots (canceledp) future

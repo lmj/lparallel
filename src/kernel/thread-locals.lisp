@@ -37,7 +37,7 @@
   
   (*handler-active-p* nil
    "Thread-local. Non-nil when handlers have been established via
-    `call-with-kernel-handler'.")
+    `call-with-task-handler'.")
 
   (*client-handlers* nil
    "Thread-local. Records handlers established with
