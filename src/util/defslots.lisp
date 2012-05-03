@@ -50,6 +50,17 @@ corresponding to slots of the same name.
 All slots must be initialized when an instance is created, else an
 error will be signaled."))
 
+(defun plist-keys (plist)
+  (loop
+     :for x :in plist :by #'cddr
+     :collect x))
+
+(defun plist-values-for-key (plist target-key)
+  (loop
+     :for (key value) :on plist :by #'cddr
+     :when (eq key target-key)
+     :collect value))
+
 (defun parse-defslots (supers slots options)
   (unless (<= (length supers) 1)
     (error "More than one superclass specified in `defslots': ~s" supers))

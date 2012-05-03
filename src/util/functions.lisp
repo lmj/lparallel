@@ -28,53 +28,18 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.cognate)
+(in-package #:lparallel.util)
 
-(defun zip/vector (seqs)
-  (apply #'map 'vector (lambda (&rest args) args) seqs))
+(defun/type/inline to-boolean (x) (t) boolean
+  (if x t nil))
 
-(defun find-min-length (seqs)
-  (reduce #'min seqs :key #'length))
+(defun/type/inline ensure-function (fn) (t) function
+  (if (functionp fn)
+      fn
+      (fdefinition fn)))
 
-(defmacro/once build-vector (&once n &body body)
-  "Execute `body' `n' times, collecting the results into a vector."
-  (with-gensyms (result index)
-    `(let1 ,result (make-array ,n)
-       (dotimes (,index ,n ,result)
-         (setf (aref ,result ,index) (progn ,@body))))))
-
-(defun nconc/many (seq)
-  (reduce #'nconc seq :from-end t))
-
-(defun item-predicate (item test test-not)
-  (when (and test test-not)
-    (error "Both `:test' and `:test-not' options given."))
-  (when test-not
-    (setf test (complement test-not))
-    (setf test-not nil))
-  (if test
-      (lambda (x) (funcall test item x))
-      (typecase item
-        ((or number character)
-         (lambda (x) (eql item x)))
-        (otherwise
-         (lambda (x) (eq item x))))))
-
-(defun subsize (seq size start end)
-  (let1 result (- (or end size) start)
-    (when (or (minusp result) (> result size))
-      (error "Bad interval for sequence operation on ~a -- start: ~a end: ~a"
-             seq start end))
-    result))
-
-(defun remove-prop (target-key plist)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :unless (eq key target-key)
-     :nconc (list key value)))
-
-(defun remove-props (keys plist)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :unless (member key keys)
-     :nconc (list key value)))
+(defun interact (&rest prompt)
+  "Read from user and eval."
+  (apply #'format *query-io* prompt)
+  (finish-output *query-io*)
+  (multiple-value-list (eval (read *query-io*))))

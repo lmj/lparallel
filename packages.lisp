@@ -44,12 +44,14 @@
            #:rebind
            #:let1
            #:alias-function
-           #:to-boolean)
+           #:unwind-protect/ext)
   (:export #:defun/inline
            #:defun/type
            #:defun/type/inline)
   (:export #:defslots)
-  (:export #:interact)
+  (:export #:interact
+           #:ensure-function
+           #:to-boolean)
   (:export #:*normal-optimize*
            #:*full-optimize*))
 

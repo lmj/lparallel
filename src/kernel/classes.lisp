@@ -57,4 +57,4 @@
   ((queue  :reader channel-queue  :type queue)
    (kernel :reader channel-kernel :type kernel)))
 
-(deftype task () 'function)
+(deftype task () 'cons)

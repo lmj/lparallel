@@ -40,8 +40,8 @@
 (in-package #:lparallel.promise)
 
 #.(import '(lparallel.kernel::unwrap-result
-            lparallel.kernel::make-task-fn
             lparallel.kernel::make-task
+            lparallel.kernel::task
             lparallel.kernel::call-with-task-handler
             lparallel.kernel::submit-raw-task
             lparallel.kernel::wrap-error))
@@ -219,14 +219,12 @@ unknown at the time it is created."
                                                (eq ,result 'no-result))
          ,@body))))
 
-(defmacro make-future-task (future)
-  `(macrolet ((store-error (err)
-                `(with-unfulfilled-future/no-wait ,',future
-                   (fulfill-plan ,',future (list ,err)))))
-     (make-task :fn (lambda ()
-                      (with-unfulfilled-future/no-wait ,future
-                        (force-future ,future)))
-                :store-error store-error)))
+(defun/type make-future-task (future) (future) task
+  (make-task
+    (with-unfulfilled-future/no-wait future
+      (unwind-protect/ext
+       :main  (force-future future)
+       :abort (fulfill-plan future (list (wrap-error 'task-killed-error)))))))
 
 (defun make-future (fn)
   (declare #.*normal-optimize*)
@@ -241,7 +239,7 @@ parallel by the implicit progn `body'.
 
 If `force' is called on an unfulfilled future then the future is
 fulfilled by the caller of `force'."
-  `(make-future (make-task-fn ,@body)))
+  `(make-future (lambda () ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

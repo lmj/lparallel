@@ -39,24 +39,20 @@
   ;; already inside call-with-task-handler
   (declare #.*normal-optimize*)
   (with-worker-slots (running-category) worker
-    (bind-tuple (task-fn kill-notify-fn category) task
-      (declare (function task-fn kill-notify-fn))
-      (unwind-protect/ext
-       :prepare (setf running-category category)
-       :main    (funcall task-fn)
-       :cleanup (setf running-category nil)
-       :abort   (funcall kill-notify-fn)))))
+    (destructuring-bind (category . task-fn) task
+      (declare (function task-fn))
+      (setf running-category category)
+      (unwind-protect
+           (funcall task-fn)
+        (setf running-category nil)))))
 
-;;; TODO: category for non-worker
 (defun/type exec-task/non-worker (task) (task) t
   ;; not inside call-with-task-handler
   (declare #.*normal-optimize*)
-  (bind-tuple (task-fn kill-notify-fn category) task
+  (destructuring-bind (category . task-fn) task
     (declare (ignore category))
-    (declare (function task-fn kill-notify-fn))
-    (unwind-protect/ext
-     :main  (call-with-task-handler task-fn)
-     :abort (funcall kill-notify-fn))))
+    (declare (function task-fn))
+    (call-with-task-handler task-fn)))
 
 (defun/type steal-work () () boolean
   (declare #.*normal-optimize*)
@@ -67,7 +63,7 @@
           (exec-task/non-worker task)))
     t))
 
-(defun replace-worker (kernel worker)
+(defun/type replace-worker (kernel worker) (kernel worker) t
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
       (let1 index (position worker workers :test #'eq)
@@ -96,7 +92,8 @@
                                       worker))
        :abort (replace-worker kernel worker))))
 
-(defun call-with-worker-context (fn worker-context kernel)
+(defun/type call-with-worker-context (fn worker-context kernel)
+    (function function kernel) t
   (funcall worker-context
            (lambda ()
              (let1 *worker* (find (current-thread) (workers kernel)
@@ -104,7 +101,7 @@
                (assert *worker*)
                (%call-with-task-handler fn)))))
 
-(defun enter-worker-loop (kernel worker)
+(defun/type enter-worker-loop (kernel worker) (kernel worker) t
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (context) worker-info
       (call-with-worker-context
@@ -112,7 +109,7 @@
        context
        kernel))))
 
-(defun make-worker (kernel)
+(defun/type make-worker (kernel) (kernel) (values worker function)
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
       (let* ((worker (make-worker-instance :thread nil))
@@ -219,41 +216,37 @@ As an optimization, an internal size may be given with
    :kernel *kernel*
    :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
 
-(defmacro make-task-fn (&body body)
-  (with-gensyms (client-handlers)
-    `(if *client-handlers*
-         (let1 ,client-handlers *client-handlers*
-           (lambda ()
-             (let1 *client-handlers* ,client-handlers
-               ,@body)))
-         (lambda ()
-           ,@body))))
+(defmacro make-task (&body body)
+  (with-gensyms (client-handlers body-fn)
+    `(flet ((,body-fn () ,@body))
+       (declare (dynamic-extent (function ,body-fn)))
+       (cons *task-category*
+             (if *client-handlers*
+                 (let1 ,client-handlers *client-handlers*
+                   (lambda ()
+                     (let1 *client-handlers* ,client-handlers
+                       (,body-fn))))
+                 (lambda () (,body-fn)))))))
 
-(defmacro make-task (&key fn store-error)
-  (with-gensyms (task-category)
-    `(let ((,task-category *task-category*))
-       (make-tuple ,fn
-                   (lambda () (,store-error (wrap-error 'task-killed-error)))
-                   ,task-category))))
-
-(defun make-channeled-task (channel fn args)
+(defun/type make-channeled-task (channel fn args) (channel function list) t
   (let1 queue (channel-queue channel)
-    (macrolet ((store (code) `(push-queue ,code queue)))
-      (let1 fn (make-task-fn
-                ;; handler already established inside
-                ;; worker threads
-                (store (with-task-context (apply fn args))))
-        (make-task :fn fn :store-error store)))))
+    (make-task
+      ;; handler already established inside worker threads
+      (unwind-protect/ext
+       :main  (push-queue (with-task-context (apply fn args)) queue)
+       :abort (push-queue (wrap-error 'task-killed-error) queue)))))
 
 (defun/type submit-raw-task (task kernel) (task kernel) t
   (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."
-  (submit-raw-task (make-channeled-task channel function args)
+  (submit-raw-task (make-channeled-task channel
+                                        (ensure-function function)
+                                        args)
                    (channel-kernel channel)))
 
-(defun receive-result (channel)
+(defun/type receive-result (channel) (channel) t
   "Remove a result from `channel'. If nothing is available the call
 will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))

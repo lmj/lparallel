@@ -30,32 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(defmacro unwind-protect/ext (&key prepare main cleanup abort)
-  "Keywordized version of `unwind-protect' with an added `abort'
-clause which is executed when the `main' clause does not finish."
-  (with-gensyms (finishedp cleanup-tag)
-    `(let1 ,finishedp nil
-       (declare (boolean ,finishedp))
-       ,@(unsplice prepare)
-       (unwind-protect
-            (progn  ; m-v-prog1 in real life
-              ,main
-              (setf ,finishedp t))
-         (tagbody
-            (if ,finishedp
-                (go ,cleanup-tag)
-                (unwind-protect ,abort
-                  (go ,cleanup-tag)))
-          ,cleanup-tag
-            ,@(unsplice cleanup))))))
-
-(defmacro make-tuple (&rest forms)
-  `(lambda () (values ,@forms)))
-
-(defmacro bind-tuple (vars tuple &body body)
-  `(multiple-value-bind ,vars (funcall ,tuple)
-     ,@body))
-
 (defmacro define-circular-print-object (type)
   `(defmethod print-object :around ((object ,type) stream)
      (declare (ignore object stream))

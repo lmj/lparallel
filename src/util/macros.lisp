@@ -30,6 +30,11 @@
 
 (in-package #:lparallel.util)
 
+(defmacro let1 (var value &body body)
+  "Make a single `let' binding, heroically saving three columns."
+  `(let ((,var ,value))
+     ,@body))
+
 (defmacro while (test &body body)
   `(loop :while ,test :do (progn ,@body)))
 
@@ -37,11 +42,11 @@
   `(loop :repeat ,n :do (progn ,@body)))
 
 (defmacro when-let ((var test) &body body)
-  `(let ((,var ,test))
+  `(let1 ,var ,test
      (when ,var ,@body)))
 
 (defmacro while-let ((var test) &body body)
-  `(loop (let ((,var ,test))
+  `(loop (let1 ,var ,test
            (if ,var
                (progn ,@body)
                (return)))))
@@ -50,7 +55,7 @@
   `(block nil
      (map nil (lambda (,var) ,@body) ,sequence)
      ,(if return
-          `(let ((,var nil))
+          `(let1 ,var nil
              (declare (ignorable ,var))
              ,return)
           nil)))
@@ -61,34 +66,45 @@
             :collect `(,var ,var))
      ,@body))
 
-(defmacro let1 (var value &body body)
-  "Make a single `let' binding, heroically saving three columns."
-  `(let ((,var ,value))
-     ,@body))
-
-(defun interact (&rest prompt)
-  "Read from user and eval."
-  (apply #'format *query-io* prompt)
-  (finish-output *query-io*)
-  (multiple-value-list (eval (read *query-io*))))
-
 (defmacro alias-function (alias fn)
   `(progn
      (setf (symbol-function ',alias) #',fn)
      (define-compiler-macro ,alias (&rest args)
        `(,',fn ,@args))))
 
-(defun plist-keys (plist)
-  (loop
-     :for x :in plist :by #'cddr
-     :collect x))
+(defmacro unwind-protect/ext (&key prepare main cleanup abort)
+  "Extended `unwind-protect'.
 
-(defun plist-values-for-key (plist target-key)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :when (eq key target-key)
-     :collect value))
-
-(declaim (inline to-boolean))
-(defun to-boolean (x)
-  (the boolean (if x t nil)))
+`prepare' : executed first, outside of `unwind-protect'
+`main'    : protected form
+`cleanup' : cleanup form
+`abort'   : executed if `main' does not finish
+"
+  (with-gensyms (finishedp cleanup-fn)
+    `(progn
+       ,@(unsplice prepare)
+       ,(if main
+            (if abort
+                `(let1 ,finishedp nil
+                   (declare (boolean ,finishedp)
+                            (dynamic-extent ,finishedp))
+                   (unwind-protect
+                        (prog1               ; m-v-prog1 in real life
+                            ,main
+                          (setf ,finishedp t))
+                     ,(if cleanup
+                          `(flet ((,cleanup-fn () ,cleanup))
+                             (declare (dynamic-extent #',cleanup-fn))
+                             (if ,finishedp
+                                 (,cleanup-fn)
+                                 (unwind-protect
+                                      ,abort
+                                   (,cleanup-fn))))
+                          `(unless ,finishedp
+                             ,abort))))
+                (if cleanup
+                    `(unwind-protect
+                          ,main
+                       ,cleanup)
+                    main))
+            `(progn ,cleanup nil)))))

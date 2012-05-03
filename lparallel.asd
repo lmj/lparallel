@@ -65,10 +65,11 @@ See http://lparallel.com for documentation and examples.
                               :serial t
                               :components ((:file "config")
                                            (:file "macro-writing")
-                                           (:file "misc")
+                                           (:file "macros")
                                            (:file "defmacro")
                                            (:file "defun")
-                                           (:file "defslots")))
+                                           (:file "defslots")
+                                           (:file "functions")))
                              (:file "thread-util")
                              (:file "raw-queue")
                              (:file "queue")
