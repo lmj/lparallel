@@ -2,26 +2,21 @@
 lparallel
 =========
 
-lparallel provides low-level and high-level tools for writing
-efficient parallel programs in Common Lisp.
+lparallel is a library for writing efficient parallel programs in
+Common Lisp, featuring
 
-The low-level API of lparallel is meant to describe parallelism in a
-generic manner. The current implementation of the API uses a group of
-worker threads, though in principle other implementations are
-possible (for instance an interface to a distributed system).
+  * a simple model of task submission with receive queue
+  * fine-grained parallelism
+  * asynchronous condition handling across thread boundaries
+  * parallel versions of map, reduce, sort, remove, and many others
+  * promises, futures, and delayed evaluation constructs
+  * computation trees for parallelizing interconnected tasks
+  * high and low priority tasks
+  * task killing by category
+  * integrated timeouts
+  * vector-based FIFO queues
 
-lparallel also provides higher-level facilities including:
-
-* asynchronous condition handling across thread boundaries
-* parallel versions of map, reduce, sort, remove, and many others
-* promises, futures, and delayed evaluation constructs
-* computation trees for parallelizing interconnected tasks
-* high and low priority tasks
-* task killing by category
-* integrated timeouts
-* vector-based FIFO queues
-
-See http://lparallel.com for documentation and examples.
+See http://lparallel.org for documentation and examples.
 
 Running
 -------
