@@ -83,7 +83,7 @@
 (defmethod make-optimizer-data ((specializer (eql 'defpar)))
   (make-task-counter-instance))
 
-(defun/type update-task-count/no-lock (kernel delta) ((kernel fixnum) t)
+(defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
   (with-optimizer-slots (optimizer-data optimizer-flag) kernel
     (with-task-counter-slots (task-count) optimizer-data
@@ -93,7 +93,7 @@
       (setf optimizer-flag (not (>= task-count
                                     (1+ (%kernel-worker-count kernel))))))))
 
-(defun/type update-task-count (kernel delta) ((kernel fixnum) t)
+(defun/type update-task-count (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
   (with-optimizer-slots (optimizer-data) kernel
     (with-task-counter-slots (lock) optimizer-data

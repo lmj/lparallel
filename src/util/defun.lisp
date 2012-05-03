@@ -40,7 +40,7 @@
        (declaim (inline ,name))
        (defun ,name ,params ,@body)))
 
-  (defmacro defun/type (name params (arg-types return-type) &body body)
+  (defmacro defun/type (name params arg-types return-type &body body)
     "Shortcut for 
        (declaim (ftype (function arg-types return-type) foo) 
        (defun foo ...)."
@@ -63,7 +63,7 @@
   (defmacro defun/inline (name params &body body)
     `(defun ,name ,params ,@body))
 
-  (defmacro defun/type (name params (arg-types return-type) &body body)
+  (defmacro defun/type (name params arg-types return-type &body body)
     (when (some (lambda (x) (find x lambda-list-keywords)) params)
       (error "`defun/type' parameters cannot have lambda list keywords: ~s"
              params))

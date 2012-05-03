@@ -83,7 +83,7 @@
     (make-counter-instance :value value))
 
   (defmacro define-counter-fn (name op)
-    `(define-locking-fn ,name (counter) ((counter) fixnum) lock
+    `(define-locking-fn ,name (counter) (counter) fixnum lock
        (with-counter-slots (value) counter
          (,op value))))
 

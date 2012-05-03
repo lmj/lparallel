@@ -46,14 +46,14 @@
   `(with-lock-held ((lock ,queue))
      ,@body))
 
-(define-locking-fn push-queue (object queue) ((t queue) null) lock
+(define-locking-fn push-queue (object queue) (t queue) null lock
   (with-queue-slots (impl cvar) queue
     (push-raw-queue object impl)
     (when cvar
       (condition-notify-and-yield cvar)))
   nil)
 
-(define-locking-fn pop-queue (queue) ((queue) t) lock
+(define-locking-fn pop-queue (queue) (queue) t lock
   (with-queue-slots (impl lock cvar) queue
     (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
             (if presentp
@@ -61,7 +61,7 @@
                 (condition-wait (or cvar (setf cvar (make-condition-variable)))
                                 lock))))))
 
-(defun/type try-pop-queue (queue) ((queue) (values t boolean))
+(defun/type try-pop-queue (queue) (queue) (values t boolean)
   (declare #.*normal-optimize*)
   (with-queue-slots (impl lock) queue
     (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
@@ -71,9 +71,9 @@
 (defun/inline try-pop-queue/no-lock (queue)
   (pop-raw-queue (impl queue)))
 
-(defmacro define-simple-queue-fn (name raw ftype)
+(defmacro define-simple-queue-fn (name raw arg-types return-type)
   (with-gensyms (queue)
-    `(define-simple-locking-fn ,name (,queue) ,ftype lock
+    `(define-simple-locking-fn ,name (,queue) ,arg-types ,return-type lock
        (,raw (impl ,queue)))))
 
 (defmacro define-simple-queue-fns (&rest defs)
@@ -83,9 +83,9 @@
 
 (locally #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (define-simple-queue-fns
-      (queue-count   raw-queue-count   ((queue) raw-queue-count))
-      (queue-empty-p raw-queue-empty-p ((queue) boolean))
-      (peek-queue    peek-raw-queue    ((queue) (values t boolean)))))
+      (queue-count   raw-queue-count   (queue) raw-queue-count)
+      (queue-empty-p raw-queue-empty-p (queue) boolean)
+      (peek-queue    peek-raw-queue    (queue) (values t boolean))))
 
 (defmacro fn-doc (fn doc)
   `(setf (documentation ',fn 'function) ,doc))

@@ -41,7 +41,7 @@
   (declare (ignore initial-capacity))
   (cons nil nil))
 
-(defun/type push-raw-queue (value z) ((t raw-queue) t)
+(defun/type push-raw-queue (value z) (t raw-queue) t
   (declare #.*normal-optimize*)
   (let1 new (cons value nil)
     (if (car z)
@@ -49,7 +49,7 @@
         (setf (car  z) new))
     (setf (cdr z) new)))
 
-(defun/type pop-raw-queue (z) ((raw-queue) (values t boolean))
+(defun/type pop-raw-queue (z) (raw-queue) (values t boolean)
   (declare #.*normal-optimize*)
   (if (car z)
       (multiple-value-prog1 (values (caar z) t)

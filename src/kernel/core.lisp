@@ -35,7 +35,7 @@
 
 (define-circular-print-object kernel)
 
-(defun/type exec-task/worker (task worker) ((task worker) t)
+(defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler
   (declare #.*normal-optimize*)
   (with-worker-slots (running-category) worker
@@ -47,7 +47,7 @@
        :abort   (funcall kill-notify-fn)))))
 
 ;;; TODO: category for non-worker
-(defun/type exec-task/non-worker (task) ((task) t)
+(defun/type exec-task/non-worker (task) (task) t
   ;; not inside call-with-task-handler
   (declare #.*normal-optimize*)
   (bind-tuple (task-fn kill-notify-fn category) task
@@ -56,7 +56,7 @@
      :main  (call-with-task-handler task-fn)
      :abort (funcall kill-notify-fn))))
 
-(defun/type steal-work () (() boolean)
+(defun/type steal-work () () boolean
   (declare #.*normal-optimize*)
   (when-let (task (steal-task (scheduler *kernel*)))
     (let1 worker *worker*
@@ -78,7 +78,7 @@
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct -- call `end-kernel'."))))))
 
-(defun/type worker-loop (kernel worker) ((kernel worker) t)
+(defun/type worker-loop (kernel worker) (kernel worker) t
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
@@ -97,7 +97,8 @@
 (defun call-with-worker-context (fn worker-context kernel)
   (funcall worker-context
            (lambda ()
-             (let1 *worker* (find (current-thread) (workers kernel) :key #'thread)
+             (let1 *worker* (find (current-thread) (workers kernel)
+                                  :key #'thread)
                (assert *worker*)
                (%call-with-task-handler fn)))))
 

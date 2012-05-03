@@ -48,9 +48,9 @@
          (key-args (when has-key-p `(:key ,key))))
     `(defun/type ,name (quicksort vec lo hi compare min max submit
                         ,@(unsplice key))
-       ((function vector fixnum fixnum function fixnum fixnum function
-        ,@(unsplice (when key 'function)))
-        t)
+         (function vector fixnum fixnum function fixnum fixnum function
+          ,@(unsplice (when key 'function)))
+         t
        (declare #.*full-optimize*)
        (when (> hi lo)
          (let1 size (the fixnum (1+ (the fixnum (- hi lo))))
@@ -80,9 +80,9 @@
   (let1 dispatch (if key 'dispatch-quicksort/key 'dispatch-quicksort/no-key)
     `(defun/type ,name (vec lo hi compare min max submit
                         ,@(unsplice key))
-         ((vector fixnum fixnum function fixnum fixnum function
-           ,@(unsplice key-type))
-          null)
+         (vector fixnum fixnum function fixnum fixnum function
+          ,@(unsplice key-type))
+         null
        (declare #.*full-optimize*)
        ;; cannot use svref due to displaced array -- silence notes
        #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))

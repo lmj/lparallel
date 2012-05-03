@@ -16,7 +16,7 @@
 
 (alias-function make-scheduler make-biased-queue)
 
-(defun/type schedule-task (scheduler task priority) ((scheduler task t) t)
+(defun/type schedule-task (scheduler task priority) (scheduler task t) t
   (declare #.*normal-optimize*)
   (ccase priority
     (:default (push-biased-queue     task scheduler))
@@ -26,9 +26,10 @@
   (declare (ignore worker))
   (pop-biased-queue scheduler))
 
-(defun/type steal-task (scheduler) ((scheduler) (or task null))
+(defun/type steal-task (scheduler) (scheduler) (or task null)
   (with-lock-predicate/wait
-      (biased-queue-lock scheduler) (not (biased-queue-empty-p/no-lock scheduler))
+      (biased-queue-lock scheduler)
+      (not (biased-queue-empty-p/no-lock scheduler))
     ;; don't steal nil, the end condition flag
     (when (peek-biased-queue/no-lock scheduler)
       (pop-biased-queue/no-lock scheduler))))
@@ -38,6 +39,6 @@
 
 (alias-function scheduler-empty-p/no-lock biased-queue-empty-p/no-lock)
 
-(defun/type distribute-tasks/no-lock (scheduler tasks) ((scheduler sequence) t)
+(defun/type distribute-tasks/no-lock (scheduler tasks) (scheduler sequence) t
   (dosequence (task tasks)
     (push-biased-queue/no-lock task scheduler)))
