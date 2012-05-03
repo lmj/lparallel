@@ -30,9 +30,9 @@
 
 (in-package #:lparallel-test)
 
-(define-plet-test defpar-basic-test defpar-basic-test-fn defpar)
+(define-plet-test defpun-basic-test defpun-basic-test-fn defpun)
 
-(defpar defpar-accept ()
+(defpun defpun-accept ()
   (let1 queue (make-queue)
     (plet ((outer (progn
                     (sleep 0.6)
@@ -48,12 +48,12 @@
         ;; inner plet was parallelized
         (is (eq :inner (pop-queue queue)))))
 
-(lp-base-test defpar-accept-test
+(lp-base-test defpun-accept-test
   (with-new-kernel (3)
     (sleep 0.1)
-    (defpar-accept)))
+    (defpun-accept)))
 
-(defpar defpar-reject ()
+(defpun defpun-reject ()
   (let1 queue (make-queue)
     (plet ((outer1 (progn
                      (sleep 0.4)
@@ -73,10 +73,10 @@
     ;; inner plet was not parallelized
     (is (eq :outer (pop-queue queue)))))
   
-(lp-base-test defpar-reject-test
+(lp-base-test defpun-reject-test
   (with-new-kernel (2)
     (sleep 0.1)
-    (defpar-reject)))
+    (defpun-reject)))
 
 (defun fib-let (n)
   (if (< n 2)
@@ -85,21 +85,21 @@
             (b (fib-let (- n 2))))
         (+ a b))))
 
-(defpar fib-plet (n)
+(defpun fib-plet (n)
   (if (< n 2)
       n
       (plet ((a (fib-plet (- n 1)))
              (b (fib-plet (- n 2))))
         (+ a b))))
 
-(defpar fib-plet-if (n)
+(defpun fib-plet-if (n)
   (if (< n 2)
       n
       (plet-if (> n 5) ((a (fib-plet-if (- n 1)))
                         (b (fib-plet-if (- n 2))))
         (+ a b))))
 
-(lp-test defpar-fib-test
+(lp-test defpun-fib-test
   (loop
      :for n :from 1 :to 15
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))

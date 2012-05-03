@@ -28,7 +28,7 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.defpar)
+(in-package #:lparallel.defpun)
 
 #.(import '(lparallel.util::conc-syms
             lparallel.kernel::kernel
@@ -73,16 +73,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; defpar relies upon the inlined optimizer-flag call in order to
+;;; defpun relies upon the inlined optimizer-flag call in order to
 ;;; achieve speedup, which means that *kernel* must exist before the
 ;;; call takes place. If *kernel* is nil, the error may be confusing
 ;;; due to inlining and optimizations. Inserting `check-kernel' into
-;;; the body of defpar functions negates the speedup for small
+;;; the body of defpun functions negates the speedup for small
 ;;; functions.
 
 ;;; Thus for user-friendliness we define checked and unchecked
-;;; functions for each defpar form. The user calls the checked
-;;; version; defpar calls the unchecked one via a macrolet.
+;;; functions for each defpun form. The user calls the checked
+;;; version; defpun calls the unchecked one via a macrolet.
 
 ;;; The macrolets also have the happy side-effect of preventing
 ;;; reference to the checked (slower) function via #'.
@@ -92,7 +92,7 @@
 (defun unchecked-name (name)
   (intern (conc-syms name '#:/no-check) (symbol-package name)))
 
-(defun defpar-loaded-p (name)
+(defun defpun-loaded-p (name)
   (ignore-errors
     (and (symbol-function name)
          (symbol-function (unchecked-name name)))))
@@ -102,7 +102,7 @@
 
 (defun register-fn (name)
   (register-fn-name name)
-  (when (defpar-loaded-p name)
+  (when (defpun-loaded-p name)
     (setf (get name 'checked-fn) (symbol-function name))
     (setf (get name 'unchecked-fn) (symbol-function (unchecked-name name)))))
 
@@ -126,7 +126,7 @@
      :for name :in *registered-fns*
      :collect `(,name (&rest args) `(,',(unchecked-name name) ,@args))))
 
-(defmacro declaim-defpar (&rest names)
+(defmacro declaim-defpun (&rest names)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@(loop
           :for name :in names
@@ -134,17 +134,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; defpar
+;;; defpun
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(setf *optimizer* 'defpar)
+(setf *optimizer* 'defpun)
 
 (defslots task-counter ()
   ((task-count              :initform 0 :type fixnum)
    (lock       :reader lock :initform (make-lock))))
 
-(defmethod make-optimizer-data ((specializer (eql 'defpar)))
+(defmethod make-optimizer-data ((specializer (eql 'defpun)))
   (declare (ignore specializer))
   (make-task-counter-instance))
 
@@ -165,7 +165,7 @@
       (with-lock-held (lock)
         (update-task-count/no-lock kernel delta)))))
 
-(defmacro future/defpar (&body body)
+(defmacro future/fast (&body body)
   (with-gensyms (kernel)
     `(let1 ,kernel *kernel*
        (future
@@ -173,13 +173,13 @@
               (progn ,@body)
            (update-task-count ,kernel -1))))))
 
-(defmacro/once force/defpar (&once future)
+(defmacro/once force/fast (&once future)
   `(loop
       (when (fulfilledp ,future)
         (return (force ,future)))
       (steal-work)))
 
-(defmacro %%plet/defpar (predicate pairs bindings body)
+(defmacro %%plet/fast (predicate pairs bindings body)
   (let1 count (length pairs)
     (with-gensyms (all-created-p)
       `(with-lock-predicate/wait*
@@ -189,8 +189,8 @@
            :succeed/lock    (update-task-count/no-lock *kernel* ,count)
            :succeed/no-lock (let1 ,all-created-p nil
                               (unwind-protect
-                                   (future-let :future future/defpar
-                                               :force force/defpar
+                                   (future-let :future future/fast
+                                               :force force/fast
                                                :bindings ,bindings
                                                :pre-body (setf ,all-created-p t)
                                                :body ,body)
@@ -199,7 +199,7 @@
                                 ;; optimizer count.
                                 ;; 
                                 ;; It's OK if some futures were
-                                ;; created; defpar will just
+                                ;; created; defpun will just
                                 ;; temporarily become more accepting
                                 ;; of tasks.
                                 (when (not ,all-created-p)
@@ -207,35 +207,35 @@
                                                      (negate ,count)))))
            :fail            (let ,bindings ,@body)))))
 
-(defmacro %plet/defpar (predicate bindings body)
+(defmacro %plet/fast (predicate bindings body)
   (with-parsed-let-args (pairs non-pairs syms) bindings
     (declare (ignore non-pairs syms))
     (if pairs
-        `(%%plet/defpar ,predicate ,pairs ,bindings ,body)
+        `(%%plet/fast ,predicate ,pairs ,bindings ,body)
         `(let ,bindings ,@body))))
 
-(defmacro plet/defpar (bindings &body body)
-  `(%plet/defpar (the boolean (accept-task-p *kernel*)) ,bindings ,body))
+(defmacro plet/fast (bindings &body body)
+  `(%plet/fast (the boolean (accept-task-p *kernel*)) ,bindings ,body))
 
-(defmacro plet-if/defpar (predicate bindings &body body)
-  `(%plet/defpar (and (the boolean (accept-task-p *kernel*)) ,predicate)
-                 ,bindings
-                 ,body))
+(defmacro plet-if/fast (predicate bindings &body body)
+  `(%plet/fast (and (the boolean (accept-task-p *kernel*)) ,predicate)
+               ,bindings
+               ,body))
 
-(defmacro defpar (name params &body body)
-  "`defpar' is suitable for expressing fine-grained parallelism. If
-you have many small tasks which bog down the system, `defpar' may
+(defmacro defpun (name params &body body)
+  "`defpun' is suitable for expressing fine-grained parallelism. If
+you have many small tasks which bog down the system, `defpun' may
 help.
 
-The syntax of `defpar' matches that of `defun'. The difference is that
-`plet' and `pfuncall' have a new meaning inside `defpar'. They may or
+The syntax of `defpun' matches that of `defun'. The difference is that
+`plet' and `pfuncall' have a new meaning inside `defpun'. They may or
 may not actually spawn parallel tasks, as determined by a run-time
 optimizer.
 
 The outcome is that speedup may be achieved with even small functions
 like Fibonacci,
 
-    (defpar fib (n)
+    (defpun fib (n)
       (declare (optimize (speed 3)))
       (if (< n 2)
           n
@@ -243,7 +243,7 @@ like Fibonacci,
                  (b (fib (- n 2))))
             (+ a b))))
 
-NOTE: `defpar' may require a high optimization level in order to
+NOTE: `defpun' may require a high optimization level in order to
 produce significant speedup."
   (with-parsed-body (docstring declares body)
     (validate-registered-fns)
@@ -252,9 +252,9 @@ produce significant speedup."
        (defun ,(unchecked-name name) ,params
          ,@declares
          (macrolet ((plet (bindings &body body)
-                      `(plet/defpar ,bindings ,@body))
+                      `(plet/fast ,bindings ,@body))
                     (plet-if (predicate bindings &body body)
-                        `(plet-if/defpar ,predicate ,bindings ,@body))
+                      `(plet-if/fast ,predicate ,bindings ,@body))
                     ,@(registered-macrolets))
            ,@body))
        (defun ,name (&rest params)

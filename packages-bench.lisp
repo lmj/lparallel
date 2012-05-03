@@ -32,7 +32,7 @@
   (:use #:cl
         #:lparallel.util
         #:lparallel.cognate
-        #:lparallel.defpar
+        #:lparallel.defpun
         #:lparallel.kernel)
   (:import-from #:trivial-garbage
                 #:gc)

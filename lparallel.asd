@@ -102,7 +102,7 @@ See http://lparallel.com for documentation and examples.
                                            (:file "pfind")
                                            (:file "pcount")
                                            (:file "psort")))
-                             (:file "defpar")))))
+                             (:file "defpun")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))

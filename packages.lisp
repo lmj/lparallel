@@ -245,14 +245,14 @@
            #:pfind-if
            #:pfind-if-not))
 
-(defpackage #:lparallel.defpar
+(defpackage #:lparallel.defpun
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
         #:lparallel.thread-util
         #:lparallel.promise
         #:lparallel.cognate)
-  (:export #:defpar))
+  (:export #:defpun))
 
 (macrolet ((define-merged-package (name packages)
              `(defpackage ,name
@@ -267,5 +267,5 @@
       (#:lparallel.kernel
        #:lparallel.promise
        #:lparallel.cognate
-       #:lparallel.defpar
+       #:lparallel.defpun
        #:lparallel.ptree)))
