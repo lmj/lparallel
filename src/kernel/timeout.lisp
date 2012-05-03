@@ -43,13 +43,9 @@
   (submit-task channel (lambda () (sleep timeout-seconds) timeout-result))
 
 The difference is that `submit-timeout' does not occupy a worker
-thread. A new thread is created for the timeout.
+thread.
 
-A timeout object is returned, which may be passed to `cancel-timeout'.
-
-If the internal timeout thread is interrupted by means other than
-`cancel-timeout' then the channel will receive a `task-killed-error'.
-The error is signaled at the point `receive-result' is called."
+A timeout object is returned, which may be passed to `cancel-timeout'."
   (let ((timeout (make-timeout-instance
                   :canceled-result 'not-canceled :thread nil))
         (pushedp nil))
