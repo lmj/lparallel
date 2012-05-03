@@ -153,7 +153,7 @@
      (the boolean (optimizer-flag (the kernel *kernel*)))))
 
 (defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-optimizer-slots (optimizer-data optimizer-flag) kernel
     (with-task-counter-slots (count) optimizer-data
       (incf count delta)

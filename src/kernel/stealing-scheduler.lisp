@@ -41,7 +41,7 @@
                                  (the fixnum ,n)))))
 
 (defun/type/inline random-fixnum (n) (fixnum) fixnum
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (random (the fixnum n)))
 
 (defmacro with-pop-success (var queue &body body)
@@ -86,17 +86,20 @@
 (defmacro/once do-workers ((worker-var &once worker-index scheduler) &body body)
   "Loop through all workers, starting on the right of worker-index."
   (with-gensyms (workers worker-count victim)
-    `(with-scheduler-slots ((,workers workers)) ,scheduler
-       (let ((,worker-count (the fixnum (length (the simple-vector ,workers))))
-             (,victim       (the fixnum ,worker-index)))
-         (declare (fixnum ,worker-count ,victim))
-         (loop
-            :repeat (the fixnum ,worker-count)
-            :do (progn
-                  (inc-mod ,victim ,worker-count)
-                  (let1 ,worker-var (svref (the simple-vector ,workers) ,victim)
-                    (declare (type worker ,worker-var))
-                    ,@body)))))))
+    `(locally (declare #.*full-optimize*)
+       (with-scheduler-slots ((,workers workers)) ,scheduler
+         (let ((,worker-count (the fixnum
+                                (length (the simple-vector ,workers))))
+               (,victim       (the fixnum ,worker-index)))
+           (declare (fixnum ,worker-count ,victim))
+           (loop
+              :repeat (the fixnum ,worker-count)
+              :do (progn
+                    (inc-mod ,victim ,worker-count)
+                    (let1 ,worker-var (svref (the simple-vector ,workers)
+                                             ,victim)
+                      (declare (type worker ,worker-var))
+                      ,@body))))))))
 
 (defun/type next-task (scheduler worker) (scheduler worker) (or task null)
   (declare #.*normal-optimize*)
@@ -107,6 +110,7 @@
            (find-a-task ()
              (try-pop (tasks worker))
              (do-workers (worker (worker-index worker) scheduler)
+               (declare (type worker worker))
                (try-pop (tasks worker))))
            (maybe-sleep ()
              (with-scheduler-slots (wait-cvar wait-lock wait-count
@@ -132,7 +136,6 @@
          (maybe-sleep)))))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
-  (declare #.*normal-optimize*)
   (with-scheduler-slots (workers) scheduler
     (do-workers (worker (random-fixnum (length workers)) scheduler)
       (with-pop-success task (tasks worker)
