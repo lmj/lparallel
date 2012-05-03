@@ -48,7 +48,8 @@
   (:export #:defun/inline
            #:defun/type
            #:defun/type/inline)
-  (:export #:defslots)
+  (:export #:defslots
+           #:defpair)
   (:export #:interact
            #:ensure-function
            #:to-boolean)

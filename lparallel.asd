@@ -69,6 +69,7 @@ See http://lparallel.com for documentation and examples.
                                            (:file "defmacro")
                                            (:file "defun")
                                            (:file "defslots")
+                                           (:file "defpair")
                                            (:file "functions")))
                              (:file "thread-util")
                              (:file "raw-queue")

@@ -39,20 +39,16 @@
   ;; already inside call-with-task-handler
   (declare #.*normal-optimize*)
   (with-worker-slots (running-category) worker
-    (destructuring-bind (category . task-fn) task
-      (declare (function task-fn))
-      (setf running-category category)
-      (unwind-protect
-           (funcall task-fn)
-        (setf running-category nil)))))
+    (setf running-category (task-category task))
+    (unwind-protect
+         ;; already inside call-with-task-handler
+         (funcall (task-fn task))
+      (setf running-category nil))))
 
 (defun/type exec-task/non-worker (task) (task) t
   ;; not inside call-with-task-handler
   (declare #.*normal-optimize*)
-  (destructuring-bind (category . task-fn) task
-    (declare (ignore category))
-    (declare (function task-fn))
-    (call-with-task-handler task-fn)))
+  (call-with-task-handler (task-fn task)))
 
 (defun/type steal-work () () boolean
   (declare #.*normal-optimize*)
@@ -220,13 +216,14 @@ As an optimization, an internal size may be given with
   (with-gensyms (client-handlers body-fn)
     `(flet ((,body-fn () ,@body))
        (declare (dynamic-extent (function ,body-fn)))
-       (cons *task-category*
-             (if *client-handlers*
-                 (let1 ,client-handlers *client-handlers*
-                   (lambda ()
-                     (let1 *client-handlers* ,client-handlers
-                       (,body-fn))))
-                 (lambda () (,body-fn)))))))
+       (make-task-instance
+        :category *task-category*
+        :fn (if *client-handlers*
+                (let1 ,client-handlers *client-handlers*
+                  (lambda ()
+                    (let1 *client-handlers* ,client-handlers
+                      (,body-fn))))
+                (lambda () (,body-fn)))))))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
   (let1 queue (channel-queue channel)
