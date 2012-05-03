@@ -113,7 +113,7 @@ control (or not)."
                        :report-function #'transfer-error-report))
         (funcall fn)))))
 
-(defun/type call-with-task-handler (fn) (function) t
+(defun/type call-with-task-handler (fn) (function) (values &rest t)
   (declare #.*normal-optimize*)
   (with-task-context
     (if *handler-active-p*
