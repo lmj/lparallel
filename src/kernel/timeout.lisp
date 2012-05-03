@@ -62,7 +62,7 @@ The error is signaled at the point `receive-result' is called."
                         (push-queue ,form queue)
                         (setf pushedp t))))
           (setf thread (with-thread (:name "lparallel-timeout")
-                         (enhanced-unwind-protect
+                         (unwind-protect/ext
                           :main  (sleep timeout-seconds)
                           :abort (push-result
                                   (if (eq canceled-result 'not-canceled)

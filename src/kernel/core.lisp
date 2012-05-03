@@ -53,7 +53,7 @@
     (with-lock-held (workers-lock)
       (let1 index (position (thread worker) workers :key #'thread :test #'eq)
         (assert index)
-        (enhanced-unwind-protect
+        (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
            :main    (setf (aref workers index) (make-worker kernel))
            :abort   (warn "lparallel: Worker replacement failed! ~
@@ -69,11 +69,11 @@
   ;; This function is inside `call-with-kernel-handler' (or
   ;; equivalent). Jumping out means a thread abort.
   (let1 tasks (tasks kernel)
-    (enhanced-unwind-protect
+    (unwind-protect/ext
        :main  (loop (let1 task (or (pop-biased-queue tasks) (return))
                       (with-worker-slots (running-category) worker
                         (bind-tuple (task-fn kill-notify-fn category) task
-                          (enhanced-unwind-protect
+                          (unwind-protect/ext
                              :prepare (setf running-category category)
                              :main    (funcall task-fn)
                              :cleanup (setf running-category nil)

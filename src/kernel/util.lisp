@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.kernel)
 
-(defmacro enhanced-unwind-protect (&key prepare main cleanup abort)
+(defmacro unwind-protect/ext (&key prepare main cleanup abort)
   "Keywordized version of `unwind-protect' with an added `abort'
 clause which is executed when the `main' clause does not finish."
   (with-gensyms (finishedp)
