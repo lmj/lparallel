@@ -41,9 +41,10 @@
 
 (deftype scheduler () 'biased-queue)
 
-(defslots optimizer ()
-  ((optimizer-flag :reader optimizer-flag :initform t :type boolean)
-   (optimizer-data :reader optimizer-data)))
+(locally (declare #.*full-optimize*)
+  (defslots optimizer ()
+    ((optimizer-flag :reader optimizer-flag :initform t :type boolean)
+     (optimizer-data :reader optimizer-data))))
 
 ;;; optimizer is included (as opposed to being a member) because
 ;;; optimizer-flag is a critical inline function

@@ -143,18 +143,20 @@
   ((count              :initform 0 :type fixnum)
    (lock  :reader lock :initform (make-lock))))
 
-(alias-function accept-task-p optimizer-flag)
-
 (defmethod make-optimizer-data ((specializer (eql 'defpun)))
   (declare (ignore specializer))
   (make-task-counter-instance))
+
+(defmacro accept-task-p ()
+  ;; needs fast inline for small functions
+  `(locally (declare #.*full-optimize*)
+     (the boolean (optimizer-flag (the kernel *kernel*)))))
 
 (defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
   (with-optimizer-slots (optimizer-data optimizer-flag) kernel
     (with-task-counter-slots (count) optimizer-data
       (incf count delta)
-      ;; optimizer-flag == accept-task-p
       ;; `<=' returns generalized boolean
       (setf optimizer-flag (to-boolean
                             (<= count (%kernel-worker-count kernel)))))))
@@ -166,18 +168,19 @@
 
 (defmacro future/fast (&body body)
   (with-gensyms (kernel)
-    `(let1 ,kernel *kernel*
+    `(let1 ,kernel (the kernel *kernel*)
+       (declare (type kernel ,kernel))
        (future
          (unwind-protect
               (progn ,@body)
            (update-task-count ,kernel -1))))))
 
-(defmacro force/fast (future)
-  (check-type future symbol)
-  `(loop
-      (when (fulfilledp/promise ,future)
-        (return (force ,future)))
-      (steal-work)))
+(defun/type force/fast (future) (future) t
+  (declare #.*normal-optimize*)
+  (loop
+     (when (fulfilledp/promise future)
+       (return (force future)))
+     (steal-work)))
 
 (defmacro %%plet/fast (predicate pairs bindings body)
   (let1 count (length pairs)
@@ -185,7 +188,7 @@
       `(with-lock-predicate/wait*
            :lock            (lock (optimizer-data *kernel*))
            :predicate1      ,predicate
-           :predicate2      (the boolean (accept-task-p *kernel*))
+           :predicate2      (accept-task-p)
            :succeed/lock    (update-task-count/no-lock *kernel* ,count)
            :succeed/no-lock (let1 ,all-created-p nil
                               (unwind-protect
@@ -215,10 +218,10 @@
         `(let ,bindings ,@body))))
 
 (defmacro plet/fast (bindings &body body)
-  `(%plet/fast (the boolean (accept-task-p *kernel*)) ,bindings ,body))
+  `(%plet/fast (accept-task-p) ,bindings ,body))
 
 (defmacro plet-if/fast (predicate bindings &body body)
-  `(%plet/fast (and (the boolean (accept-task-p *kernel*)) ,predicate)
+  `(%plet/fast (and (accept-task-p) ,predicate)
                ,bindings
                ,body))
 
