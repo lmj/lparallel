@@ -39,30 +39,34 @@
 (defun debug-execute ()
   (debug!))
 
-(defmacro with-new-kernel ((worker-count
-                            &rest args
-                            &key bindings worker-context name)
-                           &body body)
-  (declare (ignore bindings worker-context name))
+(defmacro/once with-new-kernel ((&once worker-count
+                                 &rest args
+                                 &key bindings context name spin-count)
+                                &body body)
+  (declare (ignore bindings context name spin-count))
   `(let1 *kernel* (make-kernel ,worker-count ,@args)
      (unwind-protect (progn ,@body)
-       (end-kernel))))
+       (end-kernel :wait t))))
 
 (defmacro lp-base-test (name &body body)
   `(progn
-     (test ,name
+     (test #+lparallel.with-debug (,name :compile-at :definition-time)
+           #-lparallel.with-debug ,name
        (format t "~&~a~%" ',name)
        ,@body)
      (defun ,name ()
        (debug! ',name))))
 
 (defmacro lp-test (name &body body)
-  (with-gensyms (n)
+  (with-gensyms (body-fn n)
     `(lp-base-test ,name
        (let1 *random-state* (make-random-state t)
          (dolist (,n '(1 2 4 8 16))
-           (with-new-kernel (,n)
-             ,@body))))))
+           (flet ((,body-fn () ,@body))
+             (with-new-kernel (,n :spin-count 0)
+               (,body-fn))
+             (with-new-kernel (,n :spin-count 2000)
+               (,body-fn))))))))
 
 (define-condition client-error (error) ())
 (define-condition foo-error (error) ())
@@ -84,10 +88,6 @@
   (invoke-restart #-sbcl 'abort
                   #+sbcl 'sb-thread:terminate-thread))
 
-(defun infinite-loop ()
-  (handler-bind ((warning (lambda (w) (muffle-warning w))))
-    (loop)))
-
 (defmacro with-thread-count-check (&body body)
   (with-gensyms (old-thread-count)
     `(progn
@@ -97,3 +97,6 @@
          (sleep 0.2)
          (is (eql ,old-thread-count
                   (length (bordeaux-threads:all-threads))))))))
+
+(defparameter *nil* nil)
+(defun infinite-loop () (loop :until *nil*))

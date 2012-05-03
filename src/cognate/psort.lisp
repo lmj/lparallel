@@ -46,12 +46,11 @@
 (defmacro define-dispatch-quicksort (name has-key-p)
   (let* ((key      (when has-key-p (with-gensyms (key) key)))
          (key-args (when has-key-p `(:key ,key))))
-    `(defun/ftype ,name
-         (quicksort vec lo hi compare min max submit ,@(unsplice key))
-         (function
-          (function vector fixnum fixnum function fixnum fixnum function
-           ,@(unsplice (when key `function)))
-          t)
+    `(defun/type ,name (quicksort vec lo hi compare min max submit
+                        ,@(unsplice key))
+         (function vector fixnum fixnum function fixnum fixnum function
+          ,@(unsplice (when key 'function)))
+         t
        (declare #.*full-optimize*)
        (when (> hi lo)
          (let1 size (the fixnum (1+ (the fixnum (- hi lo))))
@@ -71,19 +70,22 @@
 (define-dispatch-quicksort dispatch-quicksort/key t)
 (define-dispatch-quicksort dispatch-quicksort/no-key nil)
 
-(defun/inline midpoint (a b)
-  (+ a (ash (- b a) -1)))
+(defun/type/inline midpoint (a b) (fixnum fixnum) fixnum
+  (+ a (the fixnum (ash (the fixnum (- b a)) -1))))
 
 ;;; 
 ;;; Adapted from Roger Corman's usenet post. Free license.
 ;;; 
 (defmacro define-quicksort-fn (name key key-type call-key)
   (let1 dispatch (if key 'dispatch-quicksort/key 'dispatch-quicksort/no-key)
-    `(defun/ftype ,name (vec lo hi compare min max submit ,@(unsplice key))
-         (function (vector fixnum fixnum function fixnum fixnum function
-                    ,@(unsplice key-type))
-                   null)
+    `(defun/type ,name (vec lo hi compare min max submit
+                        ,@(unsplice key))
+         (vector fixnum fixnum function fixnum fixnum function
+          ,@(unsplice key-type))
+         null
        (declare #.*full-optimize*)
+       ;; cannot use svref due to displaced array -- silence notes
+       #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
        (when (> hi lo)
          (let* ((mid (the fixnum (midpoint lo hi)))
                 (i lo)
@@ -136,10 +138,10 @@
 
 `sequence' is sorted recursively in parts in parallel. A part is
 sorted in parallel if its size is between `min-part-size' and
-`max-part-size'. Smaller parts are sorted immediately; larger parts
-are recursed upon.
+`max-part-size' inclusive. Smaller parts are sorted immediately;
+larger parts are recursed upon.
 
-`min-part-size' defaults to some small number. 
+`min-part-size' defaults to 3. 
 
 `max-part-size' defaults to (/ (length sequence) parts). 
 
@@ -151,7 +153,7 @@ are recursed upon.
      (check-type max-part-size (or null fixnum))
      (let* ((predicate  (ensure-function predicate))
             (parts-hint (get-parts-hint parts))
-            (min        (or min-part-size 2))
+            (min        (or min-part-size 3))
             (max        (or max-part-size (floor (length sequence) parts-hint)))
             (last       (1- (length sequence))))
        (with-submit-dynamic-counted

@@ -52,23 +52,23 @@
   "A variation of map-into."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
-  (apply #'mapl
-         (lambda (result &rest args)
-           (declare (dynamic-extent args))
-           (setf (car result) (apply fn args)))
-         result-list
-         lists)
-  result-list)
+  (let1 fn (ensure-function fn)
+    (apply #'mapl
+           (lambda (result &rest args)
+             (declare (dynamic-extent args))
+             (setf (car result) (apply fn args)))
+           result-list
+           lists)
+    result-list))
 
-(defun/ftype map-iterate (map size fn seqs)
-    (function (function integer function list) null)
+(defun/type map-iterate (map size fn seqs)
+    (function (integer 0) function list) t
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
   (let1 index 0
-    (declare (type integer index))
     (apply map
            (lambda (&rest args)
              (declare (dynamic-extent args))
@@ -76,8 +76,7 @@ manually."
                (return-from map-iterate nil))
              (apply fn args)
              (incf index))
-           seqs))
-  nil)
+           seqs)))
 
 (defun pmap-into/powder/array (result-seq fn seqs size)
   "When a sequence of size N is divided into N parts, it becomes powder."
@@ -120,7 +119,8 @@ manually."
 
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
   (multiple-value-bind (size parts-hint) (pop-options seqs)
-    (let* ((has-fill-p  (and (arrayp result-seq)
+    (let* ((fn          (ensure-function fn))
+           (has-fill-p  (and (arrayp result-seq)
                              (array-has-fill-pointer-p result-seq)))
            (result-size (if has-fill-p
                             (array-total-size result-seq)
@@ -164,11 +164,9 @@ manually."
   (let1 input-parts (make-input-parts seqs size parts-hint)
     (with-submit-counted
       (with-parts size parts-hint
-        (map nil
-             (lambda (subseqs)
-               (next-part)
-               (submit-counted 'map-iterate map (part-size) fn subseqs))
-             input-parts))
+        (dosequence (subseqs input-parts)
+          (next-part)
+          (submit-counted 'map-iterate map (part-size) fn subseqs)))
       (receive-counted))))
 
 (defun pmap-iterate/powder (map fn seqs size)
@@ -247,29 +245,31 @@ are also accepted (see `pmap')."
   "Parallel version of `mapcan'. Keyword arguments `parts' and `size'
 are also accepted (see `pmap')."
   (declare (dynamic-extent lists))
-  (case (length lists)
-    (1 (reduce 'nreconc
-               (preduce/partial (lambda (acc x)
-                                  (let1 result (funcall function x)
-                                    (if result
-                                        (nconc result acc)
-                                        acc)))
-                                (first lists)
-                                :initial-value nil)
-               :initial-value nil
-               :from-end t))
-    (t (nconc/many (apply #'pmapcar function lists)))))
+  (let1 function (ensure-function function)
+    (case (length lists)
+      (1 (reduce 'nreconc
+                 (preduce-partial (lambda (acc x)
+                                    (declare #.*normal-optimize*)
+                                    (let1 result (funcall function x)
+                                      (if result
+                                          (nconc result acc)
+                                          acc)))
+                                  (first lists)
+                                  :initial-value nil)
+                 :initial-value nil
+                 :from-end t))
+      (t (apply #'nconc (apply #'pmapcar function lists))))))
 
 (defun pmapcon (function &rest lists)
   "Parallel version of `mapcon'. Keyword arguments `parts' and `size'
 are also accepted (see `pmap')."
   (declare (dynamic-extent lists))
-  (nconc/many (apply #'pmaplist function lists)))
+  (apply #'nconc (apply #'pmaplist function lists)))
 
 (defun pmap-reduce (map-function reduce-function sequence
                     &rest args
                     &key start end initial-value parts recurse)
-  "Equivalent to (preduce reduce-function :key map-function ...)."
+  "Equivalent to (preduce reduce-function sequence :key map-function ...)."
   (declare (ignore start end initial-value parts recurse))
   (declare (dynamic-extent args))
   (apply #'preduce reduce-function sequence :key map-function args))

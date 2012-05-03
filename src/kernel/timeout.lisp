@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.kernel)
 
+#.(import 'bordeaux-threads:destroy-thread)
+
 (defslots timeout ()
   ((canceled-result)
    (thread)
@@ -41,13 +43,9 @@
   (submit-task channel (lambda () (sleep timeout-seconds) timeout-result))
 
 The difference is that `submit-timeout' does not occupy a worker
-thread. A new thread is created for the timeout.
+thread.
 
-A timeout object is returned, which may be passed to `cancel-timeout'.
-
-If the internal timeout thread is interrupted by means other than
-`cancel-timeout' then the channel will receive a `task-killed-error'.
-The error is signaled at the point `receive-result' is called."
+A timeout object is returned, which may be passed to `cancel-timeout'."
   (let ((timeout (make-timeout-instance
                   :canceled-result 'not-canceled :thread nil))
         (pushedp nil))
@@ -62,7 +60,7 @@ The error is signaled at the point `receive-result' is called."
                         (push-queue ,form queue)
                         (setf pushedp t))))
           (setf thread (with-thread (:name "lparallel-timeout")
-                         (enhanced-unwind-protect
+                         (unwind-protect/ext
                           :main  (sleep timeout-seconds)
                           :abort (push-result
                                   (if (eq canceled-result 'not-canceled)
@@ -71,13 +69,16 @@ The error is signaled at the point `receive-result' is called."
                          (push-result timeout-result))))))
     timeout))
 
+#-abcl
 (defun cancel-timeout (timeout timeout-result)
   "Attempt to cancel a timeout. If successful, the channel passed to
 `submit-timeout' will receive `timeout-result'.
 
 At most one call to `cancel-timeout' will succeed; others will be
 ignored. If the timeout has expired on its own then `cancel-timeout'
-will have no effect."
+will have no effect.
+
+`cancel-timeout' is not available in ABCL."
   (with-timeout-slots (canceled-result thread lock) timeout
     ;; ensure that only one cancel succeeds
     (with-lock-predicate/wait lock (eq canceled-result 'not-canceled)

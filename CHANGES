@@ -2,6 +2,20 @@
 lparallel Changes
 =================
 
+= 1.3.0
+
+* new support for fine-grained parallelism with `defpun'
+* new work-stealing model with lockless queues and optional spinning;
+  enabled by default on SBCL, others default to central queue
+* added pfind, pcount, plet-if, pfuncall
+* fixed redundant restart in `chain'
+* added shell script for unthrottling CPUs in Linux
+* renamed *kernel-task-category* -> *task-category*
+          *kernel-task-priority* -> *task-priority*
+           kernel-handler-bind   -> task-handler-bind
+           preduce/partial       -> preduce-partial
+  old names are still available
+
 = 1.2.3
 
 * for promises created with (promise), fixed intermittent error during

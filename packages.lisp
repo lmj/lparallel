@@ -34,18 +34,25 @@
            #:defmacro/once
            #:mklist
            #:unsplice
-           #:intern-conc)
+           #:intern-conc
+           #:with-parsed-body)
   (:export #:while
            #:repeat
            #:when-let
            #:while-let
+           #:dosequence
            #:rebind
            #:let1
-           #:alias-function)
+           #:alias-function
+           #:unwind-protect/ext)
   (:export #:defun/inline
-           #:defun/ftype)
-  (:export #:defslots)
-  (:export #:interact)
+           #:defun/type
+           #:defun/type/inline)
+  (:export #:defslots
+           #:defpair)
+  (:export #:interact
+           #:ensure-function
+           #:to-boolean)
   (:export #:*normal-optimize*
            #:*full-optimize*))
 
@@ -63,10 +70,8 @@
   ;; exported from bordeaux-threads
   (:export #:make-thread
            #:make-lock
-           #:make-recursive-lock
            #:make-condition-variable
            #:with-lock-held
-           #:with-recursive-lock-held
            #:acquire-lock
            #:release-lock
            #:condition-wait))
@@ -119,46 +124,54 @@
         #:lparallel.thread-util)
   (:export #:counter
            #:make-counter
-           #:push-counter #:push-counter/no-lock
-           #:pop-counter  #:pop-counter/no-lock
-           #:peek-counter #:peek-counter/no-lock
-           #:with-locked-counter))
+           #:inc-counter
+           #:dec-counter
+           #:counter-value))
+
+(defpackage #:lparallel.spin-queue
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.raw-queue
+        #:lparallel.counter)
+  (:export #:spin-queue
+           #:make-spin-queue
+           #:push-spin-queue
+           #:pop-spin-queue
+           #:peek-spin-queue
+           #:spin-queue-count
+           #:spin-queue-empty-p))
 
 (defpackage #:lparallel.kernel
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.queue
-        #:lparallel.biased-queue)
-  (:import-from #:bordeaux-threads
-                #:destroy-thread)
-  (:intern #:unwrap-result
-           #:make-client-fn
-           #:make-task
-           #:call-with-kernel-handler
-           #:submit-raw-task)
-  (:intern #:*kernel-thread-locals*)
+        #:lparallel.biased-queue
+        #:lparallel.spin-queue)
   (:export #:make-kernel
            #:kernel-worker-count
            #:check-kernel
            #:end-kernel
-           #:kernel-handler-bind
            #:kernel-special-bindings)
-  (:export #:channel
-           #:make-channel
+  (:export #:make-channel
            #:submit-task
            #:submit-timeout
            #:cancel-timeout
            #:receive-result
            #:do-fast-receives
-           #:emergency-kill-tasks ; deprecated -- same as kill-tasks
-           #:kill-tasks)
+           #:kill-tasks
+           #:task-handler-bind)
   (:export #:*kernel*
-           #:*kernel-task-category*
-           #:*kernel-task-priority*)
+           #:*kernel-spin-count*
+           #:*task-category*
+           #:*task-priority*)
   (:export #:transfer-error
            #:no-kernel-error
-           #:task-killed-error))
+           #:task-killed-error)
+  (:export #:*kernel-task-category* ; deprecated; same as *task-category*
+           #:*kernel-task-priority* ; deprecated; same as *task-priority*
+           #:emergency-kill-tasks   ; deprecated; same as kill-tasks
+           #:kernel-handler-bind))  ; deprecated; same as task-handler-bind
 
 (defpackage #:lparallel.kernel-util
   (:use #:cl
@@ -184,8 +197,6 @@
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.kernel)
-  (:import-from #:lparallel.kernel
-                #:*kernel-thread-locals*)
   (:export #:ptree
            #:ptree-fn
            #:make-ptree
@@ -201,12 +212,6 @@
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.kernel)
-  (:import-from #:lparallel.kernel
-                #:unwrap-result
-                #:make-client-fn
-                #:make-task
-                #:call-with-kernel-handler
-                #:submit-raw-task)
   (:export #:promise
            #:future
            #:speculate
@@ -222,30 +227,48 @@
         #:lparallel.kernel
         #:lparallel.kernel-util
         #:lparallel.promise)
-  (:export #:psort
-           #:preduce
-           #:preduce/partial
+  (:export #:pand
+           #:pcount
+           #:pcount-if
+           #:pcount-if-not
+           #:pevery
+           #:pfind
+           #:pfind-if
+           #:pfind-if-not
+           #:pfuncall
+           #:plet
+           #:plet-if
            #:pmap
-           #:pmap-into
-           #:pmap-reduce
-           #:pmapcar
            #:pmapc
            #:pmapcan
+           #:pmapcar
+           #:pmapcon
+           #:pmap-into
+           #:pmapl
            #:pmaplist
            #:pmaplist-into
-           #:pmapl
-           #:pmapcon
+           #:pmap-reduce
+           #:pnotany
+           #:pnotevery
+           #:por
+           #:preduce
+           #:preduce-partial
            #:premove
            #:premove-if
            #:premove-if-not
-           #:pevery
            #:psome
-           #:pnotevery
-           #:pnotany
-           #:plet
-           #:plet*
-           #:pand
-           #:por))
+           #:psort)
+  (:export #:preduce/partial)) ; deprecated; same as preduce-partial
+
+(defpackage #:lparallel.defpun
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.kernel
+        #:lparallel.thread-util
+        #:lparallel.promise
+        #:lparallel.cognate)
+  (:export #:defpun
+           #:declaim-defpun))
 
 (macrolet ((define-merged-package (name packages)
              `(defpackage ,name
@@ -260,4 +283,5 @@
       (#:lparallel.kernel
        #:lparallel.promise
        #:lparallel.cognate
+       #:lparallel.defpun
        #:lparallel.ptree)))

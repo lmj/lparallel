@@ -35,17 +35,17 @@
         (b (future 4)))
     (is (= 7 (+ (force a) (force b)))))
   (let1 a (future 5)
-    (sleep 0.1)
+    (sleep 0.2)
     (is (fulfilledp a))
     (is (= 5 (force a))))
-  (let1 a (future (sleep 0.2) 3)
+  (let1 a (future (sleep 0.4) 3)
     (is (not (fulfilledp a)))
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eq nil (fulfill a 4)))
     (is (not (fulfilledp a)))
     (is (= 3 (force a))))
   (let1 a (future 3)
-    (sleep 0.1)
+    (sleep 0.2)
     (is (eq nil (fulfill a 9)))
     (is (= 3 (force a)))))
 
@@ -70,7 +70,12 @@
         (b (promise)))
     (fulfill a (chain (delay 7)))
     (fulfill b (chain (delay 8)))
-    (is (= 56 (* (force a) (force b))))))
+    (is (= 56 (* (force a) (force b)))))
+  (let* ((a (promise))
+         (b (chain a)))
+    (fulfill b 3)
+    (is (eql 3 (force b)))
+    (is (eql 3 (force a)))))
 
 (lp-test force-chain-test
   (let1 f (delay (chain (delay 3)))
@@ -116,8 +121,8 @@
        (is (= 1 *memo*)))
      (let1 a (mapcar (lambda (x) (,defer (* x x))) '(3 4 5))
        (is (equal '(9 16 25) (mapcar #'force a))))
-     (kernel-handler-bind ((foo-error (lambda (e)
-                                        (invoke-restart 'transfer-error e))))
+     (task-handler-bind ((foo-error (lambda (e)
+                                      (invoke-restart 'transfer-error e))))
        (let1 a (,defer (error 'foo-error))
          (signals foo-error
            (force a))
@@ -178,38 +183,38 @@
       (is (= 5 r)))))
 
 (lp-test future-restart-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let ((x (future (restart-case (error 'foo-error)
                        (eleven () 11)))))
       (is (eql 11 (force x)))))
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let* ((x (future (restart-case (error 'foo-error)
                         (eleven () 11))))
            (y (future (force x))))
       (is (eql 11 (force y))))))
 
 (lp-test speculation-restart-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let ((x (speculate (restart-case (error 'foo-error)
                           (eleven () 11)))))
       (is (eql 11 (force x)))))
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let* ((x (speculate (restart-case (error 'foo-error)
                            (eleven () 11))))
            (y (force x)))
       (is (eql 11 (force y))))))
 
 (lp-test fulfill-delay-restart-test
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((error (lambda (e)
+                               (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
                                 (declare (ignore e))
                                 (invoke-restart 'store-value 3 4))))
@@ -217,8 +222,8 @@
         (is (equal '(3 4) (multiple-value-list (force x))))))))
 
 (lp-test fulfill-future-restart-test
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((error (lambda (e)
+                               (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
                                 (declare (ignore e))
                                 (invoke-restart 'store-value 3 4))))
@@ -232,7 +237,7 @@
     (with-new-kernel (2)
       (sleep 0.2)
       (let1 main-thread (current-thread)
-        (kernel-handler-bind
+        (task-handler-bind
             ((foo-error (lambda (e)
                           (declare (ignore e))
                           ;; don't kill main thread
@@ -248,12 +253,12 @@
 
 (lp-base-test canceling-test
   (with-new-kernel (2)
-    (sleep 0.2)
+    (sleep 0.1)
     (let* ((a (promise))
            (filler1 (future (sleep 0.2)))
            (filler2 (future (sleep 0.2))))
       (declare (ignore filler1 filler2))
-      (sleep 0.2)
+      (sleep 0.1)
       (let1 b (future (fulfill a 'foo))
         (declare (ignore b))
         (sleep 0.2)
@@ -262,9 +267,49 @@
            (filler1 (future (sleep 0.6)))
            (filler2 (future (sleep 0.6))))
       (declare (ignore filler1 filler2))
-      (sleep 0.2)
+      (sleep 0.1)
       (let1 b (future (fulfill a 'foo))
         (sleep 0.2)
         (fulfill b 'nevermind)
-        (sleep 0.4)
+        (sleep 0.2)
         (is (not (fulfilledp a)))))))
+
+(lp-base-test error-during-stealing-force-test
+  (with-new-kernel (2)
+    ;; occupy workers
+    (future (sleep 0.4))
+    (future (sleep 0.4))
+    (sleep 0.2)
+    (let* ((call-count 0)
+           (handle-count 0)
+           (f (task-handler-bind ((foo-error
+                                   (lambda (e)
+                                     (invoke-restart 'transfer-error e))))
+                (future
+                  (incf call-count)
+                  (error 'foo-error)))))
+      (repeat 3
+        (block top
+          (handler-bind ((foo-error
+                          (lambda (e)
+                            (declare (ignore e))
+                            (incf handle-count)
+                            (return-from top))))
+            (force f))))
+      (is (= 1 call-count))
+      (is (= 3 handle-count)))))
+
+(lp-base-test error-during-stealing-force-2-test
+  (with-new-kernel (2)
+    ;; occupy workers
+    (future (sleep 0.4))
+    (future (sleep 0.4))
+    (sleep 0.2)
+    (let1 f (task-handler-bind ((foo-error
+                                 (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'nine))))
+              (future
+                (restart-case (error 'foo-error)
+                  (nine () 9))))
+      (is (eql 9 (force f))))))

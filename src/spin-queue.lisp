@@ -28,43 +28,42 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.util)
+(in-package #:lparallel.spin-queue)
 
-(defmacro while (test &body body)
-  `(loop :while ,test :do (progn ,@body)))
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require 'sb-concurrency))
 
-(defmacro repeat (n &body body)
-  `(loop :repeat ,n :do (progn ,@body)))
+#+sbcl
+(progn
+  (deftype spin-queue () 'sb-concurrency:queue)
 
-(defmacro when-let ((var test) &body body)
-  `(let ((,var ,test))
-     (when ,var ,@body)))
+  (defun make-spin-queue (&optional initial-capacity)
+    (declare (ignore initial-capacity))
+    (sb-concurrency:make-queue))
+  
+  ;; only used for testing
+  (defun peek-spin-queue (queue)
+    (let1 list (sb-concurrency:list-queue-contents queue)
+      (if list
+          (values (first list) t)
+          (values nil nil))))
 
-(defmacro while-let ((var test) &body body)
-  `(loop (let ((,var ,test))
-           (if ,var
-               (progn ,@body)
-               (return)))))
+  (alias-function push-spin-queue    sb-concurrency:enqueue)
+  (alias-function pop-spin-queue     sb-concurrency:dequeue)
+  (alias-function spin-queue-count   sb-concurrency:queue-count)
+  (alias-function spin-queue-empty-p sb-concurrency:queue-empty-p))
 
-(defmacro rebind (vars &body body)
-  `(let ,(loop
-            :for var :in vars
-            :collect `(,var ,var))
-     ,@body))
+#-sbcl
+(progn
+  (deftype spin-queue () 'lparallel.queue:queue)
 
-(defmacro let1 (var value &body body)
-  "Make a single `let' binding, heroically saving three columns."
-  `(let ((,var ,value))
-     ,@body))
+  (defun make-spin-queue (&optional initial-capacity)
+    (declare (ignore initial-capacity))
+    (lparallel.queue:make-queue))
 
-(defun interact (&rest prompt)
-  "Read from user and eval."
-  (apply #'format *query-io* prompt)
-  (finish-output *query-io*)
-  (multiple-value-list (eval (read *query-io*))))
-
-(defmacro alias-function (alias fn)
-  `(progn
-     (setf (symbol-function ',alias) #',fn)
-     (define-compiler-macro ,alias (&rest args)
-       `(,',fn ,@args))))
+  (alias-function push-spin-queue    lparallel.queue:push-queue)
+  (alias-function pop-spin-queue     lparallel.queue:try-pop-queue)
+  (alias-function peek-spin-queue    lparallel.queue:peek-queue)
+  (alias-function spin-queue-count   lparallel.queue:queue-count)
+  (alias-function spin-queue-empty-p lparallel.queue:queue-empty-p))

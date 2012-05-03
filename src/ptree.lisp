@@ -30,6 +30,9 @@
 
 (in-package #:lparallel.ptree)
 
+#.(import '(lparallel.kernel::*kernel-thread-locals*
+            lparallel.kernel::channel))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; errors
@@ -92,7 +95,7 @@
              :name name
              :refs (mapcar #'name parents)))))
 
-(defun/ftype compute-node (node) (function (node) t)
+(defun/type compute-node (node) (node) node
   (declare #.*normal-optimize*)
   (with-node-slots (function computed children-results result) node
     (handler-case
@@ -104,17 +107,17 @@
       (error (err) (setf computed err))))
   node)
 
-(defun/inline freep (node)
+(defun/type/inline freep (node) (node) t
   (zerop (lock-level node)))
 
-(defun/ftype lock-node (node) (function (node) null)
+(defun/type lock-node (node) (node) null
   (declare #.*full-optimize*)
   (with-node-slots (lock-level parents) node
     (incf lock-level)
     (dolist (parent parents)
       (lock-node parent))))
 
-(defun/ftype unlock-node (node) (function (node) null)
+(defun/type unlock-node (node) (node) null
   (declare #.*full-optimize*)
   (with-node-slots (lock-level parents) node
     (decf lock-level)
@@ -127,17 +130,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun/ftype submit-node (channel node) (function (channel node) null)
-  (declare #.*full-optimize*)
+(defun/type submit-node (channel node) (channel node) null
+  (declare #.*normal-optimize*)
   (if *ptree-node-kernel*
       (submit-task channel (let1 node-kernel *ptree-node-kernel*
                              (lambda ()
                                (let1 *kernel* node-kernel
                                  (compute-node node)))))
-      (submit-task channel 'compute-node node))
+      (submit-task channel #'compute-node node))
   nil)
 
-(defun/ftype find-children-results (node) (function (node) t)
+(defun/type find-children-results (node) (node) (or list boolean)
   "For non-nil children, sets children-results upon first success."
   (declare #.*full-optimize*)
   (with-node-slots (children children-results) node
@@ -149,7 +152,7 @@
                                      (return-from find-children-results nil)))
                                  (mapcar #'result children))))))
 
-(defun/ftype find-node (node) (function (node) (or node null))
+(defun/type find-node (node) (node) (or node null)
   (declare #.*full-optimize*)
   (with-node-slots (computed children) node
     (cond (computed
@@ -171,8 +174,8 @@
              (when-let (found (find-node child))
                (return found)))))))
 
-(defun/ftype master-loop (root) (function (node) node)
-  (declare #.*full-optimize*)
+(defun/type master-loop (root) (node) node
+  (declare #.*normal-optimize*)
   (let1 channel (make-channel)
     (loop (let1 node (find-node root)
             (cond (node

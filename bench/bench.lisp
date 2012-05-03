@@ -66,10 +66,27 @@
 (defun flatten (list)
   (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
+#+sbcl
+(progn
+  (defun get-time ()
+    (multiple-value-list (sb-ext:get-time-of-day)))
+  (defun to-microseconds (time)
+    (destructuring-bind (sec usec) time
+      (+ (* 1000000 sec) usec)))
+  (defun time-interval (start end)
+    (- (to-microseconds end)
+       (to-microseconds start))))
+
+#-sbcl
+(progn
+  (alias-function get-time get-internal-real-time)
+  (defun time-interval (start end)
+    (- end start)))
+
 (defun wall-time (fn args)
-  (let1 start (get-internal-real-time)
+  (let1 start (get-time)
     (apply fn args)
-    (- (get-internal-real-time) start)))
+    (time-interval start (get-time))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -120,18 +137,12 @@ results are riffled for comparison."
                        (mapcar (compose 'funcall 'args-fn) specs)))))))))
 
 (defun call-with-temp-kernel (worker-count fn)
-  (let1 *kernel* (make-kernel worker-count)
+  (let1 *kernel* (make-kernel worker-count :spin-count 10000)
     (unwind-protect (funcall fn)
       (end-kernel :wait t))))
 
 (defun run-suite (worker-count reset-fn &rest fns)
   (when fns
-    (when (find :swank *features*)
-      (format t "~%~
-              ===========~%~
-              NOTE: Benchmarking with SLIME may produce inaccurate results!~%~
-              ===========~%"))
-    (format t "~%Using a temporary kernel with ~a workers.~%~%" worker-count)
     (call-with-temp-kernel
      worker-count
      (lambda ()

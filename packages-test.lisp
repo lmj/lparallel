@@ -34,8 +34,10 @@
         #:lparallel.thread-util
         #:lparallel.raw-queue
         #:lparallel.queue
+        #:lparallel.spin-queue
         #:lparallel.kernel
         #:lparallel.cognate
+        #:lparallel.defpun
         #:lparallel.promise
         #:lparallel.ptree)
   (:import-from #:bordeaux-threads

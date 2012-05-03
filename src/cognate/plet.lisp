@@ -30,6 +30,35 @@
 
 (in-package #:lparallel.cognate)
 
+(defun pairp (form)
+  (and (consp form) (eql (length form) 2)))
+
+(defmacro/once with-parsed-let-args ((pairs non-pairs syms)
+                                     &once bindings
+                                     &body body)
+  `(let* ((,pairs     (remove-if-not #'pairp ,bindings))
+          (,non-pairs (remove-if     #'pairp ,bindings))
+          (,syms      (loop
+                         :for (name nil) :in ,pairs
+                         :collect (gensym (symbol-name name)))))
+     ,@body))
+
+(defmacro future-let (&key future force bindings pre-body body)
+  (with-parsed-body (nil declares body)
+    (with-parsed-let-args (pairs non-pairs syms) bindings
+      `(symbol-macrolet ,(loop
+                            :for sym :in syms
+                            :for (name nil) :in pairs
+                            :collect `(,name (,force ,sym)))
+         (let (,@(loop
+                    :for sym :in syms
+                    :for (nil form) :in pairs
+                    :collect `(,sym (,future ,form)))
+               ,@non-pairs)
+           ,@declares
+           ,@(unsplice pre-body)
+           ,@body)))))
+
 (defmacro plet (bindings &body body)
   "The syntax of `plet' matches that of `let'.
 
@@ -40,27 +69,34 @@ For each (var init-form) pair, a future is created which executes
 `force' form for the corresponding future.
 
 Each `var-no-init' is bound to nil and each `var' without `init-form'
-is bound to nil (no future is created)."
-  (flet ((pairp (form) (and (consp form) (eql 2 (length form)))))
-    (let* ((pairs (remove-if-not #'pairp bindings))
-           (vars  (loop
-                     :for (name nil) :in pairs
-                     :collect (gensym (symbol-name name)))))
-      `(let (,@(loop
-                  :for var :in vars
-                  :for (nil form) :in pairs
-                  :collect `(,var (future ,form)))
-             ,@(remove-if #'pairp bindings))
-         (symbol-macrolet ,(loop
-                              :for var :in vars
-                              :for (name nil) :in pairs
-                              :collect `(,name (force ,var)))
-           ,@body)))))
+is bound to nil (no future is created).
 
-(defmacro plet* (bindings &body body)
-  "Like `plet' but each binding form may refer to previous forms."
-  (if bindings
-      `(plet (,(car bindings))
-         (plet* ,(cdr bindings)
-           ,@body))
-      `(progn ,@body)))
+`plet' is subject to optimization inside `defpun'."
+  `(future-let :future future
+               :force force
+               :bindings ,bindings
+               :body ,body))
+
+(defmacro plet-if (predicate bindings &body body)
+  "The syntax of `plet-if' matches that of `let' except for the
+addition of the `predicate' form.
+
+If `predicate' evaluates to true, the behavior is the same as `plet'.
+
+If `predicate' evaluates to false, the behavior is the same as `let'.
+
+`plet-if' is subject to optimization inside `defpun'."
+  `(if ,predicate
+       (plet ,bindings ,@body)
+       (let  ,bindings ,@body)))
+
+(defmacro pfuncall (function &rest args)
+  "Parallel version of `funcall'. Arguments in `args' may be executed
+in parallel, though not necessarily at the same time.
+
+`pfuncall' is subject to optimization inside `defpun'."
+  (let1 vars (loop
+                :for index :below (length args)
+                :collect (gensym (format nil "~a-~a-" '#:pfuncall-arg index)))
+    `(plet ,(mapcar #'list vars args)
+       (funcall ,function ,@vars))))

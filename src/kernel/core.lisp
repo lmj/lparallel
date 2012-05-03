@@ -30,85 +30,132 @@
 
 (in-package #:lparallel.kernel)
 
-(defslots kernel ()
-  ((tasks           :reader tasks   :type biased-queue)
-   (workers         :reader workers :type vector)
-   (workers-lock)
-   (worker-bindings                 :type list)
-   (worker-context                  :type function)
-   (worker-name                     :type string)))
-
-(defslots worker ()
-  ((thread           :reader thread)
-   (running-category :reader running-category :initform nil)))
-
-(defslots channel ()
-  ((queue  :reader channel-queue  :type queue)
-   (kernel :reader channel-kernel :type kernel)))
+#.(import '(bordeaux-threads:destroy-thread
+            bordeaux-threads:current-thread))
 
 (define-circular-print-object kernel)
 
-(defun replace-worker (kernel worker)
+(defun/type exec-task/worker (task worker) (task worker) t
+  ;; already inside call-with-task-handler
+  (declare #.*normal-optimize*)
+  (with-worker-slots (running-category) worker
+    (let1 prev-category running-category
+      (unwind-protect/ext
+       :prepare (setf running-category (task-category task))
+       :main    (funcall (task-fn task))
+       :cleanup (setf running-category prev-category)))))
+
+(defun/type exec-task/non-worker (task) (task) t
+  ;; not inside call-with-task-handler
+  (declare #.*normal-optimize*)
+  (call-with-task-handler (task-fn task)))
+
+(defun/type steal-work () () boolean
+  (declare #.*normal-optimize*)
+  (when-let (task (steal-task (scheduler *kernel*)))
+    (let1 worker *worker*
+      (if worker
+          (exec-task/worker task worker)
+          (exec-task/non-worker task)))
+    t))
+
+(defun/type handshake/to-worker (worker) (worker) t
+  (with-worker-slots (from-worker to-worker) worker
+    (push-queue 'proceed to-worker)
+    (assert (eq 'ok (pop-queue from-worker)))))
+
+(defun/type handshake/from-worker (worker) (worker) t
+  (with-worker-slots (from-worker to-worker) worker
+    (assert (eq 'proceed (pop-queue to-worker)))
+    (push-queue 'ok from-worker)))
+
+(defun/type replace-worker (kernel worker) (kernel worker) t
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
-      (let1 index (position (thread worker) workers :key #'thread :test #'eq)
+      (let1 index (position worker workers :test #'eq)
         (assert index)
-        (enhanced-unwind-protect
+        (assert (eql index (with-worker-slots (index) worker
+                             index)))
+        (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
-           :main    (setf (aref workers index) (make-worker kernel))
+           :main    (let1 new-worker (make-worker kernel index (tasks worker))
+                      (setf (svref workers index) new-worker)
+                      (handshake/to-worker new-worker))
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct -- call `end-kernel'."))))))
 
-(defun worker-loop (kernel worker)
+(defun/type worker-loop (kernel worker) (kernel worker) t
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
   ;; 
   ;; All but ABCL execute unwind-protect for bordeaux-threads:destroy-thread.
   ;; 
-  ;; This function is inside `call-with-kernel-handler' (or
+  ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
-  (let1 tasks (tasks kernel)
-    (enhanced-unwind-protect
-       :main  (loop (let1 task (or (pop-biased-queue tasks) (return))
-                      (with-worker-slots (running-category) worker
-                        (bind-tuple (client-fn kill-notify-fn category) task
-                          (enhanced-unwind-protect
-                             :prepare (setf running-category category)
-                             :main    (funcall client-fn)
-                             :cleanup (setf running-category nil)
-                             :abort   (funcall kill-notify-fn))))))
+  (declare #.*normal-optimize*)
+  (let1 scheduler (scheduler kernel)
+    (unwind-protect/ext
+       :main  (loop (exec-task/worker (or (next-task scheduler worker) (return))
+                                      worker))
        :abort (replace-worker kernel worker))))
 
-(defun call-with-worker-context (worker-context fn)
-  (funcall worker-context (lambda () (%call-with-kernel-handler fn))))
+(defun/type call-with-worker-context (fn worker-context kernel)
+    (function function kernel) t
+  (funcall worker-context
+           (lambda ()
+             (let1 *worker* (find (current-thread) (workers kernel)
+                                  :key #'thread)
+               (assert *worker*)
+               (%call-with-task-handler fn)))))
 
-(defun enter-worker-loop (kernel worker)
-  (with-kernel-slots (worker-context) kernel
-    (call-with-worker-context
-     worker-context
-     (lambda ()
-       (worker-loop kernel worker)))))
+(defun/type enter-worker-loop (kernel worker) (kernel worker) t
+  (with-kernel-slots (worker-info) kernel
+    (with-worker-info-slots (context) worker-info
+      (call-with-worker-context
+       (lambda () (worker-loop kernel worker))
+       context
+       kernel))))
 
-(defun make-worker (kernel)
-  (with-kernel-slots (worker-bindings worker-name) kernel
-    (let* ((worker (make-worker-instance :thread nil))
-           (blocker (make-queue))
-           (worker-thread (with-thread (:bindings worker-bindings
-                                        :name worker-name)
-                            (pop-queue blocker)
-                            (enter-worker-loop kernel worker))))
-      (with-worker-slots (thread) worker
-        (setf thread worker-thread))
-      (push-queue 'proceed blocker)
-      worker)))
+#+lparallel.with-stealing-scheduler
+(defun %make-worker (index tasks)
+  (make-worker-instance :thread nil :index index :tasks tasks))
+
+#-lparallel.with-stealing-scheduler
+(defun %make-worker (index tasks)
+  (declare (ignore tasks))
+  (make-worker-instance :thread nil :index index))
+
+(defun make-worker (kernel index tasks)
+  (with-kernel-slots (worker-info) kernel
+    (with-worker-info-slots (bindings name) worker-info
+      (let* ((worker (%make-worker index tasks))
+             (worker-thread (with-worker-slots (from-worker to-worker) worker
+                              (with-thread (:bindings bindings :name name)
+                                (unwind-protect/ext
+                                 :prepare (handshake/from-worker worker)
+                                 :main    (enter-worker-loop kernel worker)
+                                 :cleanup (push-queue 'exit from-worker))))))
+        (with-worker-slots (thread) worker
+          (setf thread worker-thread))
+        worker))))
+
+(defvar *optimizer* nil)
+
+(defgeneric make-optimizer-data (specializer)
+  (:method ((specializer (eql nil)))
+    (declare (ignore specializer))))
+
+(defvar *kernel-spin-count* 10  ; need data to determine a good number
+  "Default value of the `spin-count' argument to `make-kernel'.")
 
 (defun make-kernel (worker-count
                     &key
-                    (bindings (list (cons '*standard-output* *standard-output*)
-                                    (cons '*error-output* *error-output*)))
-                    (worker-context #'funcall)
-                    (name "lparallel-worker"))
+                    (bindings `((*standard-output* . ,*standard-output*)
+                                (*error-output*    . ,*error-output*)))
+                    (context #'funcall)
+                    (name "lparallel-worker")
+                    (spin-count *kernel-spin-count*))
   "Create a kernel with `worker-count' number of worker threads.
 
 `bindings' is an alist for establishing thread-local variables inside
@@ -116,54 +163,73 @@ worker threads (see bordeaux-threads for more information). By default
 workers will have *standard-output* and *error-output* bindings.
 
 Dynamic context for each worker may be established with the function
-`worker-context'. The argument passed to `worker-context' is a
-function which must be funcalled. It begins the worker loop and will
-not return until the worker exits. Default value of `worker-context'
-is #'funcall.
+`context'. The argument passed to `context' is a function which must
+be funcalled. It begins the worker loop and will not return until the
+worker exits. Default value of `context' is #'funcall.
+
+When a worker discovers that no tasks are available, `spin-count' is
+the number of stealing iterations done by the worker before sleeping.
 
 `name' is a string identifier for worker threads. It corresponds to
 the string returned by `bordeaux-threads:thread-name'."
-  (check-type worker-count (integer 1))
-  (let1 kernel (make-kernel-instance
-                :tasks (make-biased-queue 64)
-                :workers (make-array worker-count)
-                :workers-lock (make-lock)
-                :worker-bindings (nconc (copy-alist bindings)
-                                        (acons '*debugger-hook* *debugger-hook*
-                                               nil)
-                                        (copy-alist *kernel-thread-locals*))
-                :worker-context worker-context
-                :worker-name name)
-    (with-kernel-slots (workers worker-bindings) kernel
-      (setf worker-bindings (acons '*kernel* kernel worker-bindings))
-      (map-into workers (lambda () (make-worker kernel))))
+  (check-type worker-count (integer 1 #.most-positive-fixnum))
+  (let* ((bindings (nconc (copy-alist bindings)
+                          (list (cons '*debugger-hook* *debugger-hook*))
+                          (copy-alist *kernel-thread-locals*)))
+         (worker-info (make-worker-info-instance
+                       :bindings bindings
+                       :context context
+                       :name name))
+         (workers (make-array worker-count))
+         (kernel (make-kernel-instance
+                  :scheduler (make-scheduler workers spin-count)
+                  :workers workers
+                  :workers-lock (make-lock)
+                  :worker-info worker-info
+                  :optimizer-data (make-optimizer-data *optimizer*))))
+    (with-kernel-slots (workers worker-info) kernel
+      (with-worker-info-slots (bindings) worker-info
+        (push (cons '*kernel* kernel) bindings)
+        (let1 index 0
+          (map-into workers
+                    (lambda ()
+                      (make-worker kernel
+                                   (prog1 index (incf index))
+                                   (make-spin-queue))))
+          (dosequence (worker workers)
+            (handshake/to-worker worker)))))
     kernel))
 
 (defun check-kernel ()
-  "Ensure that *kernel* is non-nil."
+  "Ensures that *kernel* is non-nil; provides the MAKE-KERNEL restart."
   (unless *kernel*
     (restart-case (error 'no-kernel-error)
-      (make-kernel (arg)
+      (make-kernel (worker-count)
         :report "Make a kernel now (prompt for number of workers)."
         :interactive (lambda () (interact "Enter number of workers: "))
-        (setf *kernel* (apply #'make-kernel (mklist arg))))
+        (setf *kernel* (make-kernel worker-count)))
       (store-value (value)
         :report "Assign a value to lparallel:*kernel*."
         :interactive (lambda () (interact "Value for lparallel:*kernel: "))
-        (setf *kernel* value)))))
+        (setf *kernel* value))))
+  nil)
 
 (defun kernel-special-bindings ()
   "Return an alist of thread-local special variable bindings.
 A new thread which uses the current kernel should be given these
 bindings (see bordeaux-threads:*default-special-bindings*)."
   (check-kernel)
-  (with-kernel-slots (worker-bindings) *kernel*
-    (copy-alist worker-bindings)))
+  (with-kernel-slots (worker-info) *kernel*
+    (with-worker-info-slots (bindings) worker-info
+      (copy-alist bindings))))
+
+(defun/type/inline %kernel-worker-count (kernel) (kernel) fixnum
+  (length (workers kernel)))
 
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."
   (check-kernel)
-  (length (workers *kernel*)))
+  (%kernel-worker-count *kernel*))
 
 (defun make-channel (&optional initial-capacity)
   "Create a channel for submitting and receiving tasks. The current
@@ -174,46 +240,44 @@ As an optimization, an internal size may be given with
   (check-kernel)
   (make-channel-instance
    :kernel *kernel*
-   :queue (make-queue (or initial-capacity
-                          (length (workers *kernel*))))))
+   :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
 
-(defmacro make-client-fn (&body body)
-  (with-gensyms (client-handlers)
-    `(if *client-handlers*
-         (let1 ,client-handlers *client-handlers*
-           (lambda ()
-             (let1 *client-handlers* ,client-handlers
-               ,@body)))
-         (lambda ()
-           ,@body))))
+(defmacro make-task-fn (&body body)
+  (with-gensyms (client-handlers body-fn)
+    `(flet ((,body-fn () ,@body))
+       (declare (dynamic-extent (function ,body-fn)))
+       (if *client-handlers*
+           (let1 ,client-handlers *client-handlers*
+             (lambda ()
+               (let1 *client-handlers* ,client-handlers
+                 (,body-fn))))
+           (lambda () (,body-fn))))))
 
-(defmacro make-task (&key client-fn store-error)
-  (with-gensyms (task-category)
-    `(let ((,task-category *kernel-task-category*))
-       (make-tuple ,client-fn
-                   (lambda () (,store-error (wrap-error 'task-killed-error)))
-                   ,task-category))))
+(defun/type/inline make-task (fn) (function) task
+  (make-task-instance :category *task-category* :fn fn))
 
-(defun make-channeled-task (channel fn args)
+(defun/type make-channeled-task (channel fn args) (channel function list) t
   (let1 queue (channel-queue channel)
-    (macrolet ((store (code) `(push-queue ,code queue)))
-      (let1 client-fn (make-client-fn
-                        ;; handler already established inside
-                        ;; worker threads
-                        (store (with-task-context (apply fn args))))
-        (make-task :client-fn client-fn :store-error store)))))
+    (make-task
+      (make-task-fn
+        (unwind-protect/ext
+         ;; task handler already established inside worker threads
+         :main  (push-queue (with-task-context (apply fn args)) queue)
+         ;; the task handler handles everything; unwind means thread kill
+         :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
-(defun submit-raw-task (task kernel)
-  (ccase *kernel-task-priority*
-    (:default (push-biased-queue     task (tasks kernel)))
-    (:low     (push-biased-queue/low task (tasks kernel)))))
+(defun/type submit-raw-task (task kernel) (task kernel) t
+  (schedule-task (scheduler kernel) task *task-priority*))
 
-(defun submit-task (channel function &rest args)
+(defun/type submit-task (channel function &rest args)
+    (channel (or symbol function) &rest t) t
   "Submit a task through `channel' to the kernel stored in `channel'."
-  (submit-raw-task (make-channeled-task channel function args)
+  (submit-raw-task (make-channeled-task channel
+                                        (ensure-function function)
+                                        args)
                    (channel-kernel channel)))
 
-(defun receive-result (channel)
+(defun/type receive-result (channel) (channel) t
   "Remove a result from `channel'. If nothing is available the call
 will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))
@@ -237,7 +301,7 @@ exceptional circumstances.
 
 A task category is any object suitable for `eq' comparison. When a
 task is submitted, it is assigned the category of
-`*kernel-task-category*' (which has a default value of `:default').
+`*task-category*' (which has a default value of `:default').
 
 `kill-tasks' rudely interrupts running tasks whose category is `eq' to
 `task-category'. The corresponding worker threads are killed and
@@ -247,8 +311,8 @@ Pending tasks are not affected.
 
 If you don't know what to pass for `task-category' then you should
 probably pass `:default', though this may kill more tasks than you
-wish. Binding `*kernel-task-category*' around `submit-task' enables
-targeted task killing.
+wish. Binding `*task-category*' around `submit-task' enables targeted
+task killing.
 
 If `dry-run' is nil, the function returns the number of tasks killed.
 
@@ -258,8 +322,10 @@ return value is the number of tasks that would have been killed if
 
 `kill-tasks' is not available in ABCL."
   (when *kernel*
-    (with-kernel-slots (workers tasks) *kernel*
-      (with-locked-biased-queue tasks
+    (when (null task-category)
+      (error "task category cannot be NIL in KILL-TASKS"))
+    (with-kernel-slots (workers workers-lock) *kernel*
+      (with-lock-held (workers-lock)
         (let1 victims (map 'vector 
                            #'thread 
                            (remove-if-not (lambda (worker)
@@ -270,79 +336,51 @@ return value is the number of tasks that would have been killed if
             (map nil #'destroy-thread victims))
           (length victims))))))
 
-;; TODO: remove sometime
-#-abcl
-(alias-function emergency-kill-tasks kill-tasks)
-
-(defun kernel-idle-p/no-lock (kernel)
-  (with-kernel-slots (tasks workers) kernel
-    (and (biased-queue-empty-p/no-lock tasks)
-         (notany #'running-category workers))))
-
-(defun kernel-idle-p (kernel)
-  (with-kernel-slots (tasks) kernel
-    (with-locked-biased-queue tasks
-      (kernel-idle-p/no-lock kernel))))
-
-(defun wait-for-tasks (channel kernel)
-  (loop
-     (when (kernel-idle-p kernel)
-       (return))
-     (let1 *kernel-task-priority* :low
-       (submit-task channel (lambda ())))
-     (receive-result channel)))
-
-(defmacro/once with-idle-kernel (&once channel &once kernel &body body)
-  (with-gensyms (retry)
-    `(tagbody ,retry
-        (wait-for-tasks ,channel ,kernel)
-        (with-locked-biased-queue (tasks ,kernel)
-          (unless (kernel-idle-p/no-lock ,kernel)
-            (go ,retry))
-          ,@body))))
-
 (defun shutdown (channel kernel)
-  (with-kernel-slots (tasks workers) kernel
-    (with-idle-kernel channel kernel
-      (repeat (length workers)
-        (push-biased-queue/no-lock nil tasks)))))
+  (let1 *task-priority* :low
+    (submit-task channel (lambda ())))
+  (receive-result channel)
+  (with-kernel-slots (scheduler workers) kernel
+    (repeat (length workers)
+      (schedule-task scheduler nil :low))
+    (dosequence (worker workers)
+      (assert (eq 'exit (pop-queue (from-worker worker)))))))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
 
-But hang on -- are you certain you wish to do this? `end-kernel' is an
-expensive operation involving heavy locking to detect a finished
-state. Creating and destroying threads is also expensive. A kernel is
-meant to be your trusted friend for the lifetime of the Lisp process.
-Having more than one kernel is fine; simply use `let' to bind a kernel
-instance to `*kernel*' when you need it. Use `kill-tasks' to terminate
-deadlocked or infinite looping tasks.
+`end-kernel' should not be used as a substitute for properly waiting
+on tasks with `receive-result' or otherwise.
 
 If `wait' is nil (the default) then `end-kernel' returns immediately.
-Current tasks are waited upon by a separate shutdown manager thread. 
+Workers are waited upon by a separate shutdown manager thread.
 
-If `wait' is non-nil then `end-kernel' blocks until all tasks are
-complete. No shutdown manager thread is created. If you are merely
-waiting on tasks then you almost certainly want to use
-`receive-result' instead. However there are rare cases where waiting
-on a temporary kernel is warranted, for example when benchmarking with
-a variety of kernels.
+If `wait' is non-nil then `end-kernel' blocks until all workers are
+finished. No shutdown manager thread is created.
 
 A list of the implementation-defined worker thread objects is
 returned. If `wait' is nil then the shutdown manager thread is also
-returned as the first element in the list."
+returned as the first element in the list.
+
+Note that creating and destroying kernels is relatively expensive. A
+kernel typically exists for lifetime of the Lisp process. Having more
+than one kernel is fine -- simply use `let' to bind a kernel instance
+to `*kernel*' when you need it. Use `kill-tasks' to terminate
+deadlocked or infinite looping tasks."
   (when *kernel*
     (let ((kernel *kernel*)
           (channel (make-channel)))
       (setf *kernel* nil)
-      (labels ((call-shutdown ()
-                 (shutdown channel kernel))
-               (spawn-shutdown ()
-                 (make-thread #'call-shutdown
-                              :name "lparallel kernel shutdown manager")))
-        (let1 threads (map 'list #'thread (workers kernel))
+      (with-kernel-slots (workers) kernel
+        (let1 threads (map 'list #'thread workers)
           (cond (wait
-                 (call-shutdown)
+                 (shutdown channel kernel)
                  threads)
                 (t
-                 (cons (spawn-shutdown) threads))))))))
+                 (cons (with-thread (:name "lparallel kernel shutdown manager")
+                         (shutdown channel kernel))
+                       threads))))))))
+
+;;; deprecated
+#-abcl
+(alias-function emergency-kill-tasks kill-tasks)

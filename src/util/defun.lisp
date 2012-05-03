@@ -30,57 +30,76 @@
 
 (in-package #:lparallel.util)
 
+(defun has-lambda-keywords-p (list)
+  (some (lambda (p) (find p lambda-list-keywords)) list))
+
 #-lparallel.with-debug
 (progn
   (defmacro defun/inline (name params &body body)
-    "Shortcut for (declare (inline foo)) (defun foo ...)."
+    "Shortcut for 
+       (declaim (inline foo)) 
+       (defun foo ...)."
     `(progn
        (declaim (inline ,name))
        (defun ,name ,params ,@body)))
 
-  (defmacro defun/ftype (name params ftype-declaration &body body)
-    "Shortcut for (declare (ftype ftype-declaration) foo) (defun foo ...)."
-    (assert (not (some (lambda (x) (find x lambda-list-keywords)) params)))
-    (with-parsed-body (preamble body)
+  (defmacro defun/type (name params arg-types return-type &body body)
+    "Shortcut for 
+       (declaim (ftype (function arg-types return-type) foo) 
+       (defun foo ...)."
+    (with-parsed-body (docstring declares body)
       `(progn
-         (declaim (ftype ,ftype-declaration ,name))
+         (declaim (ftype (function ,arg-types ,return-type) ,name))
          (defun ,name ,params
-           (declare ,@(loop
-                         :for type  :in (second ftype-declaration)
-                         :for param :in params
-                         :unless (eq type t)
-                         :collect `(type ,type ,param)))
-           ,@preamble
-           ,@body)))))
+           ,@(unsplice docstring)
+           ,@declares
+           ;; for a simple arg list, also declare types
+           ,@(when (not (has-lambda-keywords-p params))
+               (loop
+                  :for type  :in arg-types
+                  :for param :in params
+                  :collect `(declare (type ,type ,param))))
+           (the ,return-type (progn ,@body))))))
+
+  (defmacro defun/type/inline (name params arg-types return-type &body body)
+    `(progn
+       (declaim (inline ,name))
+       (defun/type ,name ,params ,arg-types ,return-type ,@body))))
 
 ;;; Since return types are not always checked, check manually.
 #+lparallel.with-debug
 (progn
-  (defmacro defun/inline (name params &body body)
-    `(defun ,name ,params ,@body))
-
-  (defmacro defun/ftype (name params ftype-declaration &body body)
-    (assert (not (some (lambda (x) (find x lambda-list-keywords)) params)))
-    (destructuring-bind (specifier (&rest arg-types) return) ftype-declaration
-      (assert (eq 'function specifier))
-      (let* ((return-types (if (and (consp return) (eq 'values (car return)))
-                               (cdr return)
-                               (list return)))
-             (return-vars  (mapcar (lambda (x)
-                                     (if (symbolp x)
-                                         (gensym (symbol-name x))
-                                         (gensym)))
-                                   return-types)))
-        (with-parsed-body (preamble body)
-          `(defun ,name ,params
-             ,@preamble
-             ,@(loop
+  (defmacro defun/type (name params arg-types return-type &body body)
+    (with-parsed-body (docstring declares body)
+      `(progn
+         (declaim (ftype (function ,arg-types ,return-type) ,name))
+         (defun ,name ,params
+           ,@(unsplice docstring)
+           ,@declares
+           ;; for a simple arg list, check types
+           ,@(when (not (has-lambda-keywords-p params))
+               (loop
                   :for type  :in arg-types
                   :for param :in params
-                  :collect `(check-type ,param ,type))
-             (multiple-value-bind ,return-vars (progn ,@body)
-               ,@(loop
-                    :for type :in return-types
-                    :for var  :in return-vars
-                    :collect `(check-type ,var ,type))
-               (values ,@return-vars))))))))
+                  :collect `(check-type ,param ,type)))
+           ;; for a simple values list, check types
+           ,(if (has-lambda-keywords-p (mklist return-type))
+                `(progn ,@body)
+                (let* ((return-types (if (and (consp return-type)
+                                              (eq 'values (car return-type)))
+                                         (cdr return-type)
+                                         (list return-type)))
+                       (return-vars (mapcar (lambda (x)
+                                              (if (symbolp x)
+                                                  (gensym (symbol-name x))
+                                                  (gensym)))
+                                            return-types)))
+                  `(multiple-value-bind ,return-vars (progn ,@body)
+                     ,@(loop
+                          :for type :in return-types
+                          :for var  :in return-vars
+                          :collect `(check-type ,var ,type))
+                     (values ,@return-vars))))))))
+
+  (setf (macro-function 'defun/inline) (macro-function 'defun))
+  (setf (macro-function 'defun/type/inline) (macro-function 'defun/type)))

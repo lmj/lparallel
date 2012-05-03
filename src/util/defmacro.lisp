@@ -44,13 +44,14 @@ by `&once' are passed to a `once-only' call which surrounds `body'."
                               (find-once-params (first x)))
                              ((once-keyword-p (first x))
                               (unless (and (cdr x) (atom (cadr x)))
-                                (error "`&once' without parameter in ~a" name))
+                                (error "&ONCE without parameter in ~a" name))
                               (list (second x)))
                              (t
                               nil)))
                      params)))
-    (with-parsed-body (preamble body)
+    (with-parsed-body (docstring declares body)
       `(defmacro ,name ,(remove-once-keywords params)
-         ,@preamble
+         ,@(unsplice docstring)
+         ,@declares
          (once-only ,(find-once-params params)
            ,@body)))))

@@ -30,18 +30,17 @@
 
 (in-package #:lparallel.kernel)
 
-(defvar *debugger-lock* (make-recursive-lock)
-  "Global. For convenience -- allows only one debugger prompt at a
-time from errors signaled inside `call-with-kernel-handler'.")
-
 (defslots wrapped-error ()
   ((object :type condition))
   (:documentation
    "This is a container for transferring an error that occurs inside
-   `call-with-kernel-handler' to the calling thread."))
+   `call-with-task-handler' to the calling thread."))
 
-(defun wrap-error (error-name)
-  (make-wrapped-error-instance :object (make-condition error-name)))
+(defun wrap-error (err)
+  (make-wrapped-error-instance
+   :object (etypecase err
+             (symbol (make-condition err))
+             (error  err))))
 
 (defgeneric unwrap-result (result)
   (:documentation
@@ -57,13 +56,13 @@ time from errors signaled inside `call-with-kernel-handler'.")
   (with-wrapped-error-slots (object) result
     (error object)))
 
-(defmacro kernel-handler-bind (clauses &body body)
+(defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but reaches into kernel worker threads."
   (let1 forms (loop
                  :for clause :in clauses
                  :for (name fn more) := clause
                  :do (unless (and (symbolp name) (not more))
-                       (error "Wrong format in `kernel-handler-bind' clause: ~a"
+                       (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
                               clause))
                  :collect `(cons ',name ,fn))
     `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)
@@ -81,22 +80,19 @@ control (or not)."
                (funcall fn con))))))
 
 (defun make-debugger-hook ()
-  "Allow one debugger prompt at a time from worker threads."
+  "Record `*debugger-error*' for the `transfer-error' restart."
   (if *debugger-hook*
       (let1 previous-hook *debugger-hook*
         (lambda (condition self)
           (let1 *debugger-error* condition
-            (with-recursive-lock-held (*debugger-lock*)
-              (funcall previous-hook condition self)))))
+            (funcall previous-hook condition self))))
       (lambda (condition self)
         (declare (ignore self))
         (let1 *debugger-error* condition
-          (with-recursive-lock-held (*debugger-lock*)
-            (invoke-debugger condition))))))
+          (invoke-debugger condition)))))
 
-(defmacro with-task-context (&body body)
-  `(catch 'current-task
-     ,@body))
+(defun transfer-error-report (stream)
+  (format stream "Transfer this error to dependent threads, if any."))
 
 (defun transfer-error-restart (&optional (err *debugger-error*))
   (throw 'current-task
@@ -105,22 +101,32 @@ control (or not)."
                (condition err)
                (symbol (make-condition err))))))
 
-(defun transfer-error-report (stream)
-  (format stream "Transfer this error to dependent threads, if any."))
+#-lparallel.without-task-handling
+(progn
+  (defmacro with-task-context (&body body)
+    `(catch 'current-task
+       ,@body))
 
-(defun %call-with-kernel-handler (fn)
-  (let ((*handler-active-p* t)
-        (*debugger-hook* (make-debugger-hook)))
-    (handler-bind ((condition #'condition-handler))
-      (restart-bind ((transfer-error #'transfer-error-restart
-                       :report-function #'transfer-error-report))
-        (funcall fn)))))
+  (defun %call-with-task-handler (fn)
+    (let ((*handler-active-p* t)
+          (*debugger-hook* (make-debugger-hook)))
+      (handler-bind ((condition #'condition-handler))
+        (restart-bind ((transfer-error #'transfer-error-restart
+                         :report-function #'transfer-error-report))
+          (funcall fn)))))
 
-(defun call-with-kernel-handler (fn)
-  (with-task-context
-    (if *handler-active-p*
-        (funcall fn)
-        (%call-with-kernel-handler fn))))
+  (defun/type call-with-task-handler (fn) (function) (values &rest t)
+    (declare #.*normal-optimize*)
+    (with-task-context
+      (if *handler-active-p*
+          (funcall fn)
+          (%call-with-task-handler fn)))))
+
+#+lparallel.without-task-handling
+(progn
+  (defmacro with-task-context (&body body) `(progn ,@body))
+  (alias-function %call-with-task-handler funcall)
+  (alias-function call-with-task-handler  funcall))
 
 (define-condition task-killed-error (error) ())
 
@@ -140,3 +146,6 @@ message from appearing in the future (N is the number of workers):
   (setf lparallel:*kernel* (lparallel:make-kernel N))
 ")))
   (:documentation "Error signaled when `*kernel*' is nil."))
+
+;;; deprecated
+(setf (macro-function 'kernel-handler-bind) (macro-function 'task-handler-bind))

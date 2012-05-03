@@ -28,31 +28,32 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+;;; default to stealing scheduler on sbcl
+#.(when (and (find :sbcl *features*)
+             (not (find :lparallel.without-stealing-scheduler *features*)))
+    (pushnew :lparallel.with-stealing-scheduler *features*)
+    (values))
+
 (defsystem :lparallel
-  :version "1.2.3"
+  :version "1.3.0"
   :description "Parallelism for Common Lisp"
   :long-description
 "
-lparallel provides low-level and high-level tools for writing
-efficient parallel programs in Common Lisp.
+lparallel is a library for writing efficient parallel programs in
+Common Lisp, featuring
 
-The low-level API of lparallel is meant to describe parallelism in a
-generic manner. The current implementation of the API uses a group of
-worker threads, though in principle other implementations are
-possible (for instance an interface to a distributed system).
+  * a simple model of task submission with receive queue
+  * fine-grained parallelism
+  * asynchronous condition handling across thread boundaries
+  * parallel versions of map, reduce, sort, remove, and many others
+  * promises, futures, and delayed evaluation constructs
+  * computation trees for parallelizing interconnected tasks
+  * high and low priority tasks
+  * task killing by category
+  * integrated timeouts
+  * vector-based FIFO queues
 
-lparallel also provides higher-level facilities including:
-
-* asynchronous condition handling across thread boundaries
-* parallel versions of map, reduce, sort, remove, and many others
-* promises, futures, and delayed evaluation constructs
-* computation trees for parallelizing interconnected tasks
-* high and low priority tasks
-* task killing by category
-* integrated timeouts
-* vector-based FIFO queues
-
-See http://lparallel.com for documentation and examples.
+See http://lparallel.org for documentation and examples.
 "
   :licence "BSD"
   :author "James M. Lawrence <llmjjmll@gmail.com>"
@@ -65,20 +66,26 @@ See http://lparallel.com for documentation and examples.
                               :serial t
                               :components ((:file "config")
                                            (:file "macro-writing")
-                                           (:file "misc")
+                                           (:file "macros")
                                            (:file "defmacro")
                                            (:file "defun")
-                                           (:file "defslots")))
+                                           (:file "defslots")
+                                           (:file "defpair")
+                                           (:file "functions")))
                              (:file "thread-util")
                              (:file "raw-queue")
                              (:file "queue")
                              (:file "counter")
                              (:file "biased-queue")
+                             (:file "spin-queue")
                              (:module "kernel"
                               :serial t
                               :components ((:file "util")
                                            (:file "thread-locals")
                                            (:file "handling")
+                                           (:file "classes")
+       #-lparallel.with-stealing-scheduler (:file "central-scheduler")
+       #+lparallel.with-stealing-scheduler (:file "stealing-scheduler")
                                            (:file "core")
                                            (:file "timeout")))
                              (:file "kernel-util")
@@ -95,7 +102,10 @@ See http://lparallel.com for documentation and examples.
                                            (:file "pqualifier")
                                            (:file "preduce")
                                            (:file "premove")
-                                           (:file "psort")))))))
+                                           (:file "pfind")
+                                           (:file "pcount")
+                                           (:file "psort")))
+                             (:file "defpun")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))

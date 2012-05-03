@@ -55,23 +55,34 @@ error will be signaled."))
      :for x :in plist :by #'cddr
      :collect x))
 
-(defun repeated-properties (plist target-key)
+(defun plist-values-for-key (plist target-key)
   (loop
      :for (key value) :on plist :by #'cddr
      :when (eq key target-key)
      :collect value))
 
-(defun parse-defslots (name supers slots options)
-  (assert (<= (length supers) 1))
-  (assert (and (<= (length options) 1)
-               (or (null options)
-                   (eq (caar options) :documentation))))
+(defun parse-defslots (supers slots options)
+  (unless (<= (length supers) 1)
+    (error "More than one superclass specified in DEFSLOTS: ~s" supers))
+  (unless (<= (length options) 1)
+    (error "Too many options in DEFSLOTS: ~{~s ~}" options))
+  (unless (or (null options)
+              (eq (caar options) :documentation))
+    (error "Option ~s in DEFSLOTS is not :DOCUMENTATION" (caar options)))
   (loop
+     :with allowed := '(:initform :type :reader)
      :for (nil . plist) :in slots
      :for keys := (plist-keys plist)
-     :do (assert (null (set-difference keys '(:initform :type :reader)))))
+     :do (let1 diff (set-difference keys allowed)
+           (unless (null diff)
+             (error "Slot option ~s in DEFSLOTS is not one of ~s"
+                    (first diff) allowed)))))
+
+(defun defslots-names (name)
   (values (intern-conc '#:make- name '#:-instance)
-          (intern-conc '#:with- name '#:-slots)))
+          (intern-conc '#:with- name '#:-slots)
+          (make-symbol-conc '#:%%%%. name '#:.)
+          (make-symbol (package-name *package*))))
 
 #-lparallel.with-debug
 (progn
@@ -92,18 +103,17 @@ error will be signaled."))
             ,@,body))))
 
   (defmacro define-struct (name supers slots options conc-name constructor)
-    `(locally (declare #.*full-optimize*)
-       (defstruct (,name (:conc-name ,conc-name)
-                         (:constructor ,constructor)
-                         ,@(unsplice (when supers `(:include ,(first supers)))))
-         ,@(unsplice (getf (first options) :documentation))
-         ,@(loop
-              :for (slot-name . plist) :in slots
-              :for initform := (getf plist :initform
-                                     `(error "slot ~a in ~a not initialized"
-                                             ',slot-name ',name))
-              :for type := (getf plist :type)
-              :collect `(,slot-name ,initform ,@(when type `(:type ,type)))))))
+    `(defstruct (,name (:conc-name ,conc-name)
+                       (:constructor ,constructor)
+                       ,@(unsplice (when supers `(:include ,(first supers)))))
+       ,@(unsplice (getf (first options) :documentation))
+       ,@(loop
+            :for (slot-name . plist) :in slots
+            :for initform := (getf plist :initform
+                                   `(error "slot ~a in ~a not initialized"
+                                           ',slot-name ',name))
+            :for type := (getf plist :type)
+            :collect `(,slot-name ,initform ,@(when type `(:type ,type))))))
 
   (defmacro define-reader (public private type struct)
     `(progn 
@@ -117,28 +127,26 @@ error will be signaled."))
             :for private := (intern-conc conc-name slot-name)
             :for type := (getf plist :type)
             :nconc (loop
-                      :for public :in (repeated-properties plist :reader)
+                      :for public :in (plist-values-for-key plist :reader)
                       :collect `(define-reader
                                     ,public ,private ,type ,struct)))))
 
   (defmacro defslots (name supers slots &rest options)
     #.*defslots-doc*
-    (multiple-value-bind (constructor with-slots-macro-name)
-        (parse-defslots name supers slots options)
-      (let ((conc-name (make-symbol-conc '#:%%%%. name '#:.))
-            ;; slime balks at #<Package...> -- make-symbol for convenience
-            (package   (make-symbol (package-name *package*))))
-        `(progn
-           (define-struct ,name ,supers ,slots ,options ,conc-name ,constructor)
-           (define-with-slots-macro ,with-slots-macro-name ,package ,conc-name)
-           (define-readers ,name ,conc-name ,slots)
-           ',name)))))
+    (parse-defslots supers slots options)
+    (multiple-value-bind (constructor slots-macro-name conc-name package)
+        (defslots-names name)
+      `(progn
+         (define-struct ,name ,supers ,slots ,options ,conc-name ,constructor)
+         (define-with-slots-macro ,slots-macro-name ,package ,conc-name)
+         (define-readers ,name ,conc-name ,slots)
+         ',name))))
 
 #+lparallel.with-debug
 (defmacro defslots (name supers slots &rest options)
   #.*defslots-doc*
-  (multiple-value-bind (constructor slots-macro-name)
-      (parse-defslots name supers slots options)
+  (parse-defslots supers slots options)
+  (multiple-value-bind (constructor slots-macro-name) (defslots-names name)
     (with-gensyms (slot-names instance body args)
       `(progn
          (defclass ,name ,supers
@@ -151,4 +159,5 @@ error will be signaled."))
          (defmacro ,slots-macro-name (,slot-names ,instance &body ,body)
            `(with-slots ,,slot-names ,,instance ,@,body))
          (defun ,constructor (&rest ,args)
-           (apply #'make-instance ',name ,args))))))
+           (apply #'make-instance ',name ,args))
+         ',name))))

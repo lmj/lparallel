@@ -30,19 +30,22 @@
 
 (in-package #:lparallel.thread-util)
 
-(defmacro/once with-thread ((&key &once bindings &once name) &body body)
+(defmacro with-thread ((&key bindings name) &body body)
   `(let1 *default-special-bindings* ,bindings
      (make-thread (lambda () ,@body) :name ,name)))
 
-(defmacro/once with-lock-predicate/no-wait (&once lock predicate &body body)
+(defmacro with-lock-predicate/no-wait (lock predicate &body body)
   ;; predicate intentionally evaluated twice
-  `(when (and ,predicate (acquire-lock ,lock nil))
-     (unwind-protect
-          (when ,predicate
-            ,@body)
-       (release-lock ,lock))))
+  (with-gensyms (lock-var)
+    `(when ,predicate
+       (let1 ,lock-var ,lock
+         (when (acquire-lock ,lock-var nil)
+           (unwind-protect
+                (when ,predicate
+                  ,@body)
+             (release-lock ,lock-var)))))))
 
-(defmacro/once with-lock-predicate/wait (&once lock predicate &body body)
+(defmacro with-lock-predicate/wait (lock predicate &body body)
   ;; predicate intentionally evaluated twice
   `(when ,predicate
      (with-lock-held (,lock)
@@ -58,26 +61,34 @@
           :collect `(unless (assoc ',name ,result)
                       (push (cons ',name ',value) ,result)))))
 
-(defmacro define-locking-fn/base (name args ftype
+(defmacro define-locking-fn/base (name args arg-types return-type
                                   lock-reader
                                   defun/no-lock
-                                  ftype/no-lock
+                                  arg-types/no-lock return-type/no-lock
                                   &body body)
   (let1 name/no-lock (intern-conc name '#:/no-lock)
     `(progn
-       (,defun/no-lock ,name/no-lock ,args ,@(unsplice ftype/no-lock) ,@body)
-       (defun/ftype ,name ,args ,ftype
+       (,defun/no-lock ,name/no-lock ,args
+         ,@(unsplice arg-types/no-lock)
+         ,@(unsplice return-type/no-lock)
+         ,@body)
+       (defun/type ,name ,args ,arg-types ,return-type
          (declare #.*normal-optimize*)
          (with-lock-held ((,lock-reader ,(car (last args))))
            (,name/no-lock ,@args))))))
 
-(defmacro define-locking-fn (name args ftype lock &body body)
-  `(define-locking-fn/base ,name ,args ,ftype ,lock defun/ftype ,ftype
+(defmacro define-locking-fn (name args arg-types return-type lock &body body)
+  `(define-locking-fn/base
+       ,name ,args ,arg-types ,return-type ,lock
+       defun/type ,arg-types ,return-type
      (declare #.*normal-optimize*)
      ,@body))
 
-(defmacro define-simple-locking-fn (name args ftype lock &body body)
-  `(define-locking-fn/base ,name ,args ,ftype ,lock defun/inline nil
+(defmacro define-simple-locking-fn (name args arg-types return-type lock
+                                    &body body)
+  `(define-locking-fn/base
+       ,name ,args ,arg-types ,return-type ,lock
+       defun/inline nil nil
      (declare #.*normal-optimize*)
      ,@body))
 

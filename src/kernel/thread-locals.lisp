@@ -37,18 +37,26 @@
   
   (*handler-active-p* nil
    "Thread-local. Non-nil when handlers have been established via
-    `call-with-kernel-handler'.")
+    `call-with-task-handler'.")
 
   (*client-handlers* nil
    "Thread-local. Records handlers established with
-    `kernel-handler-bind' in the calling thread.")
+    `task-handler-bind' in the calling thread.")
 
-  (*kernel-task-category* :default
+  (*task-category* :default
    "Thread-local. See `kill-tasks'. Default value is `:default'.")
 
-  (*kernel-task-priority* :default
+  (*task-priority* :default
    "Thread-local. When bound to `:low', the kernel schedules submitted
-    tasks at low priority. Default value is `:default'."))
+    tasks at low priority. Default value is `:default'.")
 
-;;; This is managed seperately due to self-reference.
+  (*worker* nil
+   "Thread local. The worker instance if inside a worker thread,
+   otherwise nil."))
+
+;;; This is managed separately due to self-reference.
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")
+
+;;; deprecated
+(define-symbol-macro *kernel-task-category* *task-category*)
+(define-symbol-macro *kernel-task-priority* *task-priority*)

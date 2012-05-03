@@ -32,7 +32,7 @@
 
 (defun get-parts-hint (parts-hint)
   (cond (parts-hint
-         (check-type parts-hint (integer 1))
+         (check-type parts-hint (integer 1 #.most-positive-fixnum))
          parts-hint)
         (t
          (kernel-worker-count))))

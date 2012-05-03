@@ -42,6 +42,7 @@
                              (:file "kernel-test")
                              (:file "cognate-test")
                              (:file "promise-test")
+                             (:file "defpun-test")
                              (:file "ptree-test")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel-test))))

@@ -102,7 +102,7 @@
       (let1 result (make-list 500)
         (is (equal expected (apply #'pmap-into result #'f :parts 500 lists)))
         (is (equal expected result)))
-      (dolist (parts '(nil 10000000000000000000000000000000000000000000))
+      (dolist (parts '(nil 1000))
         (setf *memo* (make-queue))
         (apply #'pmapc
                (lambda (i x y z)
@@ -152,13 +152,21 @@
                      (sort (extract-queue *memo*) '< :key #'caar))))))
 
 (lp-test preduce-partial-test
-  (is (equalp (preduce/partial #'+ '(3 4 5 6 7 8 9 10) :parts 2)
+  (signals simple-error
+    (preduce-partial #'+ #() :initial-value 0))
+  (signals simple-error
+    (preduce-partial #'+ '() :initial-value 0))
+  (signals simple-error
+    (preduce-partial #'+ '()))
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 1)
+              #(52)))
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2)
               #(18 34)))
-  (is (equalp (preduce/partial #'+ '(3 4 5 6 7 8 9 10) :parts 2 :from-end t)
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2 :from-end t)
               #(18 34)))
-  (is (equalp (preduce/partial #'+ #(3 4 5 6 7 8) :parts 3 :from-end t)
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3 :from-end t)
               #(7 11 15)))
-  (is (equalp (preduce/partial #'+ #(3 4 5 6 7 8) :parts 3)
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3)
               #(7 11 15))))
 
 (lp-test grind-preduce-test
@@ -311,35 +319,30 @@
                     (pmapc #'sq :parts parts a)
                     (pmapl #'cdr :parts parts a))))))
 
-(lp-test plet-test
-  (plet ((a 3)
-         (b 4))
-    (is (= 7 (+ a b))))
-  (signals client-error
-    (kernel-handler-bind ((error (lambda (e)
-                                   (invoke-restart 'transfer-error e))))
-      (plet ((a (error 'client-error)))
-        a)))
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
-    (handler-bind ((error (lambda (e)
-                            (declare (ignore e))
-                            (invoke-restart 'store-value 4))))
-      (plet ((a 3)
-             (b (error "foo")))
-        (is (= 7 (+ a b)))))))
+(defmacro define-plet-test (test-name fn-name defun)
+  `(progn
+     (,defun ,fn-name ()
+       (plet ((a 3)
+              (b 4))
+         (is (= 7 (+ a b))))
+       (signals client-error
+         (task-handler-bind ((error (lambda (e)
+                                      (invoke-restart 'transfer-error e))))
+           (plet ((a (error 'client-error)))
+             a)))
+       (task-handler-bind ((error (lambda (e)
+                                    (invoke-restart 'transfer-error e))))
+         (handler-bind ((error (lambda (e)
+                                 (declare (ignore e))
+                                 (invoke-restart 'store-value 4))))
+           (setf *memo* (lambda () (error "foo")))
+           (plet ((a 3)
+                  (b (funcall *memo*)))
+             (is (= 7 (+ a b)))))))
+     (lp-test ,test-name
+       (,fn-name))))
 
-(lp-test plet*-test
-  (plet* ((border 1)
-          (width  (+ 5 (* 2 border)))
-          (height (+ 7 (* 2 border)))
-          (area   (* width height)))
-    (is (= (* (+ 5 (* 2 1)) (+ 7 (* 2 1)))
-           area))
-    (is (= 1 border))
-    (is (= 7 width))
-    (is (= 9 height))
-    (is (= 63 area))))
+(define-plet-test plet-test plet-test-fn defun)
 
 (lp-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
@@ -352,14 +355,20 @@
   (is (member (por nil 3 4 5 6) '(3 4 5 6)))
 
   (when (> (kernel-worker-count) 2)
-    (is (= 4 (por  (progn (sleep 0.125) 3) 4)))
-    (is (= 3 (pand (progn (sleep 0.125) 3) 4)))
+    (sleep 0.4)
+    (is (= 4 (por  (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (= 3 (pand (progn (sleep 0.2) 3) 4)))
 
-    (is (= 4 (por  nil (progn (sleep 0.125) 3) 4)))
-    (is (= 4 (por  (progn (sleep 0.125) 3) nil 4)))
+    (sleep 0.4)
+    (is (= 4 (por  nil (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (= 4 (por  (progn (sleep 0.2) 3) nil 4)))
 
-    (is (null (pand nil (progn (sleep 0.125) 3) 4)))
-    (is (null (pand (progn (sleep 0.125) 3) nil 4)))))
+    (sleep 0.4)
+    (is (null (pand nil (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (null (pand (progn (sleep 0.2) 3) nil 4)))))
 
 (lp-test psort-test
   ;; psort requires the CL implementation to sort vectors in place.
@@ -473,7 +482,16 @@
             :do (is (equal (funcall std (curry #'< where) a)
                            (funcall par (curry #'< where) a)))
             :do (is (equalp (funcall std (curry #'< where) b)
-                            (funcall par (curry #'< where) b))))))
+                            (funcall par (curry #'< where) b)))
+            :do (when (>= size 77)
+                  (is (equal (funcall std (curry #'< where) a
+                                      :start 20)
+                             (funcall par (curry #'< where) a
+                                      :start 20)))
+                  (is (equal (funcall std (curry #'< where) a
+                                      :start 20 :end 77)
+                             (funcall par (curry #'< where) a
+                                      :start 20 :end 77)))))))
 
 (lp-test premove-test
   (loop
@@ -517,7 +535,7 @@
                                      (invoke-restart 'double-me 3))))
              (funcall fn))))
     (dolist (n '(1 2 3 4 5 6 10))
-      (let1 result (with-new-kernel (n :worker-context #'my-worker-context)
+      (let1 result (with-new-kernel (n :context #'my-worker-context)
                      (pmapcar (lambda (x)
                                 (declare (ignore x))
                                 (restart-case (warn 'foo-warning)
@@ -526,9 +544,9 @@
         (is (equal '(6 6) result))))))
 
 (lp-test cognate-handler-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'something-else 3))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'something-else 3))))
     (is (equal '(3 3)
                (pmapcar (lambda (x)
                           (declare (ignore x))
@@ -537,8 +555,8 @@
                         '(0 1))))))
 
 (lp-test pmap-handler-test
-  (kernel-handler-bind ((foo-error
-                         (lambda (e) (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((foo-error
+                       (lambda (e) (invoke-restart 'transfer-error e))))
     (signals foo-error
       (pmapcar (lambda (x)
                  (declare (ignore x))
@@ -546,7 +564,7 @@
                '(3 4 5 6)))))
 
 (lp-test pmap-restart-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((foo-error (lambda (e)
                     (declare (ignore e))
                     (invoke-restart 'thirty-three))))
@@ -646,3 +664,160 @@
              (pmaplist-into (list 1 2 3 4) (constantly 99) :size 2)))
   (is (equal '(99 99 99 99)
              (pmaplist-into (list 1 2 3 4) (constantly 99) :size 9999))))
+
+(lp-test pfuncall-test
+  (is (= 7 (pfuncall '+ 3 4)))
+  (let1 memo (make-queue)
+    (is (= 7 (pfuncall
+              #'+
+              (progn (sleep 0.2) (push-queue 3 memo) 3)
+              (progn (sleep 0.2) (push-queue 4 memo) 4))))
+    (sleep 0.3)
+    (is (= 2 (queue-count memo)))))
+
+(lp-test pcount-if-test
+  (is (zerop (pcount-if 'non-function '())))
+  (is (zerop (pcount-if 'non-function #())))
+  (signals error
+    (count-if 'non-function '() :start 2))
+  (signals error
+    (pcount-if 'non-function '() :start 2))
+  (loop
+     :for size :from 1 :below 100
+     :for where := (random 1.0)
+     :for source := (collect-n size (random 1.0))
+     :do (is (equal (count-if  (curry #'< where) source)
+                    (pcount-if (curry #'< where) source)))))
+
+(lp-test second-pcount-if-test
+  (loop
+     :for (std par) :in '((count-if-not pcount-if-not)
+                          (count-if     pcount-if))
+     :do (loop
+            :for size :from 1 :below 100
+            :for where := (random 1.0)
+            :for a := (make-random-list size)
+            :for b := (make-random-vector size)
+            :do (is (equal  (funcall std (curry #'< where) a)
+                            (funcall par (curry #'< where) a)))
+            :do (is (equalp (funcall std (curry #'< where) b)
+                            (funcall par (curry #'< where) b)))
+            :do (when (>= size 77)
+                  (is (equal (funcall std (curry #'< where) a
+                                      :start 20)
+                             (funcall par (curry #'< where) a
+                                      :start 20)))
+                  (is (equal (funcall std (curry #'< where) a
+                                      :start 20 :end 77)
+                             (funcall par (curry #'< where) a
+                                      :start 20 :end 77)))))))
+
+(lp-test pcount-test
+  (loop
+     :for size :from 1 :below 100
+     :for where := (random 1.0)
+     :for a := (make-random-list size)
+     :for b := (make-random-vector size)
+     :do (is (equal  (count  where a :test #'<)
+                     (pcount where a :test #'<)))
+     :do (is (equalp (count  where b :test #'<)
+                     (pcount where b :test #'<))))
+  (is (equal (count  3 (list 0 1 2 3 4 9 3 2 3 9 1))
+             (pcount 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
+  (is (equalp (count  3 (make-array 11
+                                    :adjustable t
+                                    :initial-contents
+                                    (list 0 1 2 3 4 9 3 2 3 9 1)))
+              (pcount 3 (make-array 11
+                                     :adjustable t
+                                     :initial-contents
+                                     (list 0 1 2 3 4 9 3 2 3 9 1)))))
+  (let1 x (cons nil nil)
+    (is (equal (count  x (list 3 4 x 4 9 x 2))
+               (pcount x (list 3 4 x 4 9 x 2)))))
+  (let1 x (cons nil nil)
+    (is (equalp (count  x (make-array
+                           7
+                           :adjustable t
+                           :initial-contents (list 3 4 x 4 9 x 2)))
+                (pcount x (make-array
+                           7
+                           :adjustable t
+                           :initial-contents (list 3 4 x 4 9 x 2)))))))
+
+
+(lp-test pfind-if-test
+  (is (null (pfind-if 'non-function '())))
+  (is (null (pfind-if 'non-function #())))
+  (signals error (pfind-if 'non-function '() :start 2))
+  (signals error (pfind-if 'non-function #() :start 2))
+  (is (= 3
+         (find-if  (lambda (x) (< x 5)) '(9 9 6 7 3 9 6))
+         (pfind-if (lambda (x) (< x 5)) '(9 9 6 7 3 9 6))
+         (find-if  (lambda (x) (< x 5)) #(9 9 6 7 3 9 6))
+         (pfind-if (lambda (x) (< x 5)) #(9 9 6 7 3 9 6))))
+  (loop
+     :for size :from 1 :below 100
+     :for source := (collect-n size (random 1.0))
+     :do (setf (elt source (random size)) 999)
+     :do (is (eql (find-if  (curry #'eql 999) source)
+                  (pfind-if (curry #'eql 999) source)))))
+
+(lp-test second-pfind-if-test
+  (loop
+     :for (std par) :in '((find-if pfind-if))
+     :do (loop
+            :for size :from 1 :below 100
+            :for a := (make-random-list size)
+            :for b := (make-random-vector size)
+            :for target := (let1 index (random size)
+                             (setf (elt a index) 99.0
+                                   (elt b index) 99.0))
+            :do (is (equal  (funcall std (curry #'eql target) a)
+                            (funcall par (curry #'eql target) a)))
+            :do (is (equalp (funcall std (curry #'eql target) b)
+                            (funcall par (curry #'eql target) b)))
+            :do (when (>= size 77)
+                  (is (equal (funcall std (curry #'eql target) a
+                                      :start 20)
+                             (funcall par (curry #'eql target) a
+                                      :start 20)))
+                  (is (equal (funcall std (curry #'eql target) a
+                                      :start 20 :end 77)
+                             (funcall par (curry #'eql target) a
+                                      :start 20 :end 77)))))))
+
+(lp-test pfind-test
+  (loop
+     :for size :from 1 :below 100
+     :for a := (make-random-list size)
+     :for b := (make-random-vector size)
+     :for target := (let1 index (random size)
+                      (setf (elt a index) 99.0
+                            (elt b index) 99.0))
+     :do (is (equal  (find  target a)
+                     (pfind target a)))
+     :do (is (equalp (find  target b)
+                     (pfind target b))))
+  (is (equal (find  3 (list 0 1 2 3 4 9 3 2 3 9 1))
+             (pfind 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
+  (is (equalp (find  3 (make-array 11
+                                   :adjustable t
+                                   :initial-contents
+                                   (list 0 1 2 3 4 9 3 2 3 9 1)))
+              (pfind 3 (make-array 11
+                                   :adjustable t
+                                   :initial-contents
+                                   (list 0 1 2 3 4 9 3 2 3 9 1)))))
+  (let1 x (cons nil nil)
+    (is (equal (find  x (list 3 4 x 4 9 x 2))
+               (pfind x (list 3 4 x 4 9 x 2)))))
+  (let1 x (cons nil nil)
+    (is (equalp (find  x (make-array
+                          7
+                          :adjustable t
+                          :initial-contents (list 3 4 x 4 9 x 2)))
+                (pfind x (make-array
+                          7
+                          :adjustable t
+                          :initial-contents (list 3 4 x 4 9 x 2)))))))

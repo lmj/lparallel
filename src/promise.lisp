@@ -28,8 +28,6 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.promise)
-
 ;;; 
 ;;; inheritance:
 ;;; 
@@ -38,6 +36,16 @@
 ;;;             promise   plan
 ;;;                       /  \
 ;;;    speculation = future  delay
+
+(in-package #:lparallel.promise)
+
+#.(import '(lparallel.kernel::unwrap-result
+            lparallel.kernel::make-task-fn
+            lparallel.kernel::make-task
+            lparallel.kernel::task
+            lparallel.kernel::call-with-task-handler
+            lparallel.kernel::submit-raw-task
+            lparallel.kernel::wrap-error))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -81,12 +89,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots promise-base ()
-  ((result :initform 'no-result)
-   (lock   :initform (make-lock))))
+  ((result :reader result :initform 'no-result)
+   (lock                  :initform (make-lock))))
+
+;;; for work-stealing loop
+(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
+  (declare #.*full-optimize*)
+  (not (eq (result promise) 'no-result)))
 
 (defmethod fulfilledp ((promise promise-base))
-  (with-promise-base-slots (result) promise
-    (not (eq result 'no-result))))
+  (declare #.*normal-optimize*)
+  (fulfilledp/promise promise))
 
 (defmacro with-lock-operation (operation promise &body body)
   (with-gensyms (lock result)
@@ -102,27 +115,28 @@
   `(with-lock-operation with-lock-predicate/wait ,promise
      ,@body))
 
-(defgeneric fulfill-hook (promise values))
-(defgeneric force-hook (promise))
+(defgeneric fulfill-hook (promise client-fn)
+  (:method (object client-fn)
+    (declare (ignore object client-fn))
+    nil))
 
-(defmacro/once fulfill (&once promise &body body)
+(defmacro fulfill (promise &body body)
   "Fulfill a promise.
 
-If the promise is not yet fulfilled (or if it is currently being
-fulfilled) then the implicit progn `body' will be executed and the
-promise will be fulfilled with the result. In this case `fulfill'
-returns true.
+If the promise is not yet fulfilled and if it is not currently being
+fulfilled, then the implicit progn `body' will be executed and the
+promise will store the result. In this case `fulfill' returns true.
 
-If the promise is already fulfilled then `body' will not be executed
-and `fulfill' returns false."
-  `(with-unfulfilled/no-wait ,promise
-     (fulfill-hook ,promise (multiple-value-list (progn ,@body)))
-     t))
+If the promise is already fulfilled, or if it actively being
+fulfilled, then `body' will not be executed and `fulfill' returns
+false."
+  `(fulfill-hook ,promise (lambda () ,@body)))
+
+(defgeneric force-hook (promise))
 
 (defmethod force ((promise promise-base))
   (declare #.*normal-optimize*)
-  (with-unfulfilled/wait promise
-    (force-hook promise))
+  (force-hook promise)
   (with-promise-base-slots (result) promise
     (restart-case (apply #'values (unwrap-result (first result)) (rest result))
       (store-value (&rest values)
@@ -137,26 +151,34 @@ and `fulfill' returns false."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots promise (promise-base)
-  ((cvar :initform nil)))
+  ((cvar       :initform nil)
+   (availablep :initform t :type boolean)))
 
 (defun promise ()
   "Create a promise. A promise is a receptacle for a result which is
 unknown at the time it is created."
   (make-promise-instance))
 
-(defmethod fulfill-hook ((promise promise) values)
-  (with-promise-slots (result cvar) promise
-    (setf result values)
-    (when cvar
-      (condition-notify-and-yield cvar))))
+(defmethod fulfill-hook ((promise promise) client-fn)
+  (with-promise-slots (result lock cvar availablep) promise
+    ;; spin until a promise claims it
+    (loop
+       :do (with-unfulfilled/no-wait promise
+             (setf availablep nil)
+             (setf result (multiple-value-list (funcall client-fn)))
+             (when cvar (condition-notify-and-yield cvar))
+             (return t))
+       :while availablep)))
 
 (defmethod force-hook ((promise promise))
-  (with-promise-slots (result cvar lock) promise
-    (loop
-       :do (condition-wait (or cvar (setf cvar (make-condition-variable)))
-                           lock)
-       :while (eq result 'no-result))
-    (condition-notify-and-yield cvar)))
+  (with-unfulfilled/wait promise
+    (with-promise-slots (result lock cvar forcedp) promise
+      (unless cvar
+        (setf cvar (make-condition-variable)))
+      (loop
+         :do (condition-wait cvar lock)
+         :while (eq result 'no-result))
+      (condition-notify-and-yield cvar))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -164,81 +186,23 @@ unknown at the time it is created."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots plan (promise-base)
-  ((fn :type (or null function))))
+;;; A plan does not need an availablep flag because any failure to
+;;; acquire the lock implies the plan is unavailable.
 
-(defun fulfill-plan (plan values)
+(defslots plan (promise-base)
+  ((fn :reader plan-fn :type (or null function))))
+
+(defun/type/inline fulfill-plan/values (plan values) (plan list) t
   (with-plan-slots (result fn) plan
     (setf result values
           fn nil)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; future
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun/type/inline fulfill-plan/call (plan) (plan) t
+  (fulfill-plan/values
+   plan (multiple-value-list (call-with-task-handler (plan-fn plan)))))
 
-(defslots future (plan)
-  ((canceledp :initform nil :type boolean)))
-
-(defun force-future (future)
-  (with-future-slots (fn) future
-    ;; Since computation can possibly can occur in the calling thread,
-    ;; ensure that handlers are in place.
-    (fulfill-plan future (multiple-value-list (call-with-kernel-handler fn)))))
-
-(defmethod fulfill-hook ((future future) values)
-  (with-future-slots (canceledp) future
-    (setf canceledp t)
-    (fulfill-plan future values)))
-
-(defmethod force-hook ((future future))
-  (with-future-slots (canceledp) future
-    ;; If we are here then we've stolen the task from the kernel.
-    (setf canceledp t)
-    (force-future future)))
-
-(defmacro with-unfulfilled-future/no-wait (future &body body)
-  (with-gensyms (lock canceledp result)
-    `(with-future-slots
-         ((,lock lock) (,canceledp canceledp) (,result result)) ,future
-       (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
-                                               (eq ,result 'no-result))
-         ,@body))))
-
-(defun make-future (fn)
-  (declare #.*normal-optimize*)
-  (check-kernel)
-  (let1 future (make-future-instance :fn fn)
-    (submit-raw-task (macrolet ((store-error (err)
-                                  `(with-unfulfilled-future/no-wait future
-                                     (fulfill-plan future (list ,err)))))
-                       (make-task
-                        :client-fn (lambda ()
-                                     (with-unfulfilled-future/no-wait future
-                                       (force-future future)))
-                        :store-error store-error))
-                     *kernel*)
-    future))
-
-(defmacro future (&body body)
-  "Create a future. A future is a promise which is fulfilled in
-parallel by the implicit progn `body'.
-
-If `force' is called on an unfulfilled future then the future is
-fulfilled by the caller of `force'."
-  `(make-future (make-client-fn ,@body)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; speculate
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro speculate (&body body)
-  "Create a speculation. A speculation is a low-priority future."
-  `(let1 *kernel-task-priority* :low
-     (future ,@body)))
+(defun/type fulfill-plan/error (plan err) (plan (or symbol error)) t
+  (fulfill-plan/values plan (list (wrap-error err))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -253,12 +217,83 @@ fulfilled by the caller of `force'."
 `force' is called upon it."
   `(make-delay-instance :fn (lambda () ,@body)))
 
-(defmethod fulfill-hook ((delay delay) values)
-  (fulfill-plan delay values))
+(defmethod fulfill-hook ((delay delay) client-fn)
+  (with-unfulfilled/no-wait delay
+    (fulfill-plan/values delay (multiple-value-list (funcall client-fn)))
+    t))
 
 (defmethod force-hook ((delay delay))
-  (with-delay-slots (fn) delay
-    (fulfill-plan delay (multiple-value-list (funcall fn)))))
+  ;; do not use task handler
+  (with-unfulfilled/wait delay
+    (fulfill-plan/values
+     delay (multiple-value-list (funcall (plan-fn delay))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; future
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defslots future (plan)
+  ((canceledp :initform nil :type boolean)))
+
+(defmethod fulfill-hook ((future future) client-fn)
+  ;; If we are here then we've stolen the task from the kernel.
+  (with-unfulfilled/no-wait future
+    (with-future-slots (canceledp) future
+      (setf canceledp t)
+      (fulfill-plan/values future (multiple-value-list (funcall client-fn))))
+    t))
+
+(defmethod force-hook ((future future))
+  ;; If we are here then we've stolen the task from the kernel.
+  (with-unfulfilled/wait future
+    (with-future-slots (canceledp) future
+      (setf canceledp t)
+      (fulfill-plan/call future))))
+
+(defmacro with-unfulfilled-future/no-wait (future &body body)
+  (with-gensyms (lock canceledp result)
+    `(with-future-slots
+         ((,lock lock) (,canceledp canceledp) (,result result)) ,future
+       (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
+                                               (eq ,result 'no-result))
+         ,@body))))
+
+(defun/type make-future-task (future) (future) task
+  (make-task
+    (lambda ()
+      (with-unfulfilled-future/no-wait future
+        (unwind-protect/ext
+         :main  (fulfill-plan/call future)
+         ;; the task handler handles everything; unwind means thread kill
+         :abort (fulfill-plan/error future 'task-killed-error))))))
+
+(defun make-future (fn)
+  (declare #.*normal-optimize*)
+  (check-kernel)
+  (let1 future (make-future-instance :fn fn)
+    (submit-raw-task (make-future-task future) *kernel*)
+    future))
+
+(defmacro future (&body body)
+  "Create a future. A future is a promise which is fulfilled in
+parallel by the implicit progn `body'.
+
+If `force' is called on an unfulfilled future then the future is
+fulfilled by the caller of `force'."
+  `(make-future (make-task-fn ,@body)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; speculate
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro speculate (&body body)
+  "Create a speculation. A speculation is a low-priority future."
+  `(let1 *task-priority* :low
+     (future ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -267,7 +302,7 @@ fulfilled by the caller of `force'."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots chain ()
-  ((object)))
+  ((object :reader chain-object)))
 
 (defun chain (object)
   "Create a chain. A chain links objects together by relaying `force'
@@ -275,13 +310,17 @@ and `fulfilledp' calls."
   (make-chain-instance :object object))
 
 (defmethod force ((chain chain))
-  (with-chain-slots (object) chain
-    (force object)))
+  (force (chain-object chain)))
 
 (defmethod fulfilledp ((chain chain))
-  (with-chain-slots (object) chain
-    (fulfilledp object)))
+  (fulfilledp (chain-object chain)))
+
+(defmethod fulfill-hook ((chain chain) client-fn)
+  (fulfill-hook (chain-object chain) client-fn))
+
+(defun force/no-restart (promise)
+  (force-hook promise)
+  (values-list (result promise)))
 
 (defmethod unwrap-result ((chain chain))
-  (with-chain-slots (object) chain
-    (unwrap-result (force object))))
+  (unwrap-result (force/no-restart (chain-object chain))))

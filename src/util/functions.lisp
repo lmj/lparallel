@@ -28,14 +28,18 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem :lparallel-bench
-  :depends-on (:lparallel
-               :trivial-garbage)
-  :serial t
-  :components ((:file "packages-bench")
-               (:module "bench"
-                :serial t
-                :components ((:file "util")
-                             (:file "bench")
-                             (:file "suite")
-                             #+sbcl (:file "profile"))))) 
+(in-package #:lparallel.util)
+
+(defun/type/inline to-boolean (x) (t) boolean
+  (if x t nil))
+
+(defun/type/inline ensure-function (fn) (t) function
+  (if (functionp fn)
+      fn
+      (fdefinition fn)))
+
+(defun interact (&rest prompt)
+  "Read from user and eval."
+  (apply #'format *query-io* prompt)
+  (finish-output *query-io*)
+  (multiple-value-list (eval (read *query-io*))))

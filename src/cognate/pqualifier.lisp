@@ -34,12 +34,10 @@
   (with-parsed-options (sequences size parts-hint)
     (let1 input-parts (make-input-parts sequences size parts-hint)
       (with-submit-cancelable
-        (map nil
-             (lambda (subseqs)
-               (submit-cancelable 'apply qualifier predicate subseqs))
-             input-parts)
+        (dosequence (subseqs input-parts)
+          (submit-cancelable 'apply qualifier predicate subseqs))
         (receive-cancelables result
-          (when (eq bail (any->boolean result))
+          (when (eq bail (to-boolean result))
             (return-from pqualifier result))))))
   (not bail))
 
