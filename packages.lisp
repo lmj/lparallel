@@ -146,17 +146,17 @@
            #:receive-result
            #:do-fast-receives
            #:kill-tasks
-           #:task-handler-bind
-           #:emergency-kill-tasks ; deprecated; same as kill-tasks
-           #:kernel-handler-bind) ; deprecated; same as task-handler-bind
+           #:task-handler-bind)
   (:export #:*kernel*
            #:*task-category*
-           #:*task-priority*
-           #:*kernel-task-category*  ; deprecated; same as *task-category*
-           #:*kernel-task-priority*) ; deprecated; same as *task-priority*
+           #:*task-priority*)
   (:export #:transfer-error
            #:no-kernel-error
-           #:task-killed-error))
+           #:task-killed-error)
+  (:export #:*kernel-task-category* ; deprecated; same as *task-category*
+           #:*kernel-task-priority* ; deprecated; same as *task-priority*
+           #:emergency-kill-tasks   ; deprecated; same as kill-tasks
+           #:kernel-handler-bind))  ; deprecated; same as task-handler-bind
 
 (defpackage #:lparallel.kernel-util
   (:use #:cl
@@ -212,38 +212,38 @@
         #:lparallel.kernel
         #:lparallel.kernel-util
         #:lparallel.promise)
-  (:export #:psort
-           #:preduce
-           #:preduce-partial
-           #:preduce/partial ; deprecated; same as preduce-partial
-           #:pmap
-           #:pmap-into
-           #:pmap-reduce
-           #:pmapcar
-           #:pmapc
-           #:pmapcan
-           #:pmaplist
-           #:pmaplist-into
-           #:pmapl
-           #:pmapcon
-           #:premove
-           #:premove-if
-           #:premove-if-not
-           #:pevery
-           #:psome
-           #:pnotevery
-           #:pnotany
-           #:plet
-           #:plet-if
-           #:pfuncall
-           #:pand
-           #:por
+  (:export #:pand
            #:pcount
            #:pcount-if
            #:pcount-if-not
+           #:pevery
            #:pfind
            #:pfind-if
-           #:pfind-if-not))
+           #:pfind-if-not
+           #:pfuncall
+           #:plet
+           #:plet-if
+           #:pmap
+           #:pmapc
+           #:pmapcan
+           #:pmapcar
+           #:pmapcon
+           #:pmap-into
+           #:pmapl
+           #:pmaplist
+           #:pmaplist-into
+           #:pmap-reduce
+           #:pnotany
+           #:pnotevery
+           #:por
+           #:preduce
+           #:preduce-partial
+           #:premove
+           #:premove-if
+           #:premove-if-not
+           #:psome
+           #:psort)
+  (:export #:preduce/partial)) ; deprecated; same as preduce-partial
 
 (defpackage #:lparallel.defpun
   (:use #:cl
