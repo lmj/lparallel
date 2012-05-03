@@ -91,7 +91,7 @@
 (defvar *registered-fns* nil)
 
 (defun unchecked-name (name)
-  (intern (conc-syms '#:%%%% name '#:/unchecked) (symbol-package name)))
+  (intern (conc-syms name '#:/no-check) (symbol-package name)))
 
 (defun defpar-loaded-p (name)
   (ignore-errors
