@@ -211,9 +211,9 @@ unknown at the time it is created."
                                   `(with-unfulfilled-future/no-wait future
                                      (fulfill-plan future (list ,err)))))
                        (make-task
-                        :client-fn (lambda ()
-                                     (with-unfulfilled-future/no-wait future
-                                       (force-future future)))
+                        :fn (lambda ()
+                              (with-unfulfilled-future/no-wait future
+                                (force-future future)))
                         :store-error store-error))
                      *kernel*)
     future))
@@ -224,7 +224,7 @@ parallel by the implicit progn `body'.
 
 If `force' is called on an unfulfilled future then the future is
 fulfilled by the caller of `force'."
-  `(make-future (make-client-fn ,@body)))
+  `(make-future (make-task-fn ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

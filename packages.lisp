@@ -133,7 +133,7 @@
   (:import-from #:bordeaux-threads
                 #:destroy-thread)
   (:intern #:unwrap-result
-           #:make-client-fn
+           #:make-task-fn
            #:make-task
            #:call-with-kernel-handler
            #:submit-raw-task)
@@ -203,7 +203,7 @@
         #:lparallel.kernel)
   (:import-from #:lparallel.kernel
                 #:unwrap-result
-                #:make-client-fn
+                #:make-task-fn
                 #:make-task
                 #:call-with-kernel-handler
                 #:submit-raw-task)

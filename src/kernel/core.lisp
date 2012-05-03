@@ -72,10 +72,10 @@
     (enhanced-unwind-protect
        :main  (loop (let1 task (or (pop-biased-queue tasks) (return))
                       (with-worker-slots (running-category) worker
-                        (bind-tuple (client-fn kill-notify-fn category) task
+                        (bind-tuple (task-fn kill-notify-fn category) task
                           (enhanced-unwind-protect
                              :prepare (setf running-category category)
-                             :main    (funcall client-fn)
+                             :main    (funcall task-fn)
                              :cleanup (setf running-category nil)
                              :abort   (funcall kill-notify-fn))))))
        :abort (replace-worker kernel worker))))
@@ -177,7 +177,7 @@ As an optimization, an internal size may be given with
    :queue (make-queue (or initial-capacity
                           (length (workers *kernel*))))))
 
-(defmacro make-client-fn (&body body)
+(defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
     `(if *client-handlers*
          (let1 ,client-handlers *client-handlers*
@@ -187,21 +187,21 @@ As an optimization, an internal size may be given with
          (lambda ()
            ,@body))))
 
-(defmacro make-task (&key client-fn store-error)
+(defmacro make-task (&key fn store-error)
   (with-gensyms (task-category)
     `(let ((,task-category *kernel-task-category*))
-       (make-tuple ,client-fn
+       (make-tuple ,fn
                    (lambda () (,store-error (wrap-error 'task-killed-error)))
                    ,task-category))))
 
 (defun make-channeled-task (channel fn args)
   (let1 queue (channel-queue channel)
     (macrolet ((store (code) `(push-queue ,code queue)))
-      (let1 client-fn (make-client-fn
-                        ;; handler already established inside
-                        ;; worker threads
-                        (store (with-task-context (apply fn args))))
-        (make-task :client-fn client-fn :store-error store)))))
+      (let1 fn (make-task-fn
+                ;; handler already established inside
+                ;; worker threads
+                (store (with-task-context (apply fn args))))
+        (make-task :fn fn :store-error store)))))
 
 (defun submit-raw-task (task kernel)
   (ccase *kernel-task-priority*
