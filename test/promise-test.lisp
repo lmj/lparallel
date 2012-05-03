@@ -248,12 +248,12 @@
 
 (lp-base-test canceling-test
   (with-new-kernel (2)
-    (sleep 0.2)
+    (sleep 0.1)
     (let* ((a (promise))
            (filler1 (future (sleep 0.2)))
            (filler2 (future (sleep 0.2))))
       (declare (ignore filler1 filler2))
-      (sleep 0.2)
+      (sleep 0.1)
       (let1 b (future (fulfill a 'foo))
         (declare (ignore b))
         (sleep 0.2)
@@ -262,11 +262,11 @@
            (filler1 (future (sleep 0.6)))
            (filler2 (future (sleep 0.6))))
       (declare (ignore filler1 filler2))
-      (sleep 0.2)
+      (sleep 0.1)
       (let1 b (future (fulfill a 'foo))
         (sleep 0.2)
         (fulfill b 'nevermind)
-        (sleep 0.4)
+        (sleep 0.2)
         (is (not (fulfilledp a)))))))
 
 (lp-base-test error-during-stealing-force-test
