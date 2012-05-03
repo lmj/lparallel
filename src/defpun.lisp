@@ -42,8 +42,6 @@
             lparallel.cognate::with-parsed-let-args
             lparallel.cognate::future-let))
 
-(alias-function accept-task-p optimizer-flag)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; util
@@ -90,7 +88,7 @@
 (defvar *registered-fns* nil)
 
 (defun unchecked-name (name)
-  (intern (conc-syms name '#:/no-check) (symbol-package name)))
+  (intern (conc-syms '#:%p name '#:/no-check) (symbol-package name)))
 
 (defun defpun-loaded-p (name)
   (ignore-errors
@@ -141,8 +139,10 @@
 (setf *optimizer* 'defpun)
 
 (defslots task-counter ()
-  ((task-count              :initform 0 :type fixnum)
-   (lock       :reader lock :initform (make-lock))))
+  ((count              :initform 0 :type fixnum)
+   (lock  :reader lock :initform (make-lock))))
+
+(alias-function accept-task-p optimizer-flag)
 
 (defmethod make-optimizer-data ((specializer (eql 'defpun)))
   (declare (ignore specializer))
@@ -151,19 +151,17 @@
 (defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
   (with-optimizer-slots (optimizer-data optimizer-flag) kernel
-    (with-task-counter-slots (task-count) optimizer-data
-      (incf task-count delta)
+    (with-task-counter-slots (count) optimizer-data
+      (incf count delta)
       ;; optimizer-flag == accept-task-p
-      ;; `<' returns generalized boolean
+      ;; `<=' returns generalized boolean
       (setf optimizer-flag (to-boolean
-                            (<= task-count (%kernel-worker-count kernel)))))))
+                            (<= count (%kernel-worker-count kernel)))))))
 
 (defun/type update-task-count (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
-  (with-optimizer-slots (optimizer-data) kernel
-    (with-task-counter-slots (lock) optimizer-data
-      (with-lock-held (lock)
-        (update-task-count/no-lock kernel delta)))))
+  (with-lock-held ((lock (optimizer-data kernel)))
+    (update-task-count/no-lock kernel delta)))
 
 (defmacro future/fast (&body body)
   (with-gensyms (kernel)
@@ -173,7 +171,8 @@
               (progn ,@body)
            (update-task-count ,kernel -1))))))
 
-(defmacro/once force/fast (&once future)
+(defmacro force/fast (future)
+  (check-type future symbol)
   `(loop
       (when (fulfilledp ,future)
         (return (force ,future)))
