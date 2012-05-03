@@ -143,12 +143,6 @@ results are riffled for comparison."
 
 (defun run-suite (worker-count reset-fn &rest fns)
   (when fns
-    (when (find :swank *features*)
-      (format t "~%~
-              ===========~%~
-              NOTE: Benchmarking with SLIME may produce inaccurate results!~%~
-              ===========~%"))
-    (format t "~%Using a temporary kernel with ~a workers.~%~%" worker-count)
     (call-with-temp-kernel
      worker-count
      (lambda ()

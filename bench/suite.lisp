@@ -269,4 +269,9 @@
                           (desc-n n fn time)))))))))))
 
 (defun execute (num-workers)
+  (format t "~%")
+  (when (find :swank *features*)
+    (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))
+  (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
+  (format t "Running benchmarks with ~a workers.~%~%" num-workers)
   (apply #'run-suite num-workers #'reset *benches*))
