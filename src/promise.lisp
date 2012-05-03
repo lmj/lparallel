@@ -312,5 +312,11 @@ and `fulfilledp' calls."
 (defmethod fulfilledp ((chain chain))
   (fulfilledp (chain-object chain)))
 
+(defun force/no-restart (promise)
+  (declare #.*normal-optimize*)
+  (with-unfulfilled/wait promise
+    (force-hook promise))
+  (values-list (result promise)))
+
 (defmethod unwrap-result ((chain chain))
-  (unwrap-result (force (chain-object chain))))
+  (unwrap-result (force/no-restart (chain-object chain))))
