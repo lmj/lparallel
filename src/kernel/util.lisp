@@ -33,16 +33,21 @@
 (defmacro unwind-protect/ext (&key prepare main cleanup abort)
   "Keywordized version of `unwind-protect' with an added `abort'
 clause which is executed when the `main' clause does not finish."
-  (with-gensyms (finishedp)
+  (with-gensyms (finishedp cleanup-tag)
     `(let1 ,finishedp nil
+       (declare (boolean ,finishedp))
        ,@(unsplice prepare)
-       (unwind-protect (progn  ; m-v-b-prog1 in real life
-                         ,main
-                         (setf ,finishedp t))
-         (if ,finishedp
-             ,cleanup
-             (unwind-protect ,abort
-               ,cleanup))))))
+       (unwind-protect
+            (progn  ; m-v-prog1 in real life
+              ,main
+              (setf ,finishedp t))
+         (tagbody
+            (if ,finishedp
+                (go ,cleanup-tag)
+                (unwind-protect ,abort
+                  (go ,cleanup-tag)))
+          ,cleanup-tag
+            ,@(unsplice cleanup))))))
 
 (defmacro make-tuple (&rest forms)
   `(lambda () (values ,@forms)))
