@@ -38,7 +38,7 @@
            ,@body
            (receive-indexed))))))
 
-(defun preduce-partial/array (function sequence start size parts
+(defun preduce-partial/vector (function sequence start size parts
                               &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-preduce-context size parts
@@ -75,8 +75,8 @@
                          &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (etypecase sequence
-    (array (apply #'preduce-partial/array
-                  function sequence start size parts keyword-args))
+    (vector (apply #'preduce-partial/vector
+                   function sequence start size parts keyword-args))
     (list  (apply #'preduce-partial/list
                   function sequence start size parts keyword-args))))
 
