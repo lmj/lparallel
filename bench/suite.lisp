@@ -42,7 +42,7 @@
                           bench-psort
                           bench-preduce
                           bench-pfib
-                          bench-pmm))
+                          bench-pmatrix-mul))
 
 (defparameter *sizes* '(10 100 500 1000 5000 10000 50000 100000 200000))
 
@@ -237,8 +237,8 @@
 
        (compute-rows-between 0 (1- n)))))
 
-(define-mm mm defun let)
-(define-mm pmm defpar plet)
+(define-mm matrix-mul defun let)
+(define-mm pmatrix-mul defpar plet)
 
 (defun run-mm (fn n)
   (funcall fn
@@ -247,8 +247,8 @@
            (make-array (* n n) :initial-element 2)
            (make-array (* n n) :initial-element nil)))
 
-(defun bench-pmm ()
-  (let ((fns        '(mm pmm))
+(defun bench-pmatrix-mul ()
+  (let ((fns        '(matrix-mul pmatrix-mul))
         (trials     *trials*)
         (rehearsals *rehearsals*))
     (bench
