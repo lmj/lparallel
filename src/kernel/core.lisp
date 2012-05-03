@@ -153,7 +153,7 @@
                     &key
                     (bindings `((*standard-output* . ,*standard-output*)
                                 (*error-output*    . ,*error-output*)))
-                    (worker-context #'funcall)
+                    (context #'funcall)
                     (name "lparallel-worker")
                     (spin-count *kernel-spin-count*))
   "Create a kernel with `worker-count' number of worker threads.
@@ -163,10 +163,9 @@ worker threads (see bordeaux-threads for more information). By default
 workers will have *standard-output* and *error-output* bindings.
 
 Dynamic context for each worker may be established with the function
-`worker-context'. The argument passed to `worker-context' is a
-function which must be funcalled. It begins the worker loop and will
-not return until the worker exits. Default value of `worker-context'
-is #'funcall.
+`context'. The argument passed to `context' is a function which must
+be funcalled. It begins the worker loop and will not return until the
+worker exits. Default value of `context' is #'funcall.
 
 When a worker discovers that no tasks are available, `spin-count' is
 the number of stealing iterations done by the worker before sleeping.
@@ -179,7 +178,7 @@ the string returned by `bordeaux-threads:thread-name'."
                           (copy-alist *kernel-thread-locals*)))
          (worker-info (make-worker-info-instance
                        :bindings bindings
-                       :context worker-context
+                       :context context
                        :name name))
          (workers (make-array worker-count))
          (kernel (make-kernel-instance

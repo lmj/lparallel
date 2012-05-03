@@ -170,9 +170,9 @@
           (receive-result channel))))))
 
 (lp-base-test kernel-worker-context-test
-  (with-new-kernel (2 :worker-context (lambda (run)
-                                        (let1 *memo* 9
-                                          (funcall run))))
+  (with-new-kernel (2 :context (lambda (run)
+                                 (let1 *memo* 9
+                                   (funcall run))))
     (let1 channel (make-channel)
       (setf *memo* 7)
       (submit-task channel (lambda () *memo*))

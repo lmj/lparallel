@@ -41,7 +41,7 @@
 
 (defmacro/once with-new-kernel ((&once worker-count
                                  &rest args
-                                 &key bindings worker-context name spin-count)
+                                 &key bindings context name spin-count)
                                 &body body)
   (declare (ignore bindings context name spin-count))
   `(let1 *kernel* (make-kernel ,worker-count ,@args)

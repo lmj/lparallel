@@ -535,7 +535,7 @@
                                      (invoke-restart 'double-me 3))))
              (funcall fn))))
     (dolist (n '(1 2 3 4 5 6 10))
-      (let1 result (with-new-kernel (n :worker-context #'my-worker-context)
+      (let1 result (with-new-kernel (n :context #'my-worker-context)
                      (pmapcar (lambda (x)
                                 (declare (ignore x))
                                 (restart-case (warn 'foo-warning)
