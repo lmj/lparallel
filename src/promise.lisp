@@ -43,7 +43,8 @@
             lparallel.kernel::make-task-fn
             lparallel.kernel::make-task
             lparallel.kernel::call-with-task-handler
-            lparallel.kernel::submit-raw-task))
+            lparallel.kernel::submit-raw-task
+            lparallel.kernel::wrap-error))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -204,7 +205,9 @@ unknown at the time it is created."
   (with-future-slots (canceledp) future
     ;; If we are here then we've stolen the task from the kernel.
     (setf canceledp t)
-    (force-future future)))
+    (handler-bind ((error (lambda (e)
+                            (fulfill-plan future (list (wrap-error e))))))
+      (force-future future))))
 
 (defmacro with-unfulfilled-future/no-wait (future &body body)
   (with-gensyms (lock canceledp result)

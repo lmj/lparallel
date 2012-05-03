@@ -40,8 +40,11 @@ time from errors signaled inside `call-with-task-handler'.")
    "This is a container for transferring an error that occurs inside
    `call-with-task-handler' to the calling thread."))
 
-(defun wrap-error (error-name)
-  (make-wrapped-error-instance :object (make-condition error-name)))
+(defun wrap-error (err)
+  (make-wrapped-error-instance
+   :object (etypecase err
+             (symbol (make-condition err))
+             (error  err))))
 
 (defgeneric unwrap-result (result)
   (:documentation

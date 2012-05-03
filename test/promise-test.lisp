@@ -268,3 +268,22 @@
         (fulfill b 'nevermind)
         (sleep 0.4)
         (is (not (fulfilledp a)))))))
+
+(lp-base-test error-during-stealing-force-test
+  (with-new-kernel (1)
+    (future (sleep 0.4))
+    (sleep 0.1)
+    (let* ((call-count 0)
+           (handle-count 0)
+           (f (future
+                (incf call-count)
+                (error 'foo-error))))
+      (repeat 3
+        (block top
+          (handler-bind ((foo-error (lambda (e)
+                                      (declare (ignore e))
+                                      (incf handle-count)
+                                      (return-from top))))
+            (force f))))
+      (is (= 1 call-count))
+      (is (= 3 handle-count)))))
