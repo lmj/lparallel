@@ -31,12 +31,12 @@
 (in-package #:lparallel.kernel)
 
 (defslots kernel ()
-  ((tasks           :reader tasks   :type biased-queue)
-   (workers         :reader workers :type vector)
+  ((scheduler       :reader scheduler :type scheduler)
+   (workers         :reader workers   :type vector)
    (workers-lock)
-   (worker-bindings                 :type list)
-   (worker-context                  :type function)
-   (worker-name                     :type string)))
+   (worker-bindings                   :type list)
+   (worker-context                    :type function)
+   (worker-name                       :type string)))
 
 (defslots worker ()
   ((thread           :reader thread)
@@ -68,9 +68,9 @@
   ;; 
   ;; This function is inside `call-with-kernel-handler' (or
   ;; equivalent). Jumping out means a thread abort.
-  (let1 tasks (tasks kernel)
+  (let1 scheduler (scheduler kernel)
     (unwind-protect/ext
-       :main  (loop (let1 task (or (pop-biased-queue tasks) (return))
+       :main  (loop (let1 task (or (find-task scheduler worker) (return))
                       (with-worker-slots (running-category) worker
                         (bind-tuple (task-fn kill-notify-fn category) task
                           (unwind-protect/ext
@@ -125,7 +125,7 @@ is #'funcall.
 the string returned by `bordeaux-threads:thread-name'."
   (check-type worker-count (integer 1))
   (let1 kernel (make-kernel-instance
-                :tasks (make-biased-queue 64)
+                :scheduler (make-scheduler)
                 :workers (make-array worker-count)
                 :workers-lock (make-lock)
                 :worker-bindings (nconc (copy-alist bindings)
@@ -203,10 +203,8 @@ As an optimization, an internal size may be given with
                 (store (with-task-context (apply fn args))))
         (make-task :fn fn :store-error store)))))
 
-(defun submit-raw-task (task kernel)
-  (ccase *task-priority*
-    (:default (push-biased-queue     task (tasks kernel)))
-    (:low     (push-biased-queue/low task (tasks kernel)))))
+(defun/inline submit-raw-task (task kernel)
+  (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."
@@ -258,8 +256,8 @@ return value is the number of tasks that would have been killed if
 
 `kill-tasks' is not available in ABCL."
   (when *kernel*
-    (with-kernel-slots (workers tasks) *kernel*
-      (with-locked-biased-queue tasks
+    (with-kernel-slots (workers scheduler) *kernel*
+      (with-locked-scheduler scheduler
         (let1 victims (map 'vector 
                            #'thread 
                            (remove-if-not (lambda (worker)
@@ -275,13 +273,13 @@ return value is the number of tasks that would have been killed if
 (alias-function emergency-kill-tasks kill-tasks)
 
 (defun kernel-idle-p/no-lock (kernel)
-  (with-kernel-slots (tasks workers) kernel
-    (and (biased-queue-empty-p/no-lock tasks)
+  (with-kernel-slots (scheduler workers) kernel
+    (and (scheduler-empty-p/no-lock scheduler)
          (notany #'running-category workers))))
 
 (defun kernel-idle-p (kernel)
-  (with-kernel-slots (tasks) kernel
-    (with-locked-biased-queue tasks
+  (with-kernel-slots (scheduler) kernel
+    (with-locked-scheduler scheduler
       (kernel-idle-p/no-lock kernel))))
 
 (defun wait-for-tasks (channel kernel)
@@ -296,16 +294,17 @@ return value is the number of tasks that would have been killed if
   (with-gensyms (retry)
     `(tagbody ,retry
         (wait-for-tasks ,channel ,kernel)
-        (with-locked-biased-queue (tasks ,kernel)
+        (with-locked-scheduler (scheduler ,kernel)
           (unless (kernel-idle-p/no-lock ,kernel)
             (go ,retry))
           ,@body))))
 
 (defun shutdown (channel kernel)
-  (with-kernel-slots (tasks workers) kernel
+  (with-kernel-slots (scheduler workers) kernel
     (with-idle-kernel channel kernel
-      (repeat (length workers)
-        (push-biased-queue/no-lock nil tasks)))))
+      (distribute-tasks/no-lock scheduler
+                                (make-array (length workers)
+                                            :initial-element nil)))))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
