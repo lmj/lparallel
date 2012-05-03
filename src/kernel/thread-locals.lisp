@@ -50,7 +50,7 @@
    "Thread-local. When bound to `:low', the kernel schedules submitted
     tasks at low priority. Default value is `:default'."))
 
-;;; This is managed seperately due to self-reference.
+;;; This is managed separately due to self-reference.
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")
 
 ;;; deprecated

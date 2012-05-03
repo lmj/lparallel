@@ -37,7 +37,9 @@
   (:documentation
    "A FIFO queue."))
 
-(defun make-queue (&optional (initial-capacity 2))
+;;; Queues were originally vector-based, hence the `initial-capacity'.
+;;; Keep the parameter in order to leave the option open.
+(defun make-queue (&optional initial-capacity)
   (make-queue-instance :impl (make-raw-queue initial-capacity)))
 
 (defmacro with-locked-queue (queue &body body)
