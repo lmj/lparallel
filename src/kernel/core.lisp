@@ -140,10 +140,10 @@ the string returned by `bordeaux-threads:thread-name'."
   "Ensures that *kernel* is non-nil; provides the MAKE-KERNEL restart."
   (unless *kernel*
     (restart-case (error 'no-kernel-error)
-      (make-kernel (arg)
+      (make-kernel (worker-count)
         :report "Make a kernel now (prompt for number of workers)."
         :interactive (lambda () (interact "Enter number of workers: "))
-        (setf *kernel* (apply #'make-kernel (mklist arg))))
+        (setf *kernel* (make-kernel worker-count)))
       (store-value (value)
         :report "Assign a value to lparallel:*kernel*."
         :interactive (lambda () (interact "Value for lparallel:*kernel: "))
