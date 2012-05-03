@@ -239,7 +239,8 @@ As an optimization, an internal size may be given with
 (defun/type submit-raw-task (task kernel) (task kernel) t
   (schedule-task (scheduler kernel) task *task-priority*))
 
-(defun submit-task (channel function &rest args)
+(defun/type submit-task (channel function &rest args)
+    (channel (or symbol function) &rest t) t
   "Submit a task through `channel' to the kernel stored in `channel'."
   (submit-raw-task (make-channeled-task channel
                                         (ensure-function function)
