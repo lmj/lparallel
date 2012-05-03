@@ -54,7 +54,7 @@
 (defun replace-worker (kernel worker)
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
-      (let1 index (position (thread worker) workers :key #'thread :test #'eq)
+      (let1 index (position worker workers :test #'eq)
         (assert index)
         (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
