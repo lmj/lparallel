@@ -82,7 +82,7 @@ See http://lparallel.com for documentation and examples.
                                            (:file "thread-locals")
                                            (:file "handling")
                                            (:file "classes")
-                                           (:file "simple-scheduler")
+                                           (:file "central-scheduler")
                                            (:file "core")
                                            (:file "timeout")))
                              (:file "kernel-util")
