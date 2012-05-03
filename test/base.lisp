@@ -50,7 +50,8 @@
 
 (defmacro lp-base-test (name &body body)
   `(progn
-     (test ,name
+     (test #+lparallel.with-debug (,name :compile-at :definition-time)
+           #-lparallel.with-debug ,name
        (format t "~&~a~%" ',name)
        ,@body)
      (defun ,name ()
