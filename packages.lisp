@@ -136,7 +136,6 @@
            #:kernel-worker-count
            #:check-kernel
            #:end-kernel
-           #:kernel-handler-bind
            #:kernel-special-bindings)
   (:export #:channel
            #:make-channel
@@ -147,6 +146,8 @@
            #:do-fast-receives
            #:emergency-kill-tasks ; deprecated -- same as kill-tasks
            #:kill-tasks)
+           #:kill-tasks
+           #:task-handler-bind)
   (:export #:*kernel*
            #:*task-category*
            #:*task-priority*)

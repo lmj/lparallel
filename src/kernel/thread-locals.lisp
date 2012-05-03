@@ -41,7 +41,7 @@
 
   (*client-handlers* nil
    "Thread-local. Records handlers established with
-    `kernel-handler-bind' in the calling thread.")
+    `task-handler-bind' in the calling thread.")
 
   (*task-category* :default
    "Thread-local. See `kill-tasks'. Default value is `:default'.")

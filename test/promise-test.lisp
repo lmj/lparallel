@@ -116,8 +116,8 @@
        (is (= 1 *memo*)))
      (let1 a (mapcar (lambda (x) (,defer (* x x))) '(3 4 5))
        (is (equal '(9 16 25) (mapcar #'force a))))
-     (kernel-handler-bind ((foo-error (lambda (e)
-                                        (invoke-restart 'transfer-error e))))
+     (task-handler-bind ((foo-error (lambda (e)
+                                      (invoke-restart 'transfer-error e))))
        (let1 a (,defer (error 'foo-error))
          (signals foo-error
            (force a))
@@ -178,38 +178,38 @@
       (is (= 5 r)))))
 
 (lp-test future-restart-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let ((x (future (restart-case (error 'foo-error)
                        (eleven () 11)))))
       (is (eql 11 (force x)))))
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let* ((x (future (restart-case (error 'foo-error)
                         (eleven () 11))))
            (y (future (force x))))
       (is (eql 11 (force y))))))
 
 (lp-test speculation-restart-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let ((x (speculate (restart-case (error 'foo-error)
                           (eleven () 11)))))
       (is (eql 11 (force x)))))
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'eleven))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'eleven))))
     (let* ((x (speculate (restart-case (error 'foo-error)
                            (eleven () 11))))
            (y (force x)))
       (is (eql 11 (force y))))))
 
 (lp-test fulfill-delay-restart-test
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((error (lambda (e)
+                               (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
                                 (declare (ignore e))
                                 (invoke-restart 'store-value 3 4))))
@@ -217,8 +217,8 @@
         (is (equal '(3 4) (multiple-value-list (force x))))))))
 
 (lp-test fulfill-future-restart-test
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((error (lambda (e)
+                               (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
                                 (declare (ignore e))
                                 (invoke-restart 'store-value 3 4))))
@@ -232,7 +232,7 @@
     (with-new-kernel (2)
       (sleep 0.2)
       (let1 main-thread (current-thread)
-        (kernel-handler-bind
+        (task-handler-bind
             ((foo-error (lambda (e)
                           (declare (ignore e))
                           ;; don't kill main thread

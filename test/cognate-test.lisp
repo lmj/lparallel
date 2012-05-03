@@ -316,12 +316,12 @@
          (b 4))
     (is (= 7 (+ a b))))
   (signals client-error
-    (kernel-handler-bind ((error (lambda (e)
-                                   (invoke-restart 'transfer-error e))))
+    (task-handler-bind ((error (lambda (e)
+				 (invoke-restart 'transfer-error e))))
       (plet ((a (error 'client-error)))
         a)))
-  (kernel-handler-bind ((error (lambda (e)
-                                 (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((error (lambda (e)
+			       (invoke-restart 'transfer-error e))))
     (handler-bind ((error (lambda (e)
                             (declare (ignore e))
                             (invoke-restart 'store-value 4))))
@@ -526,9 +526,9 @@
         (is (equal '(6 6) result))))))
 
 (lp-test cognate-handler-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-restart 'something-else 3))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'something-else 3))))
     (is (equal '(3 3)
                (pmapcar (lambda (x)
                           (declare (ignore x))
@@ -537,8 +537,8 @@
                         '(0 1))))))
 
 (lp-test pmap-handler-test
-  (kernel-handler-bind ((foo-error
-                         (lambda (e) (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((foo-error
+                       (lambda (e) (invoke-restart 'transfer-error e))))
     (signals foo-error
       (pmapcar (lambda (x)
                  (declare (ignore x))
@@ -546,7 +546,7 @@
                '(3 4 5 6)))))
 
 (lp-test pmap-restart-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((foo-error (lambda (e)
                     (declare (ignore e))
                     (invoke-restart 'thirty-three))))

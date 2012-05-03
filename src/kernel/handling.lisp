@@ -57,13 +57,13 @@ time from errors signaled inside `call-with-kernel-handler'.")
   (with-wrapped-error-slots (object) result
     (error object)))
 
-(defmacro kernel-handler-bind (clauses &body body)
+(defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but reaches into kernel worker threads."
   (let1 forms (loop
                  :for clause :in clauses
                  :for (name fn more) := clause
                  :do (unless (and (symbolp name) (not more))
-                       (error "Wrong format in `kernel-handler-bind' clause: ~a"
+                       (error "Wrong format in `task-handler-bind' clause: ~a"
                               clause))
                  :collect `(cons ',name ,fn))
     `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)

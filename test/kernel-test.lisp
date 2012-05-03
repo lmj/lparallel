@@ -52,14 +52,14 @@
                      #'<)))))
 
 (lp-test kernel-client-error-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((client-error (lambda (e)
                        (invoke-restart 'transfer-error e))))
     (let1 channel (make-channel)
       (submit-task channel (lambda () (error 'client-error)))
       (signals client-error
         (receive-result channel))))
-  (kernel-handler-bind
+  (task-handler-bind
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'transfer-error (make-condition 'foo-error)))))
@@ -67,7 +67,7 @@
       (submit-task channel (lambda () (error 'client-error)))
       (signals foo-error
         (receive-result channel))))
-  (kernel-handler-bind
+  (task-handler-bind
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'transfer-error 'foo-error))))
@@ -77,7 +77,7 @@
         (receive-result channel)))))
 
 (lp-test user-restart-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((foo-error (lambda (e)
                     (declare (ignore e))
                     (invoke-restart 'eleven))))
@@ -86,7 +86,7 @@
                              (restart-case (error 'foo-error)
                                (eleven () 11))))
       (is (eql 11 (receive-result channel)))))
-  (kernel-handler-bind
+  (task-handler-bind
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'eleven))))
@@ -97,10 +97,10 @@
       (is (eql 11 (receive-result channel))))))
 
 (lp-test error-cascade-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((error (lambda (e)
                 (invoke-restart 'transfer-error e))))
-    (kernel-handler-bind
+    (task-handler-bind
         ((error (lambda (e)
                   (declare (ignore e))
                   (error 'foo-error))))
@@ -163,7 +163,7 @@
       (is (search "blah" (get-output-stream-string *error-output*))))))
 
 (lp-test handler-bind-test
-  (kernel-handler-bind
+  (task-handler-bind
       ((foo-error (lambda  (e)
                     (declare (ignore e))
                     (invoke-restart 'double-me 3))))
@@ -176,9 +176,9 @@
                  (collect-n 3 (receive-result channel)))))))
 
 (lp-test killed-worker-test
-  (kernel-handler-bind ((foo-error (lambda (e)
-                                     (declare (ignore e))
-                                     (invoke-abort-thread))))
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-abort-thread))))
     (let1 channel (make-channel)
       (submit-task channel (lambda ()
                              (setf *error-output* (make-broadcast-stream))
@@ -198,9 +198,9 @@
   (with-thread-count-check
     (with-new-kernel (2)
       (is (all-workers-alive-p))
-      (kernel-handler-bind ((foo-error (lambda (e)
-                                         (declare (ignore e))
-                                         (invoke-abort-thread))))
+      (task-handler-bind ((foo-error (lambda (e)
+                                       (declare (ignore e))
+                                       (invoke-abort-thread))))
         (let1 channel (make-channel)
           (submit-task channel (lambda ()
                                  (setf *error-output* (make-broadcast-stream))
@@ -230,9 +230,9 @@
 
 (lp-test non-error-condition-test
   (let1 result nil
-    (kernel-handler-bind ((foo-condition (lambda (c)
-                                           (declare (ignore c))
-                                           (setf result :called))))
+    (task-handler-bind ((foo-condition (lambda (c)
+                                         (declare (ignore c))
+                                         (setf result :called))))
       (let1 channel (make-channel)
         (submit-task channel (lambda ()
                                (signal 'foo-condition)))
@@ -320,13 +320,13 @@
 
 (lp-test signaling-after-signal-test
   (let1 q (make-queue)
-    (kernel-handler-bind ((foo-condition-2 (lambda (c)
-                                             (declare (ignore c))
-                                             (push-queue 'outer q))))
-      (kernel-handler-bind ((foo-condition (lambda (c)
-                                             (declare (ignore c))
-                                             (push-queue 'inner q)
-                                             (signal 'foo-condition-2))))
+    (task-handler-bind ((foo-condition-2 (lambda (c)
+                                           (declare (ignore c))
+                                           (push-queue 'outer q))))
+      (task-handler-bind ((foo-condition (lambda (c)
+                                           (declare (ignore c))
+                                           (push-queue 'inner q)
+                                           (signal 'foo-condition-2))))
         (let1 channel (make-channel)
           (submit-task channel (lambda () (signal 'foo-condition)))
           (receive-result channel))))
