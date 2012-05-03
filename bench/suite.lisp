@@ -64,18 +64,9 @@
   (sleep 0.2)
   (repeat (* 3 *repeat-gc*) (gc)))
 
-(defun make-cleanup ()
-  (make-bench-spec
-   :args-fn (lambda () nil)
-   :exec-fn (lambda () (repeat *repeat-gc* (gc)))
-   :desc-fn (lambda (&rest args) (declare (ignore args)))))
-
 (defmacro/once collect-trials (&once trials &body body)
-  `(progn
-     (assert (>= ,trials 2))
-     (collect (make-cleanup))
-     (repeat (- ,trials 1)
-       (collect ,@body))))
+  `(repeat ,trials
+     (collect ,@body)))
 
 (defun bench-pmap ()
   (let ((fns        '(map pmap))
