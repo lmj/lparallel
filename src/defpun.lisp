@@ -126,6 +126,7 @@
      :collect `(,name (&rest args) `(,',(unchecked-name name) ,@args))))
 
 (defmacro declaim-defpun (&rest names)
+  "See `defpun'."
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@(loop
           :for name :in names
@@ -226,28 +227,26 @@
                ,body))
 
 (defmacro defpun (name params &body body)
-  "`defpun' is suitable for expressing fine-grained parallelism. If
-you have many small tasks which bog down the system, `defpun' may
-help.
+  "`defpun' defines a function which is specially geared for
+fine-grained parallelism. If you have many small tasks which bog down
+the system, `defpun' may help.
 
 The syntax of `defpun' matches that of `defun'. The difference is that
-`plet' and `pfuncall' have a new meaning inside `defpun'. They may or
-may not actually spawn parallel tasks, as determined by a run-time
-optimizer.
+`plet', `plet-if', and `pfuncall' take on new meaning inside `defpun'.
+The symbols in the binding positions of `plet' and `plet-if' should be
+viewed as lazily evaluated immutable references.
 
-The outcome is that speedup may be achieved with even small functions
-like Fibonacci,
+Inside a `defpun' form the name of the function being defined as well
+as the names of other functions defined by `defpun' are macrolets, so
+using #' will be an error.
 
-    (defpun fib (n)
-      (declare (optimize (speed 3)))
-      (if (< n 2)
-          n
-          (plet ((a (fib (- n 1)))
-                 (b (fib (- n 2))))
-            (+ a b))))
+A `defpun' function must exist before it is referenced inside another
+`defpun' function. If this is not possible--for example if func1 and
+func2 reference each other--then use `declaim-defpun' to specify
+intent:
 
-NOTE: `defpun' may require a high optimization level in order to
-produce significant speedup."
+    (declaim-defpun func1 func2)
+"
   (with-parsed-body (docstring declares body)
     (validate-registered-fns)
     (register-fn-name name)

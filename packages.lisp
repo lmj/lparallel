@@ -267,7 +267,8 @@
         #:lparallel.thread-util
         #:lparallel.promise
         #:lparallel.cognate)
-  (:export #:defpun))
+  (:export #:defpun
+           #:declaim-defpun))
 
 (macrolet ((define-merged-package (name packages)
              `(defpackage ,name
