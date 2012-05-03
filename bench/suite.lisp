@@ -34,23 +34,46 @@
 
 (defparameter *rehearsals* 8)
 
-(defparameter *repeat-gc* #-abcl 20
+(defparameter *repeat-gc* #-abcl 50
                           ;; (gc) hangs on abcl
                           #+abcl  0)
 
-(defparameter *benches* '(bench-pmap
-                          bench-psort
-                          bench-preduce
-                          bench-pfib
-                          bench-pmatrix-mul))
+(defparameter *benches*
+  `((bench-pmap
+     (map pmap)
+     (10 100 500 1000 5000 10000 50000 100000 500000)
+     ,*trials*
+     ,*rehearsals*)
 
-(defparameter *sizes* '(10 100 500 1000 5000 10000 50000 100000 200000))
+    (bench-psort
+     (sort psort)
+     (10 100 500 1000 5000 10000 50000 100000 200000)
+     ,*trials*
+     ,*rehearsals*)
 
-(defparameter *fib-n* '(5 10 15 20 25 30 35))
+    (bench-preduce
+     (reduce preduce)
+     (10 100 500 1000 5000 10000 50000 100000 500000)
+     ;; needs more unthrottling
+     ,(+ 10 *trials*)
+     ,(+ 10 *rehearsals*))
 
-(defparameter *mm-n* '(10 50 100 200))
+    (bench-pfib
+     (fib-let fib-plet fib-plet-if)
+     (5 10 15 20 25 30 35)
+     ,*trials*
+     ,*rehearsals*)
 
-(defun desc (size op fn time)
+    (bench-pmatrix-mul
+     (matrix-mul pmatrix-mul)
+     (10 50 100 200)
+     ,*trials*
+     ,*rehearsals*)))
+
+(defun data (name)
+  (rest (find name *benches* :key #'first)))
+
+(defun desc-size-op (size op fn time)
   (format nil "~&size ~6d | op ~8,a | ~10,a ~10,d~%" size op fn time))
 
 (defun desc-n (n fn time)
@@ -62,85 +85,81 @@
 
 (defun reset ()
   (sleep 0.2)
-  (repeat (* 3 *repeat-gc*) (gc)))
+  (repeat *repeat-gc*
+    (gc)))
 
-(defmacro/once collect-trials (&once trials &body body)
+(defmacro collect-trials (trials &body body)
   `(repeat ,trials
      (collect ,@body)))
 
-(defun bench-pmap ()
-  (let ((fns        '(map pmap))
-        (trials     *trials*)
-        (rehearsals *rehearsals*))
-    (bench
-     (length fns)
-     trials
-     rehearsals
-     (collecting1
-      (dolist (fn fns)
-        (dolist (size *sizes*)
-          (let1 source (make-random-vector size)
-            (dolist (op '(sin))
-              (rebind (fn size op)
-                (collect-trials trials
-                  (make-bench-spec
-                   :args-fn (lambda ()
-                              (list source))
-                   :exec-fn (with-fns (op)
-                              (lambda (source)
-                                (funcall fn 'vector op source)))
-                   :desc-fn (lambda (time)
-                              (desc size op fn time)))))))))))))
+(defmacro defbench (name params &body body)
+  `(defun ,name ()
+     (destructuring-bind ,params (data ',name)
+       ,@body)))
 
-(defun bench-psort ()
-  (let ((fns        '(sort psort))
-        (trials     *trials*)
-        (rehearsals *rehearsals*))
-    (bench
-     (length fns)
-     trials
-     rehearsals
-     (collecting1
-      (dolist (fn fns)
-        (dolist (size *sizes*)
-          (let1 source (make-random-vector size)
-            (dolist (op '(<))
-              (rebind (fn size op)
-                (collect-trials trials
-                  (make-bench-spec
-                   :args-fn (lambda ()
-                              (list (copy-seq source)))
-                   :exec-fn (with-fns (op)
-                              (lambda (source)
-                                (funcall fn source op)))
-                   :desc-fn (lambda (time)
-                              (desc size op fn time)))))))))))))
+(defbench bench-pmap (fns inputs trials rehearsals)
+  (bench
+   (length fns)
+   trials
+   rehearsals
+   (collecting1
+     (dolist (fn fns)
+       (dolist (size inputs)
+         (let1 source (make-random-vector size)
+           (dolist (op '(sin))
+             (rebind (fn size op)
+               (collect-trials trials
+                 (make-bench-spec
+                  :args-fn (lambda ()
+                             (list source))
+                  :exec-fn (with-fns (op)
+                             (lambda (source)
+                               (funcall
+                                fn `(vector single-float ,size) op source)))
+                  :desc-fn (lambda (time)
+                             (desc-size-op size op fn time))))))))))))
 
-(defun bench-preduce ()
-  ;; reduce needs more CPU unthrottling
-  (let* ((fns        '(reduce preduce))
-         (unthrottle 10)
-         (trials     (+ unthrottle *trials*))
-         (rehearsals (+ unthrottle *rehearsals*)))
-    (bench
-     (length fns) 
-     trials
-     rehearsals
-     (collecting1
-      (dolist (fn fns)
-        (dolist (size *sizes*)
-          (let1 source (make-random-vector size)
-            (dolist (op '(+))
-              (rebind (fn size op)
-                (collect-trials trials
-                  (make-bench-spec
-                   :args-fn (lambda ()
-                              (list source))
-                   :exec-fn (with-fns (op)
-                              (lambda (source)
-                                (funcall fn op source)))
-                   :desc-fn (lambda (time)
-                              (desc size op fn time)))))))))))))
+(defbench bench-psort (fns inputs trials rehearsals)
+  (bench
+   (length fns)
+   trials
+   rehearsals
+   (collecting1
+     (dolist (fn fns)
+       (dolist (size inputs)
+         (let1 source (make-random-vector size)
+           (dolist (op '(<))
+             (rebind (fn size op)
+               (collect-trials trials
+                 (make-bench-spec
+                  :args-fn (lambda ()
+                             (list (copy-seq source)))
+                  :exec-fn (with-fns (op)
+                             (lambda (source)
+                               (funcall fn source op)))
+                  :desc-fn (lambda (time)
+                             (desc-size-op size op fn time))))))))))))
+
+(defbench bench-preduce (fns inputs trials rehearsals)
+  (bench
+   (length fns) 
+   trials
+   rehearsals
+   (collecting1
+     (dolist (fn fns)
+       (dolist (size inputs)
+         (let1 source (make-random-vector size)
+           (dolist (op '(+))
+             (rebind (fn size op)
+               (collect-trials trials
+                 (make-bench-spec
+                  :args-fn (lambda ()
+                             (list source))
+                  :exec-fn (with-fns (op)
+                             (lambda (source)
+                               (funcall fn op source)))
+                  :desc-fn (lambda (time)
+                             (desc-size-op size op fn time))))))))))))
 
 (defun fib-let (n)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
@@ -167,26 +186,23 @@
            (b (fib-plet-if (- n 2))))
         (+ a b))))
 
-(defun bench-pfib ()
-  (let ((fns        '(fib-let fib-plet fib-plet-if))
-        (trials     *trials*)
-        (rehearsals *rehearsals*))
-    (bench
-     (length fns)
-     trials
-     rehearsals
-     (collecting1
-      (dolist (fn fns)
-        (dolist (n *fib-n*)
-          (rebind (fn n)
-            (collect-trials trials
-              (make-bench-spec
-               :args-fn (lambda ()
-                          (list n))
-               :exec-fn (lambda (n)
-                          (funcall fn n))
-               :desc-fn (lambda (time)
-                          (desc-n n fn time)))))))))))
+(defbench bench-pfib (fns inputs trials rehearsals)
+  (bench
+   (length fns)
+   trials
+   rehearsals
+   (collecting1
+     (dolist (fn fns)
+       (dolist (n inputs)
+         (rebind (fn n)
+           (collect-trials trials
+             (make-bench-spec
+              :args-fn (lambda ()
+                         (list n))
+              :exec-fn (lambda (n)
+                         (funcall fn n))
+              :desc-fn (lambda (time)
+                         (desc-n n fn time))))))))))
 
 ;;; mm (matrix mulitply) adapted from Vladimir Sedach's eager-future2,
 ;;; which in turn credits the following:
@@ -199,7 +215,7 @@
 
 (defmacro define-mm (name def xlet)
   `(,def ,name (n m1 m2 m3)               ; m1 * m2 -> m3
-     (declare (optimize (speed 3)))
+     (declare (optimize (speed 3) (debug 0) (safety 0)))
      (labels
          ((compute-entry (row col)     ; loop to compute inner product
             (labels ((compute-loop (i j sum)
@@ -238,38 +254,37 @@
            (make-array (* n n) :initial-element 2)
            (make-array (* n n) :initial-element nil)))
 
-(defun bench-pmatrix-mul ()
-  (let ((fns        '(matrix-mul pmatrix-mul))
-        (trials     *trials*)
-        (rehearsals *rehearsals*))
-    (bench
-     (length fns)
-     trials
-     rehearsals
-     (collecting1
-      (dolist (fn fns)
-        (dolist (n *mm-n*)
-          (rebind (fn n)
-            (collect-trials trials
-              (make-bench-spec
-               :args-fn (lambda ()
-                          (list n))
-               :exec-fn (lambda (n)
-                          (run-mm fn n))
-               :desc-fn (lambda (time)
-                          (desc-n n fn time)))))))))))
+(defbench bench-pmatrix-mul (fns inputs trials rehearsals)
+  (bench
+   (length fns)
+   trials
+   rehearsals
+   (collecting1
+     (dolist (fn fns)
+       (dolist (n inputs)
+         (rebind (fn n)
+           (collect-trials trials
+             (make-bench-spec
+              :args-fn (lambda ()
+                         (list n))
+              :exec-fn (lambda (n)
+                         (run-mm fn n))
+              :desc-fn (lambda (time)
+                         (desc-n n fn time))))))))))
+
+(defun select-benches (fn-names)
+  (mapcar (lambda (name)
+            (assoc (intern (symbol-name name) :lparallel-bench)
+                   *benches*))
+          fn-names))
 
 (defun execute (num-workers &key fns)
-  (when fns
-    (setf *benches* (mapcar (lambda (sym)
-                              (intern (concatenate 'string
-                                                   (symbol-name 'bench-)
-                                                   (symbol-name sym))
-                                      :lparallel-bench))
-                            (mklist fns))))
   (format t "~%")
   (when (find :swank *features*)
     (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
-  (apply #'run-suite num-workers #'reset *benches*))
+  (let1 benches (if fns
+                    (select-benches (mklist fns))
+                    *benches*)
+    (apply #'run-suite num-workers #'reset (mapcar #'car benches))))
