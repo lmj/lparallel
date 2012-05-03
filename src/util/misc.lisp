@@ -46,6 +46,15 @@
                (progn ,@body)
                (return)))))
 
+(defmacro dosequence ((var sequence &optional return) &body body)
+  `(block nil
+     (map nil (lambda (,var) ,@body) ,sequence)
+     ,(if return
+          `(let ((,var nil))
+             (declare (ignorable ,var))
+             ,return)
+          nil)))
+
 (defmacro rebind (vars &body body)
   `(let ,(loop
             :for var :in vars

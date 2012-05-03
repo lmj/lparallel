@@ -39,6 +39,7 @@
            #:repeat
            #:when-let
            #:while-let
+           #:dosequence
            #:rebind
            #:let1
            #:alias-function)

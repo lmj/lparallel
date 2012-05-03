@@ -31,7 +31,6 @@
 
 (alias-function scheduler-empty-p/no-lock biased-queue-empty-p/no-lock)
 
-(defun distribute-tasks/no-lock (scheduler tasks)
-  (map nil
-       (lambda (task) (push-biased-queue/no-lock task scheduler))
-       tasks))
+(defun/type distribute-tasks/no-lock (scheduler tasks) ((scheduler sequence) t)
+  (dosequence (task tasks)
+    (push-biased-queue/no-lock task scheduler)))

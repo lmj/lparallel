@@ -168,11 +168,9 @@ manually."
   (let1 input-parts (make-input-parts seqs size parts-hint)
     (with-submit-counted
       (with-parts size parts-hint
-        (map nil
-             (lambda (subseqs)
-               (next-part)
-               (submit-counted 'map-iterate map (part-size) fn subseqs))
-             input-parts))
+        (dosequence (subseqs input-parts)
+          (next-part)
+          (submit-counted 'map-iterate map (part-size) fn subseqs)))
       (receive-counted))))
 
 (defun pmap-iterate/powder (map fn seqs size)
