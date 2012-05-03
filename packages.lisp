@@ -119,10 +119,9 @@
         #:lparallel.thread-util)
   (:export #:counter
            #:make-counter
-           #:push-counter #:push-counter/no-lock
-           #:pop-counter  #:pop-counter/no-lock
-           #:peek-counter #:peek-counter/no-lock
-           #:with-locked-counter))
+           #:inc-counter
+           #:dec-counter
+           #:counter-value))
 
 (defpackage #:lparallel.kernel
   (:use #:cl

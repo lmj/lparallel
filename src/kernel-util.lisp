@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.kernel-util)
 
-;;; TODO: these should be unified
-
 (defmacro with-submit-counted (&body body)
   (with-gensyms (count channel)
     `(let ((,count   0)
@@ -52,15 +50,15 @@
            (,channel (make-channel)))
        (flet ((submit-dynamic-counted (&rest args)
                 (declare (dynamic-extent args))
-                (push-counter ,counter)
+                (inc-counter ,counter)
                 (apply #'submit-task ,channel args))
               (receive-dynamic-counted ()
-                (loop
-                   (with-locked-counter ,counter
-                     (when (zerop (peek-counter/no-lock ,counter))
-                       (return))
-                     (pop-counter/no-lock ,counter))
-                   (receive-result ,channel))))
+                (loop (let1 value (dec-counter ,counter)
+                        (cond ((>= value 0)
+                               (receive-result ,channel))
+                              (t
+                               (inc-counter ,counter)
+                               (return)))))))
          ,@body))))
 
 (defun indexing-wrapper (array index function args)
