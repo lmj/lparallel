@@ -135,7 +135,7 @@ the string returned by `bordeaux-threads:thread-name'."
                 :worker-context worker-context
                 :worker-name name)
     (with-kernel-slots (workers worker-bindings) kernel
-      (setf worker-bindings (acons '*kernel* kernel worker-bindings))
+      (push (cons '*kernel* kernel) worker-bindings)
       (map-into workers (lambda () (make-worker kernel))))
     kernel))
 
