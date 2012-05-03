@@ -31,11 +31,8 @@
 (defpackage #:lparallel-bench
   (:use #:cl
         #:lparallel.util
-        #:lparallel.cognate)
-  (:import-from #:lparallel.kernel
-                #:make-kernel
-                #:end-kernel
-                #:*kernel*)
+        #:lparallel.cognate
+        #:lparallel.kernel)
   (:import-from #:trivial-garbage
                 #:gc)
   (:export #:execute))
