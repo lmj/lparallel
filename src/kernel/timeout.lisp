@@ -71,13 +71,16 @@ The error is signaled at the point `receive-result' is called."
                          (push-result timeout-result))))))
     timeout))
 
+#-abcl
 (defun cancel-timeout (timeout timeout-result)
   "Attempt to cancel a timeout. If successful, the channel passed to
 `submit-timeout' will receive `timeout-result'.
 
 At most one call to `cancel-timeout' will succeed; others will be
 ignored. If the timeout has expired on its own then `cancel-timeout'
-will have no effect."
+will have no effect.
+
+`cancel-timeout' is not available in ABCL."
   (with-timeout-slots (canceled-result thread lock) timeout
     ;; ensure that only one cancel succeeds
     (with-lock-predicate/wait lock (eq canceled-result 'not-canceled)
