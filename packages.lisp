@@ -230,7 +230,6 @@
            #:pnotevery
            #:pnotany
            #:plet
-           #:plet*
            #:pand
            #:por))
 

@@ -56,11 +56,3 @@ is bound to nil (no future is created)."
                               :for (name nil) :in pairs
                               :collect `(,name (force ,var)))
            ,@body)))))
-
-(defmacro plet* (bindings &body body)
-  "Like `plet' but each binding form may refer to previous forms."
-  (if bindings
-      `(plet (,(car bindings))
-         (plet* ,(cdr bindings)
-           ,@body))
-      `(progn ,@body)))

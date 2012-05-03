@@ -329,18 +329,6 @@
              (b (error "foo")))
         (is (= 7 (+ a b)))))))
 
-(lp-test plet*-test
-  (plet* ((border 1)
-          (width  (+ 5 (* 2 border)))
-          (height (+ 7 (* 2 border)))
-          (area   (* width height)))
-    (is (= (* (+ 5 (* 2 1)) (+ 7 (* 2 1)))
-           area))
-    (is (= 1 border))
-    (is (= 7 width))
-    (is (= 9 height))
-    (is (= 63 area))))
-
 (lp-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
   (is (null (pand 3 4 nil 5 6)))
