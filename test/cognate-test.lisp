@@ -102,7 +102,7 @@
       (let1 result (make-list 500)
         (is (equal expected (apply #'pmap-into result #'f :parts 500 lists)))
         (is (equal expected result)))
-      (dolist (parts '(nil 10000000000000000000000000000000000000000000))
+      (dolist (parts '(nil 1000))
         (setf *memo* (make-queue))
         (apply #'pmapc
                (lambda (i x y z)

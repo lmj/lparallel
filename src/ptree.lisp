@@ -107,7 +107,7 @@
       (error (err) (setf computed err))))
   node)
 
-(defun/inline freep (node)
+(defun/type/inline freep (node) (node) t
   (zerop (lock-level node)))
 
 (defun/type lock-node (node) (node) null

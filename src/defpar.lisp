@@ -64,9 +64,8 @@
         ,fail-tag
           (return-from ,top ,fail)))))
 
-(defun/inline negate (x)
-  (declare (fixnum x))
-  (the fixnum (- 0 (the fixnum x))))
+(defun/type/inline negate (x) (fixnum) fixnum
+  (- 0 x))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -132,8 +131,6 @@
      ,@(loop
           :for name :in names
           :collect `(register-fn-name ',name))))
-
-(defun/inline to-boolean (x) (the boolean (if x t nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

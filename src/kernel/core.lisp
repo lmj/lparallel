@@ -160,7 +160,7 @@ the string returned by `bordeaux-threads:thread-name'."
                        :name name))
          (workers (make-array worker-count))
          (kernel (make-kernel-instance
-                  :scheduler (make-scheduler workers)
+                  :scheduler (make-scheduler)
                   :workers workers
                   :workers-lock (make-lock)
                   :worker-info worker-info
@@ -200,8 +200,8 @@ bindings (see bordeaux-threads:*default-special-bindings*)."
     (with-worker-info-slots (bindings) worker-info
       (copy-alist bindings))))
 
-(defun/inline %kernel-worker-count (kernel)
-  (the fixnum (length (workers kernel))))
+(defun/type/inline %kernel-worker-count (kernel) (kernel) fixnum
+  (length (workers kernel)))
 
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."
@@ -245,7 +245,7 @@ As an optimization, an internal size may be given with
                 (store (with-task-context (apply fn args))))
         (make-task :fn fn :store-error store)))))
 
-(defun/inline submit-raw-task (task kernel)
+(defun/type submit-raw-task (task kernel) (task kernel) t
   (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun submit-task (channel function &rest args)

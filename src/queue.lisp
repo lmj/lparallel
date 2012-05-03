@@ -39,7 +39,7 @@
 
 ;;; Queues were originally vector-based, hence the `initial-capacity'.
 ;;; Keep the parameter in order to leave the option open.
-(defun make-queue (&optional initial-capacity)
+(defun make-queue (&optional (initial-capacity 1))
   (make-queue-instance :impl (make-raw-queue initial-capacity)))
 
 (defmacro with-locked-queue (queue &body body)
@@ -82,8 +82,8 @@
                :collect `(define-simple-queue-fn ,@def))))
 
 (define-simple-queue-fns
-    (queue-count   raw-queue-count   (queue) raw-queue-count)
-    (queue-empty-p raw-queue-empty-p (queue) boolean)
+  (queue-count   raw-queue-count   (queue) raw-queue-count)
+  (queue-empty-p raw-queue-empty-p (queue) boolean)
   (peek-queue    peek-raw-queue    (queue) (values t boolean)))
 
 (defmacro fn-doc (fn doc)

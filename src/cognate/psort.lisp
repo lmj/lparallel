@@ -70,8 +70,8 @@
 (define-dispatch-quicksort dispatch-quicksort/key t)
 (define-dispatch-quicksort dispatch-quicksort/no-key nil)
 
-(defun/inline midpoint (a b)
-  (+ a (ash (- b a) -1)))
+(defun/type/inline midpoint (a b) (fixnum fixnum) fixnum
+  (+ a (the fixnum (ash (the fixnum (- b a)) -1))))
 
 ;;; 
 ;;; Adapted from Roger Corman's usenet post. Free license.

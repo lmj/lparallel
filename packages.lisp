@@ -43,9 +43,11 @@
            #:dosequence
            #:rebind
            #:let1
-           #:alias-function)
+           #:alias-function
+           #:to-boolean)
   (:export #:defun/inline
-           #:defun/type)
+           #:defun/type
+           #:defun/type/inline)
   (:export #:defslots)
   (:export #:interact)
   (:export #:*normal-optimize*

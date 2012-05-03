@@ -37,7 +37,7 @@
         (dosequence (subseqs input-parts)
           (submit-cancelable 'apply qualifier predicate subseqs))
         (receive-cancelables result
-          (when (eq bail (any->boolean result))
+          (when (eq bail (to-boolean result))
             (return-from pqualifier result))))))
   (not bail))
 

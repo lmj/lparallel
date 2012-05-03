@@ -39,14 +39,14 @@
 (progn
   (deftype counter () '(cons fixnum null))
 
-  (defun/inline make-counter (&optional (value 0))
+  (defun/type make-counter (&optional (value 0)) (&optional fixnum) counter
     (declare (fixnum value))
     (the counter (cons value nil)))
 
   (alias-function counter-value car)
 
   (defmacro define-counter-fn (name op)
-    `(defun/inline ,name (counter)
+    `(defun/type ,name (counter) (counter) t
        (declare (type counter counter))
        (the fixnum (,op (car counter)))))
   
@@ -65,8 +65,7 @@
     (value 0 :type counter-value))
   
   (defmacro define-counter-fn (name op adjust)
-    `(defun/inline ,name (counter)
-       (declare (type counter counter))
+    `(defun/type/inline ,name (counter) (counter) t
        (,adjust (,op (counter-value counter)))))
 
   (define-counter-fn inc-counter sb-ext:atomic-incf 1+)
@@ -78,7 +77,7 @@
     ((value :reader counter-value :type fixnum)
      (lock  :reader lock          :initform (make-lock))))
 
-  (defun/inline make-counter (&optional (value 0))
+  (defun/type make-counter (&optional (value 0)) (&optional fixnum) counter
     (declare (fixnum value))
     (make-counter-instance :value value))
 

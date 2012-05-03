@@ -88,3 +88,7 @@
      :for (key value) :on plist :by #'cddr
      :when (eq key target-key)
      :collect value))
+
+(declaim (inline to-boolean))
+(defun to-boolean (x)
+  (the boolean (if x t nil)))

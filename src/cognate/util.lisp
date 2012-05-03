@@ -43,8 +43,6 @@
        (dotimes (,index ,n ,result)
          (setf (aref ,result ,index) (progn ,@body))))))
 
-(defun/inline any->boolean (x) (if x t nil))
-
 (defun nconc/many (seq)
   (reduce #'nconc seq :from-end t))
 
