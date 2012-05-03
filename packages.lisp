@@ -70,10 +70,8 @@
   ;; exported from bordeaux-threads
   (:export #:make-thread
            #:make-lock
-           #:make-recursive-lock
            #:make-condition-variable
            #:with-lock-held
-           #:with-recursive-lock-held
            #:acquire-lock
            #:release-lock
            #:condition-wait))

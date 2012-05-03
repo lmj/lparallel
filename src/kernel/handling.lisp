@@ -30,10 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(defvar *debugger-lock* (make-recursive-lock)
-  "Global. For convenience -- allows only one debugger prompt at a
-time from errors signaled inside `call-with-task-handler'.")
-
 (defslots wrapped-error ()
   ((object :type condition))
   (:documentation
@@ -84,18 +80,16 @@ control (or not)."
                (funcall fn con))))))
 
 (defun make-debugger-hook ()
-  "Allow one debugger prompt at a time from worker threads."
+  "Record `*debugger-error*' for the `transfer-error' restart."
   (if *debugger-hook*
       (let1 previous-hook *debugger-hook*
         (lambda (condition self)
           (let1 *debugger-error* condition
-            (with-recursive-lock-held (*debugger-lock*)
-              (funcall previous-hook condition self)))))
+            (funcall previous-hook condition self))))
       (lambda (condition self)
         (declare (ignore self))
         (let1 *debugger-error* condition
-          (with-recursive-lock-held (*debugger-lock*)
-            (invoke-debugger condition))))))
+          (invoke-debugger condition)))))
 
 (defmacro with-task-context (&body body)
   `(catch 'current-task
