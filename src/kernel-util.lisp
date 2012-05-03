@@ -69,7 +69,7 @@
     `(let1 ,channel (make-channel)
        (flet ((submit-indexed (index function &rest args)
                 (submit-task
-                 ,channel 'indexing-wrapper ,array index function args))
+                 ,channel #'indexing-wrapper ,array index function args))
               (receive-indexed ()
                 (do-fast-receives (result ,channel ,count)
                   (declare (ignore result)))

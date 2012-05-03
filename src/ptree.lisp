@@ -137,7 +137,7 @@
                              (lambda ()
                                (let1 *kernel* node-kernel
                                  (compute-node node)))))
-      (submit-task channel 'compute-node node))
+      (submit-task channel #'compute-node node))
   nil)
 
 (defun/type find-children-results (node) ((node) (or list boolean))
