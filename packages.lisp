@@ -43,7 +43,7 @@
            #:let1
            #:alias-function)
   (:export #:defun/inline
-           #:defun/ftype)
+           #:defun/type)
   (:export #:defslots)
   (:export #:interact)
   (:export #:*normal-optimize*

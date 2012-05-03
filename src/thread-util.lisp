@@ -61,26 +61,26 @@
           :collect `(unless (assoc ',name ,result)
                       (push (cons ',name ',value) ,result)))))
 
-(defmacro define-locking-fn/base (name args ftype
+(defmacro define-locking-fn/base (name args type
                                   lock-reader
                                   defun/no-lock
-                                  ftype/no-lock
+                                  type/no-lock
                                   &body body)
   (let1 name/no-lock (intern-conc name '#:/no-lock)
     `(progn
-       (,defun/no-lock ,name/no-lock ,args ,@(unsplice ftype/no-lock) ,@body)
-       (defun/ftype ,name ,args ,ftype
+       (,defun/no-lock ,name/no-lock ,args ,@(unsplice type/no-lock) ,@body)
+       (defun/type ,name ,args ,type
          (declare #.*normal-optimize*)
          (with-lock-held ((,lock-reader ,(car (last args))))
            (,name/no-lock ,@args))))))
 
-(defmacro define-locking-fn (name args ftype lock &body body)
-  `(define-locking-fn/base ,name ,args ,ftype ,lock defun/ftype ,ftype
+(defmacro define-locking-fn (name args type lock &body body)
+  `(define-locking-fn/base ,name ,args ,type ,lock defun/type ,type
      (declare #.*normal-optimize*)
      ,@body))
 
-(defmacro define-simple-locking-fn (name args ftype lock &body body)
-  `(define-locking-fn/base ,name ,args ,ftype ,lock defun/inline nil
+(defmacro define-simple-locking-fn (name args type lock &body body)
+  `(define-locking-fn/base ,name ,args ,type ,lock defun/inline nil
      (declare #.*normal-optimize*)
      ,@body))
 

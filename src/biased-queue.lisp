@@ -46,8 +46,7 @@
                               :low  (make-raw-queue)))
 
 (defmacro define-push-fn (name slot)
-  `(define-simple-locking-fn
-       ,name (object queue) (function (t biased-queue) null) lock
+  `(define-simple-locking-fn ,name (object queue) ((t biased-queue) null) lock
      (push-raw-queue object (,slot queue))
      (condition-notify-and-yield (cvar queue))
      nil))
@@ -56,8 +55,7 @@
 (define-push-fn push-biased-queue/low low)
 
 (defmacro define-high-low-fn (name operation)
-  `(define-locking-fn
-       ,name (queue) (function (biased-queue) (values t boolean)) lock
+  `(define-locking-fn ,name (queue) ((biased-queue) (values t boolean)) lock
      (with-biased-queue-slots (high low) queue
        (multiple-value-bind (object presentp) (,operation high)
          (if presentp
@@ -67,7 +65,7 @@
 (define-high-low-fn try-pop-biased-queue pop-raw-queue)
 (define-high-low-fn peek-biased-queue peek-raw-queue)
 
-(define-locking-fn pop-biased-queue (queue) (function (biased-queue) t) lock
+(define-locking-fn pop-biased-queue (queue) ((biased-queue) t) lock
   (with-biased-queue-slots (lock cvar) queue
     (loop (multiple-value-bind (value presentp)
               (try-pop-biased-queue/no-lock queue)
@@ -76,12 +74,12 @@
                 (condition-wait cvar lock))))))
 
 (define-simple-locking-fn
-    biased-queue-empty-p (queue) (function (biased-queue) boolean) lock
+    biased-queue-empty-p (queue) ((biased-queue) boolean) lock
   (and (raw-queue-empty-p (high queue))
        (raw-queue-empty-p (low queue))))
 
 (define-simple-locking-fn
-    biased-queue-count (queue) (function (biased-queue) integer) lock
+    biased-queue-count (queue) ((biased-queue) integer) lock
   (+ (raw-queue-count (high queue))
      (raw-queue-count (low queue))))
 

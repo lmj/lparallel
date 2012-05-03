@@ -60,8 +60,8 @@
          lists)
   result-list)
 
-(defun/ftype map-iterate (map size fn seqs)
-    (function (function integer function list) null)
+(defun/type map-iterate (map size fn seqs) ((function integer function list)
+                                            null)
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."

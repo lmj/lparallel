@@ -44,14 +44,14 @@
   `(with-lock-held ((lock ,queue))
      ,@body))
 
-(define-locking-fn push-queue (object queue) (function (t queue) null) lock
+(define-locking-fn push-queue (object queue) ((t queue) null) lock
   (with-queue-slots (impl cvar) queue
     (push-raw-queue object impl)
     (when cvar
       (condition-notify-and-yield cvar)))
   nil)
 
-(define-locking-fn pop-queue (queue) (function (queue) t) lock
+(define-locking-fn pop-queue (queue) ((queue) t) lock
   (with-queue-slots (impl lock cvar) queue
     (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
             (if presentp
@@ -59,7 +59,7 @@
                 (condition-wait (or cvar (setf cvar (make-condition-variable)))
                                 lock))))))
 
-(defun/ftype try-pop-queue (queue) (function (queue) (values t boolean))
+(defun/type try-pop-queue (queue) ((queue) (values t boolean))
   (declare #.*normal-optimize*)
   (with-queue-slots (impl lock) queue
     (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
@@ -80,9 +80,9 @@
                :collect `(define-simple-queue-fn ,@def))))
 
 (define-simple-queue-fns
-    (queue-count   raw-queue-count   (function (queue) raw-queue-count))
-    (queue-empty-p raw-queue-empty-p (function (queue) boolean))
-    (peek-queue    peek-raw-queue    (function (queue) (values t boolean))))
+    (queue-count   raw-queue-count   ((queue) raw-queue-count))
+    (queue-empty-p raw-queue-empty-p ((queue) boolean))
+    (peek-queue    peek-raw-queue    ((queue) (values t boolean))))
 
 (defmacro fn-doc (fn doc)
   `(setf (documentation ',fn 'function) ,doc))

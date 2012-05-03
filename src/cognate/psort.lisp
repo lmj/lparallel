@@ -46,12 +46,11 @@
 (defmacro define-dispatch-quicksort (name has-key-p)
   (let* ((key      (when has-key-p (with-gensyms (key) key)))
          (key-args (when has-key-p `(:key ,key))))
-    `(defun/ftype ,name
-         (quicksort vec lo hi compare min max submit ,@(unsplice key))
-         (function
-          (function vector fixnum fixnum function fixnum fixnum function
-           ,@(unsplice (when key `function)))
-          t)
+    `(defun/type ,name (quicksort vec lo hi compare min max submit
+                        ,@(unsplice key))
+       ((function vector fixnum fixnum function fixnum fixnum function
+        ,@(unsplice (when key 'function)))
+        t)
        (declare #.*full-optimize*)
        (when (> hi lo)
          (let1 size (the fixnum (1+ (the fixnum (- hi lo))))
@@ -79,10 +78,11 @@
 ;;; 
 (defmacro define-quicksort-fn (name key key-type call-key)
   (let1 dispatch (if key 'dispatch-quicksort/key 'dispatch-quicksort/no-key)
-    `(defun/ftype ,name (vec lo hi compare min max submit ,@(unsplice key))
-         (function (vector fixnum fixnum function fixnum fixnum function
-                    ,@(unsplice key-type))
-                   null)
+    `(defun/type ,name (vec lo hi compare min max submit
+                        ,@(unsplice key))
+         ((vector fixnum fixnum function fixnum fixnum function
+           ,@(unsplice key-type))
+          null)
        (declare #.*full-optimize*)
        (when (> hi lo)
          (let* ((mid (the fixnum (midpoint lo hi)))
