@@ -70,6 +70,71 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; function registration
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; defpar relies upon the inlined optimizer-flag call in order to
+;;; achieve speedup, which means that *kernel* must exist before the
+;;; call takes place. If *kernel* is nil, the error may be confusing
+;;; due to inlining and optimizations. Inserting `check-kernel' into
+;;; the body of defpar functions negates the speedup for small
+;;; functions.
+
+;;; Thus for user-friendliness we define checked and unchecked
+;;; functions for each defpar form. The user calls the checked
+;;; version; defpar calls the unchecked one via a macrolet.
+
+;;; The macrolets also have the happy side-effect of preventing
+;;; reference to the checked (slower) function via #'.
+
+(defvar *registered-fns* nil)
+
+(defun unchecked-name (name)
+  (intern (conc-syms '#:%%%% name '#:/unchecked) (symbol-package name)))
+
+(defun defpar-loaded-p (name)
+  (ignore-errors
+    (and (symbol-function name)
+         (symbol-function (unchecked-name name)))))
+
+(defun register-fn-name (name)
+  (pushnew name *registered-fns*))
+
+(defun register-fn (name)
+  (register-fn-name name)
+  (when (defpar-loaded-p name)
+    (setf (get name 'checked-fn) (symbol-function name))
+    (setf (get name 'unchecked-fn) (symbol-function (unchecked-name name)))))
+
+(defun valid-registered-fn-p (name)
+  ;; not uninterned and not replaced with regular defun
+  (and (symbol-package name)
+       (if (get name 'checked-fn)
+           (and (eq (symbol-function name)
+                    (get name 'checked-fn))
+                (eq (symbol-function (unchecked-name name))
+                    (get name 'unchecked-fn)))
+           ;; seen but not compiled yet
+           t)))
+
+(defun validate-registered-fns ()
+  (setf *registered-fns* (delete-if-not #'valid-registered-fn-p
+                                        *registered-fns*)))
+
+(defun registered-macrolets ()
+  (loop
+     :for name :in *registered-fns*
+     :collect `(,name (&rest args) `(,',(unchecked-name name) ,@args))))
+
+(defmacro declaim-defpar (&rest names)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     ,@(loop
+          :for name :in names
+          :collect `(register-fn-name ',name))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; defpar
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -81,6 +146,7 @@
    (lock       :reader lock :initform (make-lock))))
 
 (defmethod make-optimizer-data ((specializer (eql 'defpar)))
+  (declare (ignore specializer))
   (make-task-counter-instance))
 
 (defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
@@ -171,24 +237,30 @@ The outcome is that speedup may be achieved with even small functions
 like Fibonacci,
 
     (defpar fib (n)
-      (declare (optimize (speed 3) (safety 0) (debug 1)))
+      (declare (optimize (speed 3)))
       (if (< n 2)
           n
           (plet ((a (fib (- n 1)))
                  (b (fib (- n 2))))
             (+ a b))))
 
-WARNING: Unlike the rest of the lparallel API, `defpar' does not call
-`check-kernel' for you. You are responsible for calling `check-kernel'
-or otherwise ensuring that `*kernel*' is bound to a kernel.
-
 NOTE: `defpar' may require a high optimization level in order to
 produce significant speedup."
   (with-parsed-body (preamble body :docstring t)
-    `(defun ,name ,params
-       ,@preamble
-       (macrolet ((plet (bindings &body body)
-                    `(plet/defpar ,bindings ,@body))
-                  (plet-if (predicate bindings &body body)
-                    `(plet-if/defpar ,predicate ,bindings ,@body)))
-         ,@body))))
+    (validate-registered-fns)
+    (register-fn-name name)
+    `(progn
+       (defun ,(unchecked-name name) ,params
+         ,@preamble
+         (macrolet ((plet (bindings &body body)
+                      `(plet/defpar ,bindings ,@body))
+                    (plet-if (predicate bindings &body body)
+                        `(plet-if/defpar ,predicate ,bindings ,@body))
+                    ,@(registered-macrolets))
+           ,@body))
+       (defun ,name (&rest params)
+         (declare (dynamic-extent params))
+         (check-kernel)
+         (apply (function ,(unchecked-name name)) params))
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+         (register-fn ',name)))))
