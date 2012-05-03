@@ -147,5 +147,3 @@ the first pass only.
   "Like `preduce' but only does a single reducing pass. Return the
 partial results."
   (apply #'preduce/common function sequence :return-partials t args))
-
-(alias-function preduce/partial preduce-partial)
