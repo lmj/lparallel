@@ -61,16 +61,14 @@
            lists)
     result-list))
 
-(defun/type map-iterate (map size fn seqs) (function integer function list) null
+(defun/type map-iterate (map size fn seqs) (function fixnum function list) t
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
-  ;; list length not always fixnum?
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let1 index 0
-    (declare (type integer index))
+    (declare (fixnum index))
     (apply map
            (lambda (&rest args)
              (declare (dynamic-extent args))
@@ -78,8 +76,7 @@ manually."
                (return-from map-iterate nil))
              (apply fn args)
              (incf index))
-           seqs))
-  nil)
+           seqs)))
 
 (defun pmap-into/powder/array (result-seq fn seqs size)
   "When a sequence of size N is divided into N parts, it becomes powder."

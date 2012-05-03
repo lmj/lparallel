@@ -51,7 +51,7 @@
          (function vector fixnum fixnum function fixnum fixnum function
           ,@(unsplice (when key 'function)))
          t
-       (declare #.*normal-optimize*)
+       (declare #.*full-optimize*)
        (when (> hi lo)
          (let1 size (the fixnum (1+ (the fixnum (- hi lo))))
            (declare (type fixnum size))

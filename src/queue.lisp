@@ -81,11 +81,10 @@
                :for def :in defs
                :collect `(define-simple-queue-fn ,@def))))
 
-(locally #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-  (define-simple-queue-fns
-      (queue-count   raw-queue-count   (queue) raw-queue-count)
-      (queue-empty-p raw-queue-empty-p (queue) boolean)
-      (peek-queue    peek-raw-queue    (queue) (values t boolean))))
+(define-simple-queue-fns
+    (queue-count   raw-queue-count   (queue) raw-queue-count)
+    (queue-empty-p raw-queue-empty-p (queue) boolean)
+  (peek-queue    peek-raw-queue    (queue) (values t boolean)))
 
 (defmacro fn-doc (fn doc)
   `(setf (documentation ',fn 'function) ,doc))

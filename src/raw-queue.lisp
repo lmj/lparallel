@@ -34,8 +34,8 @@
 
 (in-package #:lparallel.raw-queue)
 
-(deftype raw-queue () 'cons)
-(deftype raw-queue-count () '(integer 0))
+(deftype raw-queue () '(cons list list))
+(deftype raw-queue-count () '(integer 0 #.most-positive-fixnum))
 
 (defun/inline make-raw-queue (&optional initial-capacity)
   (declare (ignore initial-capacity))
@@ -58,6 +58,6 @@
           (setf (cdr z) nil)))
       (values nil nil)))
   
-(defun/inline raw-queue-count   (z) (length (car z)))
+(defun/inline raw-queue-count   (z) (length (the list (car z))))
 (defun/inline raw-queue-empty-p (z) (not (car z)))
 (defun/inline peek-raw-queue    (z) (values (caar z) (if (car z) t nil)))

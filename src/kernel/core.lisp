@@ -40,6 +40,7 @@
   (declare #.*normal-optimize*)
   (with-worker-slots (running-category) worker
     (bind-tuple (task-fn kill-notify-fn category) task
+      (declare (function task-fn kill-notify-fn))
       (unwind-protect/ext
        :prepare (setf running-category category)
        :main    (funcall task-fn)
@@ -52,6 +53,7 @@
   (declare #.*normal-optimize*)
   (bind-tuple (task-fn kill-notify-fn category) task
     (declare (ignore category))
+    (declare (function task-fn kill-notify-fn))
     (unwind-protect/ext
      :main  (call-with-task-handler task-fn)
      :abort (funcall kill-notify-fn))))
@@ -148,7 +150,7 @@ is #'funcall.
 
 `name' is a string identifier for worker threads. It corresponds to
 the string returned by `bordeaux-threads:thread-name'."
-  (check-type worker-count (integer 1))
+  (check-type worker-count (integer 1 #.most-positive-fixnum))
   (let* ((bindings (nconc (copy-alist bindings)
                           (list (cons '*debugger-hook* *debugger-hook*))
                           (copy-alist *kernel-thread-locals*)))
@@ -199,7 +201,7 @@ bindings (see bordeaux-threads:*default-special-bindings*)."
       (copy-alist bindings))))
 
 (defun/inline %kernel-worker-count (kernel)
-  (length (workers kernel)))
+  (the fixnum (length (workers kernel))))
 
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."

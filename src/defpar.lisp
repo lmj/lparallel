@@ -133,6 +133,8 @@
           :for name :in names
           :collect `(register-fn-name ',name))))
 
+(defun/inline to-boolean (x) (the boolean (if x t nil)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; defpar
@@ -155,9 +157,9 @@
     (with-task-counter-slots (task-count) optimizer-data
       (incf task-count delta)
       ;; optimizer-flag == accept-task-p
-      ;; convert to strict boolean -- '<' is generalized boolean
-      (setf optimizer-flag (not (>= task-count
-                                    (1+ (%kernel-worker-count kernel))))))))
+      ;; `<' returns generalized boolean
+      (setf optimizer-flag (to-boolean
+                            (<= task-count (%kernel-worker-count kernel)))))))
 
 (defun/type update-task-count (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
