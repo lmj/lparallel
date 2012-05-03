@@ -35,7 +35,7 @@
   (declare (dynamic-extent args))
   (declare #.*full-optimize*)
   (reduce #'nreconc
-          (apply #'preduce/partial
+          (apply #'preduce-partial
                  (lambda (acc x)
                    (if (funcall test x)
                        (cons x acc)

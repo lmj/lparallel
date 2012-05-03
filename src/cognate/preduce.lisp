@@ -38,7 +38,7 @@
            ,@body
            (receive-indexed))))))
 
-(defun preduce/partial/array (function sequence start size parts
+(defun preduce-partial/array (function sequence start size parts
                               &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-submit-indexed-helper size parts
@@ -54,7 +54,7 @@
                   :end   (+ start (part-offset) (part-size))
                   keyword-args))))
 
-(defun preduce/partial/list (function sequence start size parts
+(defun preduce-partial/list (function sequence start size parts
                              &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-submit-indexed-helper size parts
@@ -71,14 +71,14 @@
                   keyword-args)
        :do (setf subseq (nthcdr (part-size) subseq)))))
 
-(defun %preduce/partial (function sequence start size parts
+(defun %preduce-partial (function sequence start size parts
                          &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (etypecase sequence
     ;; TODO: non-array, non-list sequences
-    (array (apply #'preduce/partial/array
+    (array (apply #'preduce-partial/array
                   function sequence start size parts keyword-args))
-    (list  (apply #'preduce/partial/list
+    (list  (apply #'preduce-partial/list
                   function sequence start size parts keyword-args))))
 
 (defun preduce/common (function sequence
@@ -97,7 +97,7 @@
             initial-value
             (funcall function))
         (let* ((parts-hint (get-parts-hint parts))
-               (results    (apply #'%preduce/partial
+               (results    (apply #'%preduce-partial
                                   function sequence start size parts-hint
                                   :key key
                                   :from-end from-end
@@ -140,10 +140,12 @@ the first pass only.
   (declare (dynamic-extent args))
   (apply #'preduce/common function sequence args))
 
-(defun preduce/partial (function sequence &rest args
+(defun preduce-partial (function sequence &rest args
                         &key key from-end start end initial-value parts)
   (declare (ignore key from-end start end initial-value parts))
   (declare (dynamic-extent args))
   "Like `preduce' but only does a single reducing pass. Return the
 partial results."
   (apply #'preduce/common function sequence :return-partials t args))
+
+(alias-function preduce/partial preduce-partial)

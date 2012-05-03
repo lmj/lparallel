@@ -152,13 +152,13 @@
                      (sort (extract-queue *memo*) '< :key #'caar))))))
 
 (lp-test preduce-partial-test
-  (is (equalp (preduce/partial #'+ '(3 4 5 6 7 8 9 10) :parts 2)
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2)
               #(18 34)))
-  (is (equalp (preduce/partial #'+ '(3 4 5 6 7 8 9 10) :parts 2 :from-end t)
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2 :from-end t)
               #(18 34)))
-  (is (equalp (preduce/partial #'+ #(3 4 5 6 7 8) :parts 3 :from-end t)
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3 :from-end t)
               #(7 11 15)))
-  (is (equalp (preduce/partial #'+ #(3 4 5 6 7 8) :parts 3)
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3)
               #(7 11 15))))
 
 (lp-test grind-preduce-test

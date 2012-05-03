@@ -249,7 +249,7 @@ are also accepted (see `pmap')."
   (declare (dynamic-extent lists))
   (case (length lists)
     (1 (reduce 'nreconc
-               (preduce/partial (lambda (acc x)
+               (preduce-partial (lambda (acc x)
                                   (let1 result (funcall function x)
                                     (if result
                                         (nconc result acc)

@@ -210,7 +210,8 @@
         #:lparallel.promise)
   (:export #:psort
            #:preduce
-           #:preduce/partial
+           #:preduce-partial
+           #:preduce/partial ; deprecated -- use preduce-partial
            #:pmap
            #:pmap-into
            #:pmap-reduce
