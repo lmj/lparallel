@@ -34,61 +34,30 @@
 
 (in-package #:lparallel.raw-queue)
 
-(deftype raw-queue-count () 'fixnum)
+(deftype raw-queue () 'cons)
+(deftype raw-queue-count () '(integer 0 *))
 
-(defslots raw-queue ()
-  ((data                                      :type array)
-   (start :initform 0                         :type fixnum)
-   (count :initform 0 :reader raw-queue-count :type raw-queue-count))
-  (:documentation
-   "A simple FIFO queue."))
+(defun/inline make-raw-queue (&optional initial-capacity)
+  (declare (ignore initial-capacity))
+  (cons nil nil))
 
-(defun make-raw-queue (&optional (initial-capacity 2)) 
-  "Make a FIFO queue."
+(defun/ftype push-raw-queue (value z) (function (t raw-queue) t)
   (declare #.*normal-optimize*)
-  (make-raw-queue-instance :data (make-array initial-capacity :adjustable t)))
+  (let1 new (cons value nil)
+    (if (car z)
+        (setf (cddr z) new)
+        (setf (car  z) new))
+    (setf (cdr z) new)))
 
-(defun/ftype push-raw-queue (value queue) (function (t raw-queue) null)
-  "Push `value' onto the back of `queue'."
+(defun/ftype pop-raw-queue (z) (function (raw-queue) (values t boolean))
   (declare #.*normal-optimize*)
-  (with-raw-queue-slots (data start count) queue
-    (let1 size (length data)
-      (cond ((eql count size)
-             (adjust-array data (if (zerop size) 1 (* 2 size)))
-             (replace data data :start1 size :start2 0 :end2 start)
-             (fill data nil :start 0 :end start)
-             (setf (aref data (mod (+ start count) (length data))) value))
-            (t
-             (setf (aref data (mod (+ start count) size)) value))))
-    (incf count)
-    nil))
-
-(defun/ftype pop-raw-queue (queue) (function (raw-queue) (values t boolean))
-  "If `queue' is non-empty, pop an element from the front of `queue' and
-return (values elem t). 
-
-Otherwise if `queue' empty, return (values nil nil)."
-  (declare #.*normal-optimize*)
-  (with-raw-queue-slots (data start count) queue
-    (if (plusp count)
-        (multiple-value-prog1 (values (aref data start) t)
-          (setf (aref data start) nil
-                start (mod (1+ start) (length data)))
-          (decf count))
-        (values nil nil))))
-
-(defun/inline peek-raw-queue (queue)
-  "If `queue' is non-empty, return (values elem t) where `elem' is the
-frontmost element of `queue'.
-
-Otherwise if `queue' is empty, return (values nil nil)."
-  (declare #.*normal-optimize*)
-  (with-raw-queue-slots (data start count) queue
-    (if (plusp count)
-        (values (aref data start) t)
-        (values nil nil))))
-
-(defun/inline raw-queue-empty-p (queue)
-  "If queue is empty, return true. Otherwise return false."
-  (declare #.*normal-optimize*)
-  (zerop (raw-queue-count queue)))
+  (if (car z)
+      (multiple-value-prog1 (values (caar z) t)
+        (unless (setf (car z) (cdar z))
+          ;; clear lingering ref
+          (setf (cdr z) nil)))
+      (values nil nil)))
+  
+(defun/inline raw-queue-count   (z) (length (car z)))
+(defun/inline raw-queue-empty-p (z) (not (car z)))
+(defun/inline peek-raw-queue    (z) (values (caar z) (if (car z) t nil)))
