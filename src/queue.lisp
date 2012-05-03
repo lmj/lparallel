@@ -59,6 +59,16 @@
                 (condition-wait (or cvar (setf cvar (make-condition-variable)))
                                 lock))))))
 
+(defun/ftype try-pop-queue (queue) (function (queue) (values t boolean))
+  (declare #.*normal-optimize*)
+  (with-queue-slots (impl lock) queue
+    (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
+      (return-from try-pop-queue (pop-raw-queue impl)))
+    (values nil nil)))
+
+(defun/inline try-pop-queue/no-lock (queue)
+  (pop-raw-queue (impl queue)))
+
 (defmacro define-simple-queue-fn (name raw ftype)
   (with-gensyms (queue)
     `(define-simple-locking-fn ,name (,queue) ,ftype lock
@@ -72,8 +82,7 @@
 (define-simple-queue-fns
     (queue-count   raw-queue-count   (function (queue) raw-queue-count))
     (queue-empty-p raw-queue-empty-p (function (queue) boolean))
-    (peek-queue    peek-raw-queue    (function (queue) (values t boolean)))
-    (try-pop-queue pop-raw-queue     (function (queue) (values t boolean))))
+    (peek-queue    peek-raw-queue    (function (queue) (values t boolean))))
 
 (defmacro fn-doc (fn doc)
   `(setf (documentation ',fn 'function) ,doc))
