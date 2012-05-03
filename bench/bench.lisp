@@ -66,10 +66,27 @@
 (defun flatten (list)
   (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
+#+sbcl
+(progn
+  (defun get-time ()
+    (multiple-value-list (sb-ext:get-time-of-day)))
+  (defun to-microseconds (time)
+    (destructuring-bind (sec usec) time
+      (+ (* 1000000 sec) usec)))
+  (defun time-interval (start end)
+    (- (to-microseconds end)
+       (to-microseconds start))))
+
+#-sbcl
+(progn
+  (alias-function get-time get-internal-real-time)
+  (defun time-interval (start end)
+    (- end start)))
+
 (defun wall-time (fn args)
-  (let1 start (get-internal-real-time)
+  (let1 start (get-time)
     (apply fn args)
-    (- (get-internal-real-time) start)))
+    (time-interval start (get-time))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
