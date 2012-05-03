@@ -136,8 +136,7 @@
            #:check-kernel
            #:end-kernel
            #:kernel-special-bindings)
-  (:export #:channel
-           #:make-channel
+  (:export #:make-channel
            #:submit-task
            #:submit-timeout
            #:cancel-timeout
