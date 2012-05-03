@@ -270,20 +270,41 @@
         (is (not (fulfilledp a)))))))
 
 (lp-base-test error-during-stealing-force-test
-  (with-new-kernel (1)
+  (with-new-kernel (2)
+    ;; occupy workers
     (future (sleep 0.4))
-    (sleep 0.1)
+    (future (sleep 0.4))
+    (sleep 0.2)
     (let* ((call-count 0)
            (handle-count 0)
-           (f (future
-                (incf call-count)
-                (error 'foo-error))))
+           (f (task-handler-bind ((foo-error
+                                   (lambda (e)
+                                     (invoke-restart 'transfer-error e))))
+                (future
+                  (incf call-count)
+                  (error 'foo-error)))))
       (repeat 3
         (block top
-          (handler-bind ((foo-error (lambda (e)
-                                      (declare (ignore e))
-                                      (incf handle-count)
-                                      (return-from top))))
+          (handler-bind ((foo-error
+                          (lambda (e)
+                            (declare (ignore e))
+                            (incf handle-count)
+                            (return-from top))))
             (force f))))
       (is (= 1 call-count))
       (is (= 3 handle-count)))))
+
+(lp-base-test error-during-stealing-force-2-test
+  (with-new-kernel (2)
+    ;; occupy workers
+    (future (sleep 0.4))
+    (future (sleep 0.4))
+    (sleep 0.2)
+    (let1 f (task-handler-bind ((foo-error
+                                 (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'nine))))
+              (future
+                (restart-case (error 'foo-error)
+                  (nine () 9))))
+      (is (eql 9 (force f))))))

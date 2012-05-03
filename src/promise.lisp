@@ -40,6 +40,7 @@
 (in-package #:lparallel.promise)
 
 #.(import '(lparallel.kernel::unwrap-result
+            lparallel.kernel::make-task-fn
             lparallel.kernel::make-task
             lparallel.kernel::task
             lparallel.kernel::call-with-task-handler
@@ -176,81 +177,19 @@ unknown at the time it is created."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots plan (promise-base)
-  ((fn :type (or null function))))
+  ((fn :reader plan-fn :type (or null function))))
 
-(defun fulfill-plan (plan values)
+(defun/type/inline fulfill-plan/values (plan values) (plan list) t
   (with-plan-slots (result fn) plan
     (setf result values
           fn nil)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; future
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun/type/inline fulfill-plan/call (plan) (plan) t
+  (fulfill-plan/values
+   plan (multiple-value-list (call-with-task-handler (plan-fn plan)))))
 
-(defslots future (plan)
-  ((canceledp :initform nil :type boolean)))
-
-(defun force-future (future)
-  (with-future-slots (fn) future
-    ;; Since computation can possibly can occur in the calling thread,
-    ;; ensure that handlers are in place.
-    (fulfill-plan future (multiple-value-list (call-with-task-handler fn)))))
-
-(defmethod fulfill-hook ((future future) values)
-  (with-future-slots (canceledp) future
-    (setf canceledp t)
-    (fulfill-plan future values)))
-
-(defmethod force-hook ((future future))
-  (with-future-slots (canceledp) future
-    ;; If we are here then we've stolen the task from the kernel.
-    (setf canceledp t)
-    (handler-bind ((error (lambda (e)
-                            (fulfill-plan future (list (wrap-error e))))))
-      (force-future future))))
-
-(defmacro with-unfulfilled-future/no-wait (future &body body)
-  (with-gensyms (lock canceledp result)
-    `(with-future-slots
-         ((,lock lock) (,canceledp canceledp) (,result result)) ,future
-       (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
-                                               (eq ,result 'no-result))
-         ,@body))))
-
-(defun/type make-future-task (future) (future) task
-  (make-task
-    (with-unfulfilled-future/no-wait future
-      (unwind-protect/ext
-       :main  (force-future future)
-       :abort (fulfill-plan future (list (wrap-error 'task-killed-error)))))))
-
-(defun make-future (fn)
-  (declare #.*normal-optimize*)
-  (check-kernel)
-  (let1 future (make-future-instance :fn fn)
-    (submit-raw-task (make-future-task future) *kernel*)
-    future))
-
-(defmacro future (&body body)
-  "Create a future. A future is a promise which is fulfilled in
-parallel by the implicit progn `body'.
-
-If `force' is called on an unfulfilled future then the future is
-fulfilled by the caller of `force'."
-  `(make-future (lambda () ,@body)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; speculate
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro speculate (&body body)
-  "Create a speculation. A speculation is a low-priority future."
-  `(let1 *task-priority* :low
-     (future ,@body)))
+(defun/type fulfill-plan/error (plan err) (plan (or symbol error)) t
+  (fulfill-plan/values plan (list (wrap-error err))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -266,11 +205,75 @@ fulfilled by the caller of `force'."
   `(make-delay-instance :fn (lambda () ,@body)))
 
 (defmethod fulfill-hook ((delay delay) values)
-  (fulfill-plan delay values))
+  (fulfill-plan/values delay values))
 
 (defmethod force-hook ((delay delay))
-  (with-delay-slots (fn) delay
-    (fulfill-plan delay (multiple-value-list (funcall fn)))))
+  ;; do not use task handler
+  (fulfill-plan/values delay (multiple-value-list (funcall (plan-fn delay)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; future
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defslots future (plan)
+  ((canceledp :initform nil :type boolean)))
+
+(defmethod fulfill-hook ((future future) values)
+  ;; If we are here then we've stolen the task from the kernel.
+  (with-future-slots (canceledp) future
+    (setf canceledp t)
+    (fulfill-plan/values future values)))
+
+(defmethod force-hook ((future future))
+  ;; If we are here then we've stolen the task from the kernel.
+  (with-future-slots (canceledp) future
+    (setf canceledp t)
+    (fulfill-plan/call future)))
+
+(defmacro with-unfulfilled-future/no-wait (future &body body)
+  (with-gensyms (lock canceledp result)
+    `(with-future-slots
+         ((,lock lock) (,canceledp canceledp) (,result result)) ,future
+       (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
+                                               (eq ,result 'no-result))
+         ,@body))))
+
+(defun/type make-future-task (future) (future) task
+  (make-task
+    (lambda ()
+      (with-unfulfilled-future/no-wait future
+        (unwind-protect/ext
+         :main  (fulfill-plan/call future)
+         ;; the task handler handles everything; unwind means thread kill
+         :abort (fulfill-plan/error future 'task-killed-error))))))
+
+(defun make-future (fn)
+  (declare #.*normal-optimize*)
+  (check-kernel)
+  (let1 future (make-future-instance :fn fn)
+    (submit-raw-task (make-future-task future) *kernel*)
+    future))
+
+(defmacro future (&body body)
+  "Create a future. A future is a promise which is fulfilled in
+parallel by the implicit progn `body'.
+
+If `force' is called on an unfulfilled future then the future is
+fulfilled by the caller of `force'."
+  `(make-future (make-task-fn ,@body)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; speculate
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro speculate (&body body)
+  "Create a speculation. A speculation is a low-priority future."
+  `(let1 *task-priority* :low
+     (future ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -279,7 +282,7 @@ fulfilled by the caller of `force'."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots chain ()
-  ((object)))
+  ((object :reader chain-object)))
 
 (defun chain (object)
   "Create a chain. A chain links objects together by relaying `force'
@@ -287,13 +290,10 @@ and `fulfilledp' calls."
   (make-chain-instance :object object))
 
 (defmethod force ((chain chain))
-  (with-chain-slots (object) chain
-    (force object)))
+  (force (chain-object chain)))
 
 (defmethod fulfilledp ((chain chain))
-  (with-chain-slots (object) chain
-    (fulfilledp object)))
+  (fulfilledp (chain-object chain)))
 
 (defmethod unwrap-result ((chain chain))
-  (with-chain-slots (object) chain
-    (unwrap-result (force object))))
+  (unwrap-result (force (chain-object chain))))

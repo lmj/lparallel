@@ -212,26 +212,29 @@ As an optimization, an internal size may be given with
    :kernel *kernel*
    :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
 
-(defmacro make-task (&body body)
+(defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers body-fn)
     `(flet ((,body-fn () ,@body))
        (declare (dynamic-extent (function ,body-fn)))
-       (make-task-instance
-        :category *task-category*
-        :fn (if *client-handlers*
-                (let1 ,client-handlers *client-handlers*
-                  (lambda ()
-                    (let1 *client-handlers* ,client-handlers
-                      (,body-fn))))
-                (lambda () (,body-fn)))))))
+       (if *client-handlers*
+           (let1 ,client-handlers *client-handlers*
+             (lambda ()
+               (let1 *client-handlers* ,client-handlers
+                 (,body-fn))))
+           (lambda () (,body-fn))))))
+
+(defun/type/inline make-task (fn) (function) task
+  (make-task-instance :category *task-category* :fn fn))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
   (let1 queue (channel-queue channel)
     (make-task
-      ;; handler already established inside worker threads
-      (unwind-protect/ext
-       :main  (push-queue (with-task-context (apply fn args)) queue)
-       :abort (push-queue (wrap-error 'task-killed-error) queue)))))
+      (make-task-fn
+        (unwind-protect/ext
+         ;; task handler already established inside worker threads
+         :main  (push-queue (with-task-context (apply fn args)) queue)
+         ;; the task handler handles everything; unwind means thread kill
+         :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
 (defun/type submit-raw-task (task kernel) (task kernel) t
   (schedule-task (scheduler kernel) task *task-priority*))
