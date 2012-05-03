@@ -97,7 +97,8 @@ See http://lparallel.com for documentation and examples.
                                            (:file "pqualifier")
                                            (:file "preduce")
                                            (:file "premove")
-                                           (:file "psort")))))))
+                                           (:file "psort")))
+                             (:file "defpar")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))

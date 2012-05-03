@@ -311,23 +311,30 @@
                     (pmapc #'sq :parts parts a)
                     (pmapl #'cdr :parts parts a))))))
 
-(lp-test plet-test
-  (plet ((a 3)
-         (b 4))
-    (is (= 7 (+ a b))))
-  (signals client-error
-    (task-handler-bind ((error (lambda (e)
-				 (invoke-restart 'transfer-error e))))
-      (plet ((a (error 'client-error)))
-        a)))
-  (task-handler-bind ((error (lambda (e)
-			       (invoke-restart 'transfer-error e))))
-    (handler-bind ((error (lambda (e)
-                            (declare (ignore e))
-                            (invoke-restart 'store-value 4))))
-      (plet ((a 3)
-             (b (error "foo")))
-        (is (= 7 (+ a b)))))))
+(defmacro define-plet-test (test-name fn-name defun)
+  `(progn
+     (,defun ,fn-name ()
+       (plet ((a 3)
+              (b 4))
+         (is (= 7 (+ a b))))
+       (signals client-error
+         (task-handler-bind ((error (lambda (e)
+                                      (invoke-restart 'transfer-error e))))
+           (plet ((a (error 'client-error)))
+             a)))
+       (task-handler-bind ((error (lambda (e)
+                                    (invoke-restart 'transfer-error e))))
+         (handler-bind ((error (lambda (e)
+                                 (declare (ignore e))
+                                 (invoke-restart 'store-value 4))))
+           (setf *memo* (lambda () (error "foo")))
+           (plet ((a 3)
+                  (b (funcall *memo*)))
+             (is (= 7 (+ a b)))))))
+     (lp-test ,test-name
+       (,fn-name))))
+
+(define-plet-test plet-test plet-test-fn defun)
 
 (lp-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))

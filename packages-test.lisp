@@ -36,6 +36,7 @@
         #:lparallel.queue
         #:lparallel.kernel
         #:lparallel.cognate
+        #:lparallel.defpar
         #:lparallel.promise
         #:lparallel.ptree)
   (:import-from #:bordeaux-threads

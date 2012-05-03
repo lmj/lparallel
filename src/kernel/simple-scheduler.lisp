@@ -12,6 +12,8 @@
 
 (in-package #:lparallel.kernel)
 
+(alias-function biased-queue-lock lparallel.biased-queue::lock)
+
 (alias-function make-scheduler make-biased-queue)
 
 (defun/type schedule-task (scheduler task priority) ((scheduler task t) t)
@@ -23,6 +25,13 @@
 (defun/inline next-task (scheduler worker)
   (declare (ignore worker))
   (pop-biased-queue scheduler))
+
+(defun/type steal-task (scheduler) ((scheduler) (or task null))
+  (with-lock-predicate/wait
+      (biased-queue-lock scheduler) (not (biased-queue-empty-p/no-lock scheduler))
+    ;; don't steal nil, the end condition flag
+    (when (peek-biased-queue/no-lock scheduler)
+      (pop-biased-queue/no-lock scheduler))))
 
 (setf (macro-function 'with-locked-scheduler)
       (macro-function 'with-locked-biased-queue))

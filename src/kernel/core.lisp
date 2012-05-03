@@ -30,9 +30,40 @@
 
 (in-package #:lparallel.kernel)
 
-#.(import 'bordeaux-threads:destroy-thread)
+#.(import '(bordeaux-threads:destroy-thread
+            bordeaux-threads:current-thread))
 
 (define-circular-print-object kernel)
+
+(defun/type exec-task/worker (task worker) ((task worker) t)
+  ;; already inside call-with-task-handler
+  (declare #.*normal-optimize*)
+  (with-worker-slots (running-category) worker
+    (bind-tuple (task-fn kill-notify-fn category) task
+      (unwind-protect/ext
+       :prepare (setf running-category category)
+       :main    (funcall task-fn)
+       :cleanup (setf running-category nil)
+       :abort   (funcall kill-notify-fn)))))
+
+;;; TODO: category for non-worker
+(defun/type exec-task/non-worker (task) ((task) t)
+  ;; not inside call-with-task-handler
+  (declare #.*normal-optimize*)
+  (bind-tuple (task-fn kill-notify-fn category) task
+    (declare (ignore category))
+    (unwind-protect/ext
+     :main  (call-with-task-handler task-fn)
+     :abort (funcall kill-notify-fn))))
+
+(defun/type steal-work () (() boolean)
+  (declare #.*normal-optimize*)
+  (when-let (task (steal-task (scheduler *kernel*)))
+    (let1 worker *worker*
+      (if worker
+          (exec-task/worker task worker)
+          (exec-task/non-worker task)))
+    t))
 
 (defun replace-worker (kernel worker)
   (with-kernel-slots (workers workers-lock) kernel
@@ -47,7 +78,7 @@
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct -- call `end-kernel'."))))))
 
-(defun worker-loop (kernel worker)
+(defun/type worker-loop (kernel worker) ((kernel worker) t)
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
@@ -56,27 +87,27 @@
   ;; 
   ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
+  (declare #.*normal-optimize*)
   (let1 scheduler (scheduler kernel)
     (unwind-protect/ext
-       :main  (loop (let1 task (or (next-task scheduler worker) (return))
-                      (with-worker-slots (running-category) worker
-                        (bind-tuple (task-fn kill-notify-fn category) task
-                          (unwind-protect/ext
-                             :prepare (setf running-category category)
-                             :main    (funcall task-fn)
-                             :cleanup (setf running-category nil)
-                             :abort   (funcall kill-notify-fn))))))
+       :main  (loop (exec-task/worker (or (next-task scheduler worker) (return))
+                                      worker))
        :abort (replace-worker kernel worker))))
 
-(defun call-with-worker-context (worker-context fn)
-  (funcall worker-context (lambda () (%call-with-task-handler fn))))
+(defun call-with-worker-context (fn worker-context kernel)
+  (funcall worker-context
+           (lambda ()
+             (let1 *worker* (find (current-thread) (workers kernel) :key #'thread)
+               (assert *worker*)
+               (%call-with-task-handler fn)))))
 
 (defun enter-worker-loop (kernel worker)
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (context) worker-info
       (call-with-worker-context
+       (lambda () (worker-loop kernel worker))
        context
-       (lambda () (worker-loop kernel worker))))))
+       kernel))))
 
 (defun make-worker (kernel)
   (with-kernel-slots (worker-info) kernel
@@ -89,6 +120,12 @@
         (with-worker-slots (thread) worker
           (setf thread worker-thread))
         (values worker (lambda () (push-queue 'proceed guard)))))))
+
+(defvar *optimizer* nil)
+
+(defgeneric make-optimizer-data (specializer)
+  (:method ((specializer (eql nil)))
+    (declare (ignore specializer))))
 
 (defun make-kernel (worker-count
                     &key
@@ -123,7 +160,8 @@ the string returned by `bordeaux-threads:thread-name'."
                   :scheduler (make-scheduler workers)
                   :workers workers
                   :workers-lock (make-lock)
-                  :worker-info worker-info)))
+                  :worker-info worker-info
+                  :optimizer-data (make-optimizer-data *optimizer*))))
     (with-kernel-slots (workers worker-info) kernel
       (with-worker-info-slots (bindings) worker-info
         (push (cons '*kernel* kernel) bindings)
@@ -159,10 +197,13 @@ bindings (see bordeaux-threads:*default-special-bindings*)."
     (with-worker-info-slots (bindings) worker-info
       (copy-alist bindings))))
 
+(defun/inline %kernel-worker-count (kernel)
+  (length (workers kernel)))
+
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."
   (check-kernel)
-  (length (workers *kernel*)))
+  (%kernel-worker-count *kernel*))
 
 (defun make-channel (&optional initial-capacity)
   "Create a channel for submitting and receiving tasks. The current
@@ -173,8 +214,7 @@ As an optimization, an internal size may be given with
   (check-kernel)
   (make-channel-instance
    :kernel *kernel*
-   :queue (make-queue (or initial-capacity
-                          (length (workers *kernel*))))))
+   :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
 
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
@@ -295,10 +335,10 @@ return value is the number of tasks that would have been killed if
           ,@body))))
 
 (defun shutdown (channel kernel)
-  (with-kernel-slots (scheduler workers) kernel
+  (with-kernel-slots (scheduler) kernel
     (with-idle-kernel channel kernel
       (distribute-tasks/no-lock scheduler
-                                (make-array (length workers)
+                                (make-array (%kernel-worker-count kernel)
                                             :initial-element nil)))))
 
 (defun end-kernel (&key wait)

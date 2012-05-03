@@ -347,3 +347,22 @@
            (let1 channel (make-channel)
              (submit-task channel (lambda () (sleep 1))))
         (is (eql 3 (length (end-kernel :wait t))))))))
+
+(lp-base-test steal-work-test
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
+      (submit-task channel (lambda () (sleep 0.4)))
+      (submit-task channel (lambda () (sleep 0.4)))
+      (sleep 0.1)
+      (let1 execp nil
+        (submit-task channel (lambda () (setf execp t)))
+        (sleep 0.1)
+        (is (eq t (lparallel.kernel::steal-work)))
+        (is (eq t execp))
+        (is (eq nil (lparallel.kernel::steal-work))))))
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
+      (submit-task channel (lambda () (sleep 0.2)))
+      (submit-task channel (lambda () (sleep 0.2)))
+      (sleep 0.1)
+      (is (eq nil (lparallel.kernel::steal-work))))))

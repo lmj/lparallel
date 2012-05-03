@@ -41,7 +41,13 @@
 
 (deftype scheduler () 'biased-queue)
 
-(defslots kernel ()
+(defslots optimizer ()
+  ((optimizer-flag :reader optimizer-flag :initform t :type boolean)
+   (optimizer-data :reader optimizer-data)))
+
+;;; optimizer is included (as opposed to being a member) because
+;;; optimizer-flag is a critical inline function
+(defslots kernel (optimizer)
   ((scheduler       :reader scheduler :type scheduler)
    (workers         :reader workers   :type simple-vector)
    (workers-lock)

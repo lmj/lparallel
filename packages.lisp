@@ -34,7 +34,8 @@
            #:defmacro/once
            #:mklist
            #:unsplice
-           #:intern-conc)
+           #:intern-conc
+           #:with-parsed-body)
   (:export #:while
            #:repeat
            #:when-let
@@ -230,9 +231,19 @@
            #:pnotevery
            #:pnotany
            #:plet
+           #:plet-if
            #:pfuncall
            #:pand
            #:por))
+
+(defpackage #:lparallel.defpar
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.kernel
+        #:lparallel.thread-util
+        #:lparallel.promise
+        #:lparallel.cognate)
+  (:export #:defpar))
 
 (macrolet ((define-merged-package (name packages)
              `(defpackage ,name
@@ -247,4 +258,5 @@
       (#:lparallel.kernel
        #:lparallel.promise
        #:lparallel.cognate
+       #:lparallel.defpar
        #:lparallel.ptree)))

@@ -48,7 +48,11 @@
 
   (*task-priority* :default
    "Thread-local. When bound to `:low', the kernel schedules submitted
-    tasks at low priority. Default value is `:default'."))
+    tasks at low priority. Default value is `:default'.")
+
+  (*worker* nil
+   "Thread local. The worker instance if inside a worker thread,
+   otherwise nil."))
 
 ;;; This is managed separately due to self-reference.
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")

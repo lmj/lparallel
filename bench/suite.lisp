@@ -40,12 +40,18 @@
 
 (defparameter *benches* '(bench-pmap
                           bench-psort
-                          bench-preduce))
+                          bench-preduce
+                          bench-fib))
 
 (defparameter *sizes* '(10 100 500 1000 5000 10000 50000 100000 200000))
 
+(defparameter *fib-n* '(5 10 15 20 25 30 35))
+
 (defun desc (size op fn time)
   (format nil "~&size ~6d | op ~8,a | ~10,a ~10,d~%" size op fn time))
+
+(defun desc-fib (n fn time)
+  (format nil "~&n ~6d | ~15,a ~8,d~%" n fn time))
 
 (defmacro with-fns (fns &body body)
   `(let ,(loop :for fn :in fns :collect `(,fn (symbol-function ,fn)))
@@ -141,6 +147,52 @@
                                 (funcall fn op source)))
                    :desc-fn (lambda (time)
                               (desc size op fn time)))))))))))))
+
+(defun fib-let (n)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (if (< n 2)
+      n
+      (let ((a (fib-let (- n 1)))
+            (b (fib-let (- n 2))))
+        (+ a b))))
+
+(defpar fib-plet (n)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (if (< n 2)
+      n
+      (plet ((a (fib-plet (- n 1)))
+             (b (fib-plet (- n 2))))
+        (+ a b))))
+
+(defpar fib-plet-if (n)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (if (< n 2)
+      n
+      (plet-if (> n 20)
+          ((a (fib-plet-if (- n 1)))
+           (b (fib-plet-if (- n 2))))
+        (+ a b))))
+
+(defun bench-fib ()
+  (let ((fns        '(fib-let fib-plet fib-plet-if))
+        (trials     *trials*)
+        (rehearsals *rehearsals*))
+    (bench
+     (length fns)
+     trials
+     rehearsals
+     (collecting1
+      (dolist (fn fns)
+        (dolist (n *fib-n*)
+          (rebind (fn n)
+            (collect-trials trials
+              (make-bench-spec
+               :args-fn (lambda ()
+                          (list n))
+               :exec-fn (lambda (n)
+                          (funcall fn n))
+               :desc-fn (lambda (time)
+                          (desc-fib n fn time)))))))))))
 
 (defun execute (num-workers)
   (apply #'run-suite num-workers #'reset *benches*))

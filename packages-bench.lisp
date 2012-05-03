@@ -32,6 +32,7 @@
   (:use #:cl
         #:lparallel.util
         #:lparallel.cognate
+        #:lparallel.defpar
         #:lparallel.kernel)
   (:import-from #:trivial-garbage
                 #:gc)
