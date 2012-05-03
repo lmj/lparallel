@@ -147,7 +147,8 @@ the string returned by `bordeaux-threads:thread-name'."
       (store-value (value)
         :report "Assign a value to lparallel:*kernel*."
         :interactive (lambda () (interact "Value for lparallel:*kernel: "))
-        (setf *kernel* value)))))
+        (setf *kernel* value))))
+  nil)
 
 (defun kernel-special-bindings ()
   "Return an alist of thread-local special variable bindings.
