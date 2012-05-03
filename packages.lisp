@@ -143,13 +143,15 @@
            #:cancel-timeout
            #:receive-result
            #:do-fast-receives
-           #:emergency-kill-tasks ; deprecated -- same as kill-tasks
-           #:kill-tasks)
            #:kill-tasks
-           #:task-handler-bind)
+           #:task-handler-bind
+           #:emergency-kill-tasks ; deprecated; same as kill-tasks
+           #:kernel-handler-bind) ; deprecated; same as task-handler-bind
   (:export #:*kernel*
            #:*task-category*
-           #:*task-priority*)
+           #:*task-priority*
+           #:*kernel-task-category*  ; deprecated; same as *task-category*
+           #:*kernel-task-priority*) ; deprecated; same as *task-priority*
   (:export #:transfer-error
            #:no-kernel-error
            #:task-killed-error))
@@ -211,7 +213,7 @@
   (:export #:psort
            #:preduce
            #:preduce-partial
-           #:preduce/partial ; deprecated -- use preduce-partial
+           #:preduce/partial ; deprecated; same as preduce-partial
            #:pmap
            #:pmap-into
            #:pmap-reduce

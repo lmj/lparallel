@@ -275,10 +275,6 @@ return value is the number of tasks that would have been killed if
             (map nil #'destroy-thread victims))
           (length victims))))))
 
-;; TODO: remove sometime
-#-abcl
-(alias-function emergency-kill-tasks kill-tasks)
-
 (defun kernel-idle-p/no-lock (kernel)
   (with-kernel-slots (scheduler workers) kernel
     (and (scheduler-empty-p/no-lock scheduler)
@@ -352,3 +348,7 @@ returned as the first element in the list."
                  threads)
                 (t
                  (cons (spawn-shutdown) threads))))))))
+
+;;; deprecated
+#-abcl
+(alias-function emergency-kill-tasks kill-tasks)

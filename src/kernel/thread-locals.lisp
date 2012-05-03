@@ -52,3 +52,7 @@
 
 ;;; This is managed seperately due to self-reference.
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")
+
+;;; deprecated
+(define-symbol-macro *kernel-task-category* *task-category*)
+(define-symbol-macro *kernel-task-priority* *task-priority*)

@@ -140,3 +140,6 @@ message from appearing in the future (N is the number of workers):
   (setf lparallel:*kernel* (lparallel:make-kernel N))
 ")))
   (:documentation "Error signaled when `*kernel*' is nil."))
+
+;;; deprecated
+(setf (macro-function 'kernel-handler-bind) (macro-function 'task-handler-bind))
