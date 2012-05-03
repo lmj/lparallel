@@ -72,16 +72,26 @@
 (defun has-declare-p (body)
   (and (consp (car body)) (eq (caar body) 'declare)))
 
-(defmacro with-parsed-body ((preamble
-                             body-var
-                             &key (docstring nil docstring-given-p))
-                            &body body)
+(defun parse-body (body &key documentation whole)
+  (loop
+     :for docstring-next-p := (and documentation (has-docstring-p body))
+     :for declare-next-p   := (has-declare-p body)
+     :while (or docstring-next-p declare-next-p)
+     :when docstring-next-p :collect (pop body) :into docstrings
+     :when declare-next-p   :collect (pop body) :into declares
+     :finally (progn
+                (unless (<= (length docstrings) 1)
+                  (error "Too many documentation strings in ~S."
+                         (or whole body)))
+                (return (values body declares (first docstrings))))))
+
+(defmacro with-parsed-body ((docstring declares body) &body own-body)
   "Pop declarations and maybe docstring off `body-var' and assign them
 to `preamble'."
-  (unless docstring-given-p
-    (error "`with-parsed-body' requires `:docstring' argument."))
-  `(let ((,preamble (loop
-                       :while (or (and ,docstring (has-docstring-p ,body-var))
-                                  (has-declare-p ,body-var))
-                       :collect (pop ,body-var))))
-     ,@body))
+  (if docstring
+      `(multiple-value-bind
+             (,body ,declares ,docstring) (parse-body ,body :documentation t)
+         ,@own-body)
+      `(multiple-value-bind
+             (,body ,declares) (parse-body ,body)
+         ,@own-body)))

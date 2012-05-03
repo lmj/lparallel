@@ -246,12 +246,12 @@ like Fibonacci,
 
 NOTE: `defpar' may require a high optimization level in order to
 produce significant speedup."
-  (with-parsed-body (preamble body :docstring t)
+  (with-parsed-body (docstring declares body)
     (validate-registered-fns)
     (register-fn-name name)
     `(progn
        (defun ,(unchecked-name name) ,params
-         ,@preamble
+         ,@declares
          (macrolet ((plet (bindings &body body)
                       `(plet/defpar ,bindings ,@body))
                     (plet-if (predicate bindings &body body)
@@ -259,6 +259,7 @@ produce significant speedup."
                     ,@(registered-macrolets))
            ,@body))
        (defun ,name (&rest params)
+         ,@(unsplice docstring)
          (declare (dynamic-extent params))
          (check-kernel)
          (apply (function ,(unchecked-name name)) params))

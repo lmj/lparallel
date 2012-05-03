@@ -44,7 +44,7 @@
      ,@body))
 
 (defmacro future-let (&key future force bindings pre-body body)
-  (with-parsed-body (preamble body :docstring nil)
+  (with-parsed-body (nil declares body)
     (with-parsed-let-args (pairs non-pairs syms) bindings
       `(symbol-macrolet ,(loop
                             :for sym :in syms
@@ -55,7 +55,7 @@
                     :for (nil form) :in pairs
                     :collect `(,sym (,future ,form)))
                ,@non-pairs)
-           ,@preamble
+           ,@declares
            ,@(unsplice pre-body)
            ,@body)))))
 

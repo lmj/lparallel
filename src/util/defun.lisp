@@ -45,16 +45,17 @@
        (declaim (ftype (function arg-types return-type) foo) 
        (defun foo ...)."
     (assert (not (some (lambda (x) (find x lambda-list-keywords)) params)))
-    (with-parsed-body (preamble body :docstring t)
+    (with-parsed-body (docstring declares body)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
          (defun ,name ,params
+           ,@(unsplice docstring)
+           ,@declares
            (declare ,@(loop
                          :for type  :in arg-types
                          :for param :in params
                          :unless (eq type t)
                          :collect `(type ,type ,param)))
-           ,@preamble
            ,@body)))))
 
 ;;; Since return types are not always checked, check manually.
@@ -76,9 +77,10 @@
                                        (gensym (symbol-name x))
                                        (gensym)))
                                  return-types)))
-      (with-parsed-body (preamble body :docstring t)
+      (with-parsed-body (docstring declares body)
         `(defun ,name ,params
-           ,@preamble
+           ,@(unsplice docstring)
+           ,@declares
            ,@(loop
                 :for type  :in arg-types
                 :for param :in params

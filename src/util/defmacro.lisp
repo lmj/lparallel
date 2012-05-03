@@ -49,8 +49,9 @@ by `&once' are passed to a `once-only' call which surrounds `body'."
                              (t
                               nil)))
                      params)))
-    (with-parsed-body (preamble body :docstring t)
+    (with-parsed-body (docstring declares body)
       `(defmacro ,name ,(remove-once-keywords params)
-         ,@preamble
+         ,@(unsplice docstring)
+         ,@declares
          (once-only ,(find-once-params params)
            ,@body)))))
