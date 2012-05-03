@@ -66,7 +66,7 @@ time from errors signaled inside `call-with-task-handler'.")
                  :for clause :in clauses
                  :for (name fn more) := clause
                  :do (unless (and (symbolp name) (not more))
-                       (error "Wrong format in `task-handler-bind' clause: ~a"
+                       (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
                               clause))
                  :collect `(cons ',name ,fn))
     `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)

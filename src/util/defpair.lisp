@@ -15,7 +15,7 @@ takes keyword arguments corresponding to slots of the same name.
 All slots must be initialized when an instance is created, else an
 error will be signaled."
   (unless (null supers)
-    (error "Non-empty superclass list ~a in `defpair' form ~a" supers name))
+    (error "Non-empty superclass list ~a in DEFPAIR ~a" supers name))
   (setf a (mklist a))
   (setf b (mklist b))
   (labels ((slot-name     (slot) (car slot))

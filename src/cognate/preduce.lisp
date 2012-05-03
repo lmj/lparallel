@@ -93,7 +93,7 @@
   (declare (ignore end))
   (cond ((zerop subsize)
          (when partial
-           (error "`preduce-partial' given zero-length sequence"))
+           (error "PREDUCE-PARTIAL given zero-length sequence"))
          (if initial-value-given-p
              initial-value
              (funcall function)))

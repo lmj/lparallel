@@ -48,7 +48,7 @@
 
 (defun item-predicate (item test test-not)
   (when (and test test-not)
-    (error "Both `:test' and `:test-not' options given."))
+    (error "Both :TEST and :TEST-NOT options given."))
   (when test-not
     (setf test (complement test-not))
     (setf test-not nil))
@@ -63,7 +63,7 @@
 (defun subsize (seq size start end)
   (let1 result (- (or end size) start)
     (when (or (minusp result) (> result size))
-      (error "Bad interval for sequence operation on ~a -- start: ~a end: ~a"
+      (error "Bad interval for sequence operation on ~a: start=~a end=~a"
              seq start end))
     result))
 

@@ -44,7 +44,7 @@ by `&once' are passed to a `once-only' call which surrounds `body'."
                               (find-once-params (first x)))
                              ((once-keyword-p (first x))
                               (unless (and (cdr x) (atom (cadr x)))
-                                (error "`&once' without parameter in ~a" name))
+                                (error "&ONCE without parameter in ~a" name))
                               (list (second x)))
                              (t
                               nil)))
