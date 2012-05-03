@@ -88,12 +88,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots promise-base ()
-  ((result :initform 'no-result)
-   (lock   :initform (make-lock))))
+  ((result :reader result :initform 'no-result)
+   (lock                  :initform (make-lock))))
 
 (defmethod fulfilledp ((promise promise-base))
-  (with-promise-base-slots (result) promise
-    (not (eq result 'no-result))))
+  (not (eq (result promise) 'no-result)))
 
 (defmacro with-lock-operation (operation promise &body body)
   (with-gensyms (lock result)
@@ -217,19 +216,20 @@ unknown at the time it is created."
                                                (eq ,result 'no-result))
          ,@body))))
 
+(defmacro make-future-task (future)
+  `(macrolet ((store-error (err)
+                `(with-unfulfilled-future/no-wait ,',future
+                   (fulfill-plan ,',future (list ,err)))))
+     (make-task :fn (lambda ()
+                      (with-unfulfilled-future/no-wait ,future
+                        (force-future ,future)))
+                :store-error store-error)))
+
 (defun make-future (fn)
   (declare #.*normal-optimize*)
   (check-kernel)
   (let1 future (make-future-instance :fn fn)
-    (submit-raw-task (macrolet ((store-error (err)
-                                  `(with-unfulfilled-future/no-wait future
-                                     (fulfill-plan future (list ,err)))))
-                       (make-task
-                        :fn (lambda ()
-                              (with-unfulfilled-future/no-wait future
-                                (force-future future)))
-                        :store-error store-error))
-                     *kernel*)
+    (submit-raw-task (make-future-task future) *kernel*)
     future))
 
 (defmacro future (&body body)
