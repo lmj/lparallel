@@ -39,10 +39,10 @@
 (defun debug-execute ()
   (debug!))
 
-(defmacro with-new-kernel ((worker-count
-                            &rest args
-                            &key bindings worker-context name)
-                           &body body)
+(defmacro/once with-new-kernel ((&once worker-count
+                                 &rest args
+                                 &key bindings worker-context name)
+                                &body body)
   (declare (ignore bindings worker-context name))
   `(let1 *kernel* (make-kernel ,worker-count ,@args)
      (unwind-protect (progn ,@body)
