@@ -79,9 +79,9 @@
        (raw-queue-empty-p (low queue))))
 
 (define-simple-locking-fn
-    biased-queue-count (queue) (biased-queue) fixnum lock
-  (the fixnum (+ (raw-queue-count (high queue))
-                 (raw-queue-count (low queue)))))
+    biased-queue-count (queue) (biased-queue) (integer 0) lock
+  (+ (raw-queue-count (high queue))
+     (raw-queue-count (low queue))))
 
 (defmacro with-locked-biased-queue (queue &body body)
   `(with-lock-held ((lock ,queue))

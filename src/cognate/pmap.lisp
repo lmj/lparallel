@@ -61,14 +61,14 @@
            lists)
     result-list))
 
-(defun/type map-iterate (map size fn seqs) (function fixnum function list) t
+(defun/type map-iterate (map size fn seqs)
+    (function (integer 0) function list) t
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
   ;; This is an inner loop.
   (declare #.*normal-optimize*)
   (let1 index 0
-    (declare (fixnum index))
     (apply map
            (lambda (&rest args)
              (declare (dynamic-extent args))
@@ -245,19 +245,20 @@ are also accepted (see `pmap')."
   "Parallel version of `mapcan'. Keyword arguments `parts' and `size'
 are also accepted (see `pmap')."
   (declare (dynamic-extent lists))
-  (case (length lists)
-    (1 (reduce 'nreconc
-               (preduce-partial (lambda (acc x)
-                                  (declare #.*normal-optimize*)
-                                  (let1 result (funcall function x)
-                                    (if result
-                                        (nconc result acc)
-                                        acc)))
-                                (first lists)
-                                :initial-value nil)
-               :initial-value nil
-               :from-end t))
-    (t (apply #'nconc (apply #'pmapcar function lists)))))
+  (let1 function (ensure-function function)
+    (case (length lists)
+      (1 (reduce 'nreconc
+                 (preduce-partial (lambda (acc x)
+                                    (declare #.*normal-optimize*)
+                                    (let1 result (funcall function x)
+                                      (if result
+                                          (nconc result acc)
+                                          acc)))
+                                  (first lists)
+                                  :initial-value nil)
+                 :initial-value nil
+                 :from-end t))
+      (t (apply #'nconc (apply #'pmapcar function lists))))))
 
 (defun pmapcon (function &rest lists)
   "Parallel version of `mapcon'. Keyword arguments `parts' and `size'
