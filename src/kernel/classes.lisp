@@ -37,9 +37,27 @@
 
 (defslots worker ()
   ((thread           :reader thread)
-   (running-category :reader running-category :initform nil)))
+   (running-category :reader running-category :initform nil)
+   (index            :reader worker-index     :type fixnum)
+   (from-worker      :reader from-worker :initform (make-queue)   :type queue)
+   (to-worker        :reader to-worker   :initform (make-queue)   :type queue)
+   #+lparallel.with-stealing-scheduler
+   (tasks            :reader tasks            :type spin-queue)))
 
-(deftype scheduler () 'biased-queue)
+#+lparallel.with-stealing-scheduler
+(defslots scheduler ()
+  ((workers                                        :type simple-vector)
+   (wait-cvar          :initform (make-condition-variable))
+   (wait-lock          :initform (make-lock))
+   (wait-count         :initform 0                 :type fixnum)
+   (notify-count       :initform 0)
+   (spin-count)
+   (low-priority-tasks :initform (make-spin-queue) :type spin-queue)))
+
+#-lparallel.with-stealing-scheduler
+(progn
+  (deftype scheduler () 'biased-queue)
+  (defun tasks (scheduler) (declare (ignore scheduler))))
 
 (locally (declare #.*full-optimize*)
   (defslots optimizer ()

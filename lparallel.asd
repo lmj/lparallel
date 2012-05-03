@@ -28,6 +28,12 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+;;; default to stealing scheduler on sbcl
+#.(when (and (find :sbcl *features*)
+             (not (find :lparallel.without-stealing-scheduler *features*)))
+    (pushnew :lparallel.with-stealing-scheduler *features*)
+    (values))
+
 (defsystem :lparallel
   :version "1.2.2"
   :description "Parallelism for Common Lisp"
@@ -76,13 +82,15 @@ See http://lparallel.com for documentation and examples.
                              (:file "queue")
                              (:file "counter")
                              (:file "biased-queue")
+                             (:file "spin-queue")
                              (:module "kernel"
                               :serial t
                               :components ((:file "util")
                                            (:file "thread-locals")
                                            (:file "handling")
                                            (:file "classes")
-                                           (:file "central-scheduler")
+       #-lparallel.with-stealing-scheduler (:file "central-scheduler")
+       #+lparallel.with-stealing-scheduler (:file "stealing-scheduler")
                                            (:file "core")
                                            (:file "timeout")))
                              (:file "kernel-util")

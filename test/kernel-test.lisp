@@ -42,6 +42,66 @@
     (signals no-kernel-error
       (submit-task (make-channel) (lambda ())))))
 
+(lp-base-test end-kernel-test
+  (repeat 10
+    (loop
+       :for n :from 1 :below 32
+       :do (with-new-kernel (n)
+             (is (= 1 1))))))
+
+(lp-test many-task-test
+  (let1 channel (make-channel)
+    (repeat 1000
+      (submit-task channel (lambda ()))
+      (is (null (receive-result channel))))
+    (repeat 1000
+      (submit-task channel (lambda ())))
+    (repeat 1000
+      (is (null (receive-result channel))))
+    (repeat 1000
+      (let1 *task-priority* :low
+        (submit-task channel (lambda ())))
+      (is (null (receive-result channel))))
+    (repeat 1000
+      (let1 *task-priority* :low
+        (submit-task channel (lambda ()))))
+    (repeat 1000
+      (is (null (receive-result channel))))))
+
+(lp-base-test kill-during-end-kernel-test
+  (let* ((*kernel* (make-kernel 2))
+         (kernel *kernel*)
+         (out *standard-output*)
+         (channel (make-channel))
+         (handled (make-queue))
+         (finished (make-queue)))
+    (task-handler-bind ((error
+                         (lambda (e) (invoke-restart 'transfer-error e))))
+      (submit-task channel (lambda ()
+                             (setf *error-output* (make-broadcast-stream))
+                             (infinite-loop))))
+    (with-thread ()
+      (block top
+        (handler-bind ((task-killed-error
+                        (lambda (e)
+                          (declare (ignore e))
+                          (push-queue t handled)
+                          (return-from top))))
+          (receive-result channel))))
+    (sleep 0.2)
+    (let1 thread (with-thread ()
+                   (let1 *standard-output* out
+                     (let1 *kernel* kernel
+                       (end-kernel :wait t)
+                       (push-queue t finished))))
+      (sleep 0.2)
+      (is (null (peek-queue finished)))
+      (is (eql 1 (kill-tasks :default)))
+      (sleep 0.2)
+      (is (eq t (peek-queue handled)))
+      (is (eq t (peek-queue finished)))
+      (is (not (null thread))))))
+
 (lp-test channel-capacity-test
   (let1 channel (make-channel 10)
     (submit-task channel (lambda () 3))
@@ -238,9 +298,6 @@
                                (signal 'foo-condition)))
         (receive-result channel)))
     (is (eq :called result))))
-
-(defparameter *nil* nil)
-(defun infinite-loop () (loop :until *nil*))
 
 #-abcl
 (lp-base-test custom-kill-task-test

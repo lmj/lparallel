@@ -128,12 +128,26 @@
            #:dec-counter
            #:counter-value))
 
+(defpackage #:lparallel.spin-queue
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.raw-queue
+        #:lparallel.counter)
+  (:export #:spin-queue
+           #:make-spin-queue
+           #:push-spin-queue
+           #:pop-spin-queue
+           #:peek-spin-queue
+           #:spin-queue-count
+           #:spin-queue-empty-p))
+
 (defpackage #:lparallel.kernel
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.queue
-        #:lparallel.biased-queue)
+        #:lparallel.biased-queue
+        #:lparallel.spin-queue)
   (:export #:make-kernel
            #:kernel-worker-count
            #:check-kernel
@@ -148,6 +162,7 @@
            #:kill-tasks
            #:task-handler-bind)
   (:export #:*kernel*
+           #:*kernel-spin-count*
            #:*task-category*
            #:*task-priority*)
   (:export #:transfer-error

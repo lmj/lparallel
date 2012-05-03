@@ -59,16 +59,28 @@
           (exec-task/non-worker task)))
     t))
 
+(defun/type handshake/to-worker (worker) (worker) t
+  (with-worker-slots (from-worker to-worker) worker
+    (push-queue 'proceed to-worker)
+    (assert (eq 'ok (pop-queue from-worker)))))
+
+(defun/type handshake/from-worker (worker) (worker) t
+  (with-worker-slots (from-worker to-worker) worker
+    (assert (eq 'proceed (pop-queue to-worker)))
+    (push-queue 'ok from-worker)))
+
 (defun/type replace-worker (kernel worker) (kernel worker) t
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
       (let1 index (position worker workers :test #'eq)
         (assert index)
+        (assert (eql index (with-worker-slots (index) worker
+                             index)))
         (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
-           :main    (multiple-value-bind (new-worker guard) (make-worker kernel)
+           :main    (let1 new-worker (make-worker kernel index (tasks worker))
                       (setf (svref workers index) new-worker)
-                      (funcall guard))
+                      (handshake/to-worker new-worker))
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct -- call `end-kernel'."))))))
 
@@ -105,17 +117,28 @@
        context
        kernel))))
 
-(defun/type make-worker (kernel) (kernel) (values worker function)
+#+lparallel.with-stealing-scheduler
+(defun %make-worker (index tasks)
+  (make-worker-instance :thread nil :index index :tasks tasks))
+
+#-lparallel.with-stealing-scheduler
+(defun %make-worker (index tasks)
+  (declare (ignore tasks))
+  (make-worker-instance :thread nil :index index))
+
+(defun make-worker (kernel index tasks)
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
-      (let* ((worker (make-worker-instance :thread nil))
-             (guard (make-queue))
-             (worker-thread (with-thread (:bindings bindings :name name)
-                              (pop-queue guard)
-                              (enter-worker-loop kernel worker))))
+      (let* ((worker (%make-worker index tasks))
+             (worker-thread (with-worker-slots (from-worker to-worker) worker
+                              (with-thread (:bindings bindings :name name)
+                                (unwind-protect/ext
+                                 :prepare (handshake/from-worker worker)
+                                 :main    (enter-worker-loop kernel worker)
+                                 :cleanup (push-queue 'exit from-worker))))))
         (with-worker-slots (thread) worker
           (setf thread worker-thread))
-        (values worker (lambda () (push-queue 'proceed guard)))))))
+        worker))))
 
 (defvar *optimizer* nil)
 
@@ -123,12 +146,16 @@
   (:method ((specializer (eql nil)))
     (declare (ignore specializer))))
 
+(defvar *kernel-spin-count* 10  ; need data to determine a good number
+  "Default value of the `spin-count' argument to `make-kernel'.")
+
 (defun make-kernel (worker-count
                     &key
                     (bindings `((*standard-output* . ,*standard-output*)
                                 (*error-output*    . ,*error-output*)))
                     (worker-context #'funcall)
-                    (name "lparallel-worker"))
+                    (name "lparallel-worker")
+                    (spin-count *kernel-spin-count*))
   "Create a kernel with `worker-count' number of worker threads.
 
 `bindings' is an alist for establishing thread-local variables inside
@@ -140,6 +167,9 @@ Dynamic context for each worker may be established with the function
 function which must be funcalled. It begins the worker loop and will
 not return until the worker exits. Default value of `worker-context'
 is #'funcall.
+
+When a worker discovers that no tasks are available, `spin-count' is
+the number of stealing iterations done by the worker before sleeping.
 
 `name' is a string identifier for worker threads. It corresponds to
 the string returned by `bordeaux-threads:thread-name'."
@@ -153,7 +183,7 @@ the string returned by `bordeaux-threads:thread-name'."
                        :name name))
          (workers (make-array worker-count))
          (kernel (make-kernel-instance
-                  :scheduler (make-scheduler)
+                  :scheduler (make-scheduler workers spin-count)
                   :workers workers
                   :workers-lock (make-lock)
                   :worker-info worker-info
@@ -161,13 +191,14 @@ the string returned by `bordeaux-threads:thread-name'."
     (with-kernel-slots (workers worker-info) kernel
       (with-worker-info-slots (bindings) worker-info
         (push (cons '*kernel* kernel) bindings)
-        (let1 guards ()
+        (let1 index 0
           (map-into workers
                     (lambda ()
-                      (multiple-value-bind (worker guard) (make-worker kernel)
-                        (push guard guards)
-                        worker)))
-          (mapc #'funcall guards))))
+                      (make-worker kernel
+                                   (prog1 index (incf index))
+                                   (make-spin-queue))))
+          (dosequence (worker workers)
+            (handshake/to-worker worker)))))
     kernel))
 
 (defun check-kernel ()
@@ -294,8 +325,8 @@ return value is the number of tasks that would have been killed if
   (when *kernel*
     (when (null task-category)
       (error "task category cannot be NIL in KILL-TASKS"))
-    (with-kernel-slots (workers scheduler) *kernel*
-      (with-locked-scheduler scheduler
+    (with-kernel-slots (workers workers-lock) *kernel*
+      (with-lock-held (workers-lock)
         (let1 victims (map 'vector 
                            #'thread 
                            (remove-if-not (lambda (worker)
@@ -306,79 +337,50 @@ return value is the number of tasks that would have been killed if
             (map nil #'destroy-thread victims))
           (length victims))))))
 
-(defun kernel-idle-p/no-lock (kernel)
-  (with-kernel-slots (scheduler workers) kernel
-    (and (scheduler-empty-p/no-lock scheduler)
-         (notany #'running-category workers))))
-
-(defun kernel-idle-p (kernel)
-  (with-kernel-slots (scheduler) kernel
-    (with-locked-scheduler scheduler
-      (kernel-idle-p/no-lock kernel))))
-
-(defun wait-for-tasks (channel kernel)
-  (loop
-     (when (kernel-idle-p kernel)
-       (return))
-     (let1 *task-priority* :low
-       (submit-task channel (lambda ())))
-     (receive-result channel)))
-
-(defmacro/once with-idle-kernel (&once channel &once kernel &body body)
-  (with-gensyms (retry)
-    `(tagbody ,retry
-        (wait-for-tasks ,channel ,kernel)
-        (with-locked-scheduler (scheduler ,kernel)
-          (unless (kernel-idle-p/no-lock ,kernel)
-            (go ,retry))
-          ,@body))))
-
 (defun shutdown (channel kernel)
-  (with-kernel-slots (scheduler) kernel
-    (with-idle-kernel channel kernel
-      (distribute-tasks/no-lock
-       scheduler (make-array (%kernel-worker-count kernel)
-                             :initial-element nil)))))
+  (let1 *task-priority* :low
+    (submit-task channel (lambda ())))
+  (receive-result channel)
+  (with-kernel-slots (scheduler workers) kernel
+    (repeat (length workers)
+      (schedule-task scheduler nil :low))
+    (dosequence (worker workers)
+      (assert (eq 'exit (pop-queue (from-worker worker)))))))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
 
-But hang on -- are you certain you wish to do this? `end-kernel' is an
-expensive operation involving heavy locking to detect a finished
-state. Creating and destroying threads is also expensive. A kernel is
-meant to be your trusted friend for the lifetime of the Lisp process.
-Having more than one kernel is fine; simply use `let' to bind a kernel
-instance to `*kernel*' when you need it. Use `kill-tasks' to terminate
-deadlocked or infinite looping tasks.
+`end-kernel' should not be used as a substitute for properly waiting
+on tasks with `receive-result' or otherwise.
 
 If `wait' is nil (the default) then `end-kernel' returns immediately.
-Current tasks are waited upon by a separate shutdown manager thread. 
+Workers are waited upon by a separate shutdown manager thread.
 
-If `wait' is non-nil then `end-kernel' blocks until all tasks are
-complete. No shutdown manager thread is created. If you are merely
-waiting on tasks then you almost certainly want to use
-`receive-result' instead. However there are rare cases where waiting
-on a temporary kernel is warranted, for example when benchmarking with
-a variety of kernels.
+If `wait' is non-nil then `end-kernel' blocks until all workers are
+finished. No shutdown manager thread is created.
 
 A list of the implementation-defined worker thread objects is
 returned. If `wait' is nil then the shutdown manager thread is also
-returned as the first element in the list."
+returned as the first element in the list.
+
+Note that creating and destroying kernels is relatively expensive. A
+kernel typically exists for lifetime of the Lisp process. Having more
+than one kernel is fine -- simply use `let' to bind a kernel instance
+to `*kernel*' when you need it. Use `kill-tasks' to terminate
+deadlocked or infinite looping tasks."
   (when *kernel*
     (let ((kernel *kernel*)
           (channel (make-channel)))
       (setf *kernel* nil)
-      (labels ((call-shutdown ()
-                 (shutdown channel kernel))
-               (spawn-shutdown ()
-                 (make-thread #'call-shutdown
-                              :name "lparallel kernel shutdown manager")))
-        (let1 threads (map 'list #'thread (workers kernel))
+      (with-kernel-slots (workers) kernel
+        (let1 threads (map 'list #'thread workers)
           (cond (wait
-                 (call-shutdown)
+                 (shutdown channel kernel)
                  threads)
                 (t
-                 (cons (spawn-shutdown) threads))))))))
+                 (cons (with-thread (:name "lparallel kernel shutdown manager")
+                         (shutdown channel kernel))
+                       threads))))))))
 
 ;;; deprecated
 #-abcl

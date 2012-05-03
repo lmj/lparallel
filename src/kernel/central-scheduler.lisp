@@ -14,9 +14,12 @@
 
 (alias-function biased-queue-lock lparallel.biased-queue::lock)
 
-(alias-function make-scheduler make-biased-queue)
+(defun make-scheduler (workers spin-count)
+  (declare (ignore workers spin-count))
+  (make-biased-queue))
 
-(defun/type schedule-task (scheduler task priority) (scheduler task t) t
+(defun/type schedule-task (scheduler task priority)
+    (scheduler (or task null) t) t
   (declare #.*normal-optimize*)
   (ccase priority
     (:default (push-biased-queue     task scheduler))
@@ -34,12 +37,3 @@
     ;; don't steal nil, the end condition flag
     (when (peek-biased-queue/no-lock scheduler)
       (pop-biased-queue/no-lock scheduler))))
-
-(setf (macro-function 'with-locked-scheduler)
-      (macro-function 'with-locked-biased-queue))
-
-(alias-function scheduler-empty-p/no-lock biased-queue-empty-p/no-lock)
-
-(defun/type distribute-tasks/no-lock (scheduler tasks) (scheduler sequence) t
-  (dosequence (task tasks)
-    (push-biased-queue/no-lock task scheduler)))

@@ -74,9 +74,13 @@
 
 (defun enable-profiling ()
   (profile-fns #.(home-functions-in-packages-passing
-                  (curry 'match-package-p "lparallel")))
-  ;; causes recursion problem in profiler
+                  (lambda (pkg)
+                    (or (match-package-p "lparallel" pkg)
+                        (match-package-p "bordeaux-threads" pkg)
+                        #+(and sbcl lparallel.with-stealing-scheduler)
+                        (match-package-p "sb-concurrency" pkg)))))
   #+(or)
+  ;; causes recursion problem in profiler
   (profile-fns (sort map-into map reduce)))
 
 (defun profile (&rest args)

@@ -137,7 +137,7 @@ results are riffled for comparison."
                        (mapcar (compose 'funcall 'args-fn) specs)))))))))
 
 (defun call-with-temp-kernel (worker-count fn)
-  (let1 *kernel* (make-kernel worker-count)
+  (let1 *kernel* (make-kernel worker-count :spin-count 10000)
     (unwind-protect (funcall fn)
       (end-kernel :wait t))))
 

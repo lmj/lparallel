@@ -28,26 +28,42 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lparallel-test
-  (:use #:cl
-        #:lparallel.util
-        #:lparallel.thread-util
-        #:lparallel.raw-queue
-        #:lparallel.queue
-        #:lparallel.spin-queue
-        #:lparallel.kernel
-        #:lparallel.cognate
-        #:lparallel.defpun
-        #:lparallel.promise
-        #:lparallel.ptree)
-  (:import-from #:bordeaux-threads
-                #:current-thread)
-  (:import-from #:eos
-                #:def-suite
-                #:in-suite
-                #:run!
-                #:debug!
-                #:is
-                #:signals
-                #:test)
-  (:export #:execute))
+(in-package #:lparallel.spin-queue)
+
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require 'sb-concurrency))
+
+#+sbcl
+(progn
+  (deftype spin-queue () 'sb-concurrency:queue)
+
+  (defun make-spin-queue (&optional initial-capacity)
+    (declare (ignore initial-capacity))
+    (sb-concurrency:make-queue))
+  
+  ;; only used for testing
+  (defun peek-spin-queue (queue)
+    (let1 list (sb-concurrency:list-queue-contents queue)
+      (if list
+          (values (first list) t)
+          (values nil nil))))
+
+  (alias-function push-spin-queue    sb-concurrency:enqueue)
+  (alias-function pop-spin-queue     sb-concurrency:dequeue)
+  (alias-function spin-queue-count   sb-concurrency:queue-count)
+  (alias-function spin-queue-empty-p sb-concurrency:queue-empty-p))
+
+#-sbcl
+(progn
+  (deftype spin-queue () 'lparallel.queue:queue)
+
+  (defun make-spin-queue (&optional initial-capacity)
+    (declare (ignore initial-capacity))
+    (lparallel.queue:make-queue))
+
+  (alias-function push-spin-queue    lparallel.queue:push-queue)
+  (alias-function pop-spin-queue     lparallel.queue:try-pop-queue)
+  (alias-function peek-spin-queue    lparallel.queue:peek-queue)
+  (alias-function spin-queue-count   lparallel.queue:queue-count)
+  (alias-function spin-queue-empty-p lparallel.queue:queue-empty-p))
