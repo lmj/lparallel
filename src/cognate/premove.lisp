@@ -44,7 +44,7 @@
           (nconc leading
                  (reduce #'nreconc
                          (preduce/common (lambda (acc x)
-                                           (declare #.*full-optimize*)
+                                           (declare #.*normal-optimize*)
                                            (if (funcall test x)
                                                (cons x acc)
                                                acc))

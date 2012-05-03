@@ -37,12 +37,12 @@
         0
         (let1 predicate (ensure-function predicate)
           (flet ((maybe-inc (acc x)
-                   (declare #.*full-optimize*
-                            (fixnum acc)
-                            (ftype (function (fixnum t) fixnum) maybe-inc))
+                   (declare #.*normal-optimize*
+                            (fixnum acc))
                    (if (funcall predicate x)
                        (the fixnum (1+ acc))
                        acc)))
+            (declare (ftype (function (fixnum t) fixnum) maybe-inc))
             (reduce #'+ (preduce/common #'maybe-inc
                                         sequence
                                         subsize

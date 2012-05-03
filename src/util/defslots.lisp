@@ -92,18 +92,17 @@ error will be signaled."))
             ,@,body))))
 
   (defmacro define-struct (name supers slots options conc-name constructor)
-    `(locally (declare #.*full-optimize*)
-       (defstruct (,name (:conc-name ,conc-name)
-                         (:constructor ,constructor)
-                         ,@(unsplice (when supers `(:include ,(first supers)))))
-         ,@(unsplice (getf (first options) :documentation))
-         ,@(loop
-              :for (slot-name . plist) :in slots
-              :for initform := (getf plist :initform
-                                     `(error "slot ~a in ~a not initialized"
-                                             ',slot-name ',name))
-              :for type := (getf plist :type)
-              :collect `(,slot-name ,initform ,@(when type `(:type ,type)))))))
+    `(defstruct (,name (:conc-name ,conc-name)
+                       (:constructor ,constructor)
+                       ,@(unsplice (when supers `(:include ,(first supers)))))
+       ,@(unsplice (getf (first options) :documentation))
+       ,@(loop
+            :for (slot-name . plist) :in slots
+            :for initform := (getf plist :initform
+                                   `(error "slot ~a in ~a not initialized"
+                                           ',slot-name ',name))
+            :for type := (getf plist :type)
+            :collect `(,slot-name ,initform ,@(when type `(:type ,type))))))
 
   (defmacro define-reader (public private type struct)
     `(progn 

@@ -131,7 +131,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun/type submit-node (channel node) (channel node) null
-  (declare #.*full-optimize*)
+  (declare #.*normal-optimize*)
   (if *ptree-node-kernel*
       (submit-task channel (let1 node-kernel *ptree-node-kernel*
                              (lambda ()
@@ -175,7 +175,7 @@
                (return found)))))))
 
 (defun/type master-loop (root) (node) node
-  (declare #.*full-optimize*)
+  (declare #.*normal-optimize*)
   (let1 channel (make-channel)
     (loop (let1 node (find-node root)
             (cond (node
