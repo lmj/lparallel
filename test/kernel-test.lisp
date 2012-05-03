@@ -244,7 +244,7 @@
   (with-thread-count-check
     (with-new-kernel (2)
       (let1 channel (make-channel)
-        (let1 *kernel-task-category* 'blah
+        (let1 *task-category* 'blah
           (submit-task channel (lambda ()
                                  (setf *error-output* (make-broadcast-stream))
                                  (infinite-loop)))
@@ -279,7 +279,7 @@
         (sleep 0.2)
         (submit-task channel (lambda () 'survived))
         (sleep 0.2)
-        (kill-tasks *kernel-task-category*)
+        (kill-tasks *task-category*)
         (sleep 0.2)
         (let ((errors nil)
               (regulars nil))

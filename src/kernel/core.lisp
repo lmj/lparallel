@@ -189,7 +189,7 @@ As an optimization, an internal size may be given with
 
 (defmacro make-task (&key fn store-error)
   (with-gensyms (task-category)
-    `(let ((,task-category *kernel-task-category*))
+    `(let ((,task-category *task-category*))
        (make-tuple ,fn
                    (lambda () (,store-error (wrap-error 'task-killed-error)))
                    ,task-category))))
@@ -204,7 +204,7 @@ As an optimization, an internal size may be given with
         (make-task :fn fn :store-error store)))))
 
 (defun submit-raw-task (task kernel)
-  (ccase *kernel-task-priority*
+  (ccase *task-priority*
     (:default (push-biased-queue     task (tasks kernel)))
     (:low     (push-biased-queue/low task (tasks kernel)))))
 
@@ -237,7 +237,7 @@ exceptional circumstances.
 
 A task category is any object suitable for `eq' comparison. When a
 task is submitted, it is assigned the category of
-`*kernel-task-category*' (which has a default value of `:default').
+`*task-category*' (which has a default value of `:default').
 
 `kill-tasks' rudely interrupts running tasks whose category is `eq' to
 `task-category'. The corresponding worker threads are killed and
@@ -247,8 +247,8 @@ Pending tasks are not affected.
 
 If you don't know what to pass for `task-category' then you should
 probably pass `:default', though this may kill more tasks than you
-wish. Binding `*kernel-task-category*' around `submit-task' enables
-targeted task killing.
+wish. Binding `*task-category*' around `submit-task' enables targeted
+task killing.
 
 If `dry-run' is nil, the function returns the number of tasks killed.
 
@@ -288,7 +288,7 @@ return value is the number of tasks that would have been killed if
   (loop
      (when (kernel-idle-p kernel)
        (return))
-     (let1 *kernel-task-priority* :low
+     (let1 *task-priority* :low
        (submit-task channel (lambda ())))
      (receive-result channel)))
 

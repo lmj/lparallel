@@ -148,8 +148,8 @@
            #:emergency-kill-tasks ; deprecated -- same as kill-tasks
            #:kill-tasks)
   (:export #:*kernel*
-           #:*kernel-task-category*
-           #:*kernel-task-priority*)
+           #:*task-category*
+           #:*task-priority*)
   (:export #:transfer-error
            #:no-kernel-error
            #:task-killed-error))

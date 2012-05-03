@@ -245,7 +245,7 @@ fulfilled by the caller of `force'."
 
 (defmacro speculate (&body body)
   "Create a speculation. A speculation is a low-priority future."
-  `(let1 *kernel-task-priority* :low
+  `(let1 *task-priority* :low
      (future ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

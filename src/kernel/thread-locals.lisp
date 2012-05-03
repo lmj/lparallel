@@ -43,10 +43,10 @@
    "Thread-local. Records handlers established with
     `kernel-handler-bind' in the calling thread.")
 
-  (*kernel-task-category* :default
+  (*task-category* :default
    "Thread-local. See `kill-tasks'. Default value is `:default'.")
 
-  (*kernel-task-priority* :default
+  (*task-priority* :default
    "Thread-local. When bound to `:low', the kernel schedules submitted
     tasks at low priority. Default value is `:default'."))
 
