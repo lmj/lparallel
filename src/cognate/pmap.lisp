@@ -248,6 +248,7 @@ are also accepted (see `pmap')."
   (case (length lists)
     (1 (reduce 'nreconc
                (preduce-partial (lambda (acc x)
+                                  (declare #.*normal-optimize*)
                                   (let1 result (funcall function x)
                                     (if result
                                         (nconc result acc)
@@ -256,13 +257,13 @@ are also accepted (see `pmap')."
                                 :initial-value nil)
                :initial-value nil
                :from-end t))
-    (t (nconc/many (apply #'pmapcar function lists)))))
+    (t (apply #'nconc (apply #'pmapcar function lists)))))
 
 (defun pmapcon (function &rest lists)
   "Parallel version of `mapcon'. Keyword arguments `parts' and `size'
 are also accepted (see `pmap')."
   (declare (dynamic-extent lists))
-  (nconc/many (apply #'pmaplist function lists)))
+  (apply #'nconc (apply #'pmaplist function lists)))
 
 (defun pmap-reduce (map-function reduce-function sequence
                     &rest args

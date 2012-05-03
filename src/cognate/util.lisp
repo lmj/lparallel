@@ -43,9 +43,6 @@
        (dotimes (,index ,n ,result)
          (setf (aref ,result ,index) (progn ,@body))))))
 
-(defun nconc/many (seq)
-  (reduce #'nconc seq :from-end t))
-
 (defun item-predicate (item test test-not)
   (when (and test test-not)
     (error "Both :TEST and :TEST-NOT options given."))
