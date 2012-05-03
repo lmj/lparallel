@@ -68,3 +68,14 @@
      (setf (symbol-function ',alias) #',fn)
      (define-compiler-macro ,alias (&rest args)
        `(,',fn ,@args))))
+
+(defun plist-keys (plist)
+  (loop
+     :for x :in plist :by #'cddr
+     :collect x))
+
+(defun plist-values-for-key (plist target-key)
+  (loop
+     :for (key value) :on plist :by #'cddr
+     :when (eq key target-key)
+     :collect value))
