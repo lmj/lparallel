@@ -30,25 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(defslots worker-info ()
-  ((bindings :type list)
-   (context  :type function)
-   (name     :type string)))
-
-(defslots worker ()
-  ((thread           :reader thread)
-   (running-category :reader running-category :initform nil)))
-
-(defslots kernel ()
-  ((scheduler       :reader scheduler :type scheduler)
-   (workers         :reader workers   :type (vector worker))
-   (workers-lock)
-   (worker-info                       :type worker-info)))
-
-(defslots channel ()
-  ((queue  :reader channel-queue  :type queue)
-   (kernel :reader channel-kernel :type kernel)))
-
 (define-circular-print-object kernel)
 
 (defun replace-worker (kernel worker)
@@ -58,7 +39,9 @@
         (assert index)
         (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
-           :main    (setf (aref workers index) (make-worker kernel))
+           :main    (multiple-value-bind (new-worker guard) (make-worker kernel)
+                      (setf (svref workers index) new-worker)
+                      (funcall guard))
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct -- call `end-kernel'."))))))
 
@@ -73,7 +56,7 @@
   ;; equivalent). Jumping out means a thread abort.
   (let1 scheduler (scheduler kernel)
     (unwind-protect/ext
-       :main  (loop (let1 task (or (find-task scheduler worker) (return))
+       :main  (loop (let1 task (or (next-task scheduler worker) (return))
                       (with-worker-slots (running-category) worker
                         (bind-tuple (task-fn kill-notify-fn category) task
                           (unwind-protect/ext
@@ -97,14 +80,13 @@
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
       (let* ((worker (make-worker-instance :thread nil))
-             (blocker (make-queue))
+             (guard (make-queue))
              (worker-thread (with-thread (:bindings bindings :name name)
-                              (pop-queue blocker)
+                              (pop-queue guard)
                               (enter-worker-loop kernel worker))))
         (with-worker-slots (thread) worker
           (setf thread worker-thread))
-        (push-queue 'proceed blocker)
-        worker))))
+        (values worker (lambda () (push-queue 'proceed guard)))))))
 
 (defun make-kernel (worker-count
                     &key
@@ -134,15 +116,22 @@ the string returned by `bordeaux-threads:thread-name'."
                        :bindings bindings
                        :context worker-context
                        :name name))
+         (workers (make-array worker-count))
          (kernel (make-kernel-instance
-                  :scheduler (make-scheduler)
-                  :workers (make-array worker-count)
+                  :scheduler (make-scheduler workers)
+                  :workers workers
                   :workers-lock (make-lock)
                   :worker-info worker-info)))
     (with-kernel-slots (workers worker-info) kernel
       (with-worker-info-slots (bindings) worker-info
         (push (cons '*kernel* kernel) bindings)
-        (map-into workers (lambda () (make-worker kernel)))))
+        (let1 guards ()
+          (map-into workers
+                    (lambda ()
+                      (multiple-value-bind (worker guard) (make-worker kernel)
+                        (push guard guards)
+                        worker)))
+          (mapc #'funcall guards))))
     kernel))
 
 (defun check-kernel ()

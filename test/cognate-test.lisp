@@ -340,14 +340,20 @@
   (is (member (por nil 3 4 5 6) '(3 4 5 6)))
 
   (when (> (kernel-worker-count) 2)
-    (is (= 4 (por  (progn (sleep 0.125) 3) 4)))
-    (is (= 3 (pand (progn (sleep 0.125) 3) 4)))
+    (sleep 0.4)
+    (is (= 4 (por  (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (= 3 (pand (progn (sleep 0.2) 3) 4)))
 
-    (is (= 4 (por  nil (progn (sleep 0.125) 3) 4)))
-    (is (= 4 (por  (progn (sleep 0.125) 3) nil 4)))
+    (sleep 0.4)
+    (is (= 4 (por  nil (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (= 4 (por  (progn (sleep 0.2) 3) nil 4)))
 
-    (is (null (pand nil (progn (sleep 0.125) 3) 4)))
-    (is (null (pand (progn (sleep 0.125) 3) nil 4)))))
+    (sleep 0.4)
+    (is (null (pand nil (progn (sleep 0.2) 3) 4)))
+    (sleep 0.4)
+    (is (null (pand (progn (sleep 0.2) 3) nil 4)))))
 
 (lp-test psort-test
   ;; psort requires the CL implementation to sort vectors in place.

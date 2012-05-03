@@ -12,22 +12,20 @@
 
 (in-package #:lparallel.kernel)
 
-(deftype scheduler () 'biased-queue)
-
 (alias-function make-scheduler make-biased-queue)
 
-(defun/inline schedule-task (scheduler task priority)
+(defun/type schedule-task (scheduler task priority) ((scheduler task t) t)
+  (declare #.*normal-optimize*)
   (ccase priority
     (:default (push-biased-queue     task scheduler))
     (:low     (push-biased-queue/low task scheduler))))
 
-(defun/inline find-task (scheduler worker)
+(defun/inline next-task (scheduler worker)
   (declare (ignore worker))
   (pop-biased-queue scheduler))
 
-(defmacro with-locked-scheduler (scheduler &body body)
-  `(with-locked-biased-queue ,scheduler
-     ,@body))
+(setf (macro-function 'with-locked-scheduler)
+      (macro-function 'with-locked-biased-queue))
 
 (alias-function scheduler-empty-p/no-lock biased-queue-empty-p/no-lock)
 

@@ -79,6 +79,7 @@ See http://lparallel.com for documentation and examples.
                               :components ((:file "util")
                                            (:file "thread-locals")
                                            (:file "handling")
+                                           (:file "classes")
                                            (:file "simple-scheduler")
                                            (:file "core")
                                            (:file "timeout")))
