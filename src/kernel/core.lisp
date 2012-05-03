@@ -146,7 +146,7 @@ the string returned by `bordeaux-threads:thread-name'."
     kernel))
 
 (defun check-kernel ()
-  "Ensure that *kernel* is non-nil."
+  "Ensures that *kernel* is non-nil; provides the MAKE-KERNEL restart."
   (unless *kernel*
     (restart-case (error 'no-kernel-error)
       (make-kernel (arg)
