@@ -30,17 +30,20 @@
 
 (in-package #:lparallel.kernel)
 
-(defslots kernel ()
-  ((scheduler       :reader scheduler :type scheduler)
-   (workers         :reader workers   :type vector)
-   (workers-lock)
-   (worker-bindings                   :type list)
-   (worker-context                    :type function)
-   (worker-name                       :type string)))
+(defslots worker-info ()
+  ((bindings :type list)
+   (context  :type function)
+   (name     :type string)))
 
 (defslots worker ()
   ((thread           :reader thread)
    (running-category :reader running-category :initform nil)))
+
+(defslots kernel ()
+  ((scheduler       :reader scheduler :type scheduler)
+   (workers         :reader workers   :type (vector worker))
+   (workers-lock)
+   (worker-info                       :type worker-info)))
 
 (defslots channel ()
   ((queue  :reader channel-queue  :type queue)
@@ -84,29 +87,29 @@
   (funcall worker-context (lambda () (%call-with-kernel-handler fn))))
 
 (defun enter-worker-loop (kernel worker)
-  (with-kernel-slots (worker-context) kernel
-    (call-with-worker-context
-     worker-context
-     (lambda ()
-       (worker-loop kernel worker)))))
+  (with-kernel-slots (worker-info) kernel
+    (with-worker-info-slots (context) worker-info
+      (call-with-worker-context
+       context
+       (lambda () (worker-loop kernel worker))))))
 
 (defun make-worker (kernel)
-  (with-kernel-slots (worker-bindings worker-name) kernel
-    (let* ((worker (make-worker-instance :thread nil))
-           (blocker (make-queue))
-           (worker-thread (with-thread (:bindings worker-bindings
-                                        :name worker-name)
-                            (pop-queue blocker)
-                            (enter-worker-loop kernel worker))))
-      (with-worker-slots (thread) worker
-        (setf thread worker-thread))
-      (push-queue 'proceed blocker)
-      worker)))
+  (with-kernel-slots (worker-info) kernel
+    (with-worker-info-slots (bindings name) worker-info
+      (let* ((worker (make-worker-instance :thread nil))
+             (blocker (make-queue))
+             (worker-thread (with-thread (:bindings bindings :name name)
+                              (pop-queue blocker)
+                              (enter-worker-loop kernel worker))))
+        (with-worker-slots (thread) worker
+          (setf thread worker-thread))
+        (push-queue 'proceed blocker)
+        worker))))
 
 (defun make-kernel (worker-count
                     &key
-                    (bindings (list (cons '*standard-output* *standard-output*)
-                                    (cons '*error-output* *error-output*)))
+                    (bindings `((*standard-output* . ,*standard-output*)
+                                (*error-output*    . ,*error-output*)))
                     (worker-context #'funcall)
                     (name "lparallel-worker"))
   "Create a kernel with `worker-count' number of worker threads.
@@ -124,19 +127,22 @@ is #'funcall.
 `name' is a string identifier for worker threads. It corresponds to
 the string returned by `bordeaux-threads:thread-name'."
   (check-type worker-count (integer 1))
-  (let1 kernel (make-kernel-instance
-                :scheduler (make-scheduler)
-                :workers (make-array worker-count)
-                :workers-lock (make-lock)
-                :worker-bindings (nconc (copy-alist bindings)
-                                        (acons '*debugger-hook* *debugger-hook*
-                                               nil)
-                                        (copy-alist *kernel-thread-locals*))
-                :worker-context worker-context
-                :worker-name name)
-    (with-kernel-slots (workers worker-bindings) kernel
-      (push (cons '*kernel* kernel) worker-bindings)
-      (map-into workers (lambda () (make-worker kernel))))
+  (let* ((bindings (nconc (copy-alist bindings)
+                          (list (cons '*debugger-hook* *debugger-hook*))
+                          (copy-alist *kernel-thread-locals*)))
+         (worker-info (make-worker-info-instance
+                       :bindings bindings
+                       :context worker-context
+                       :name name))
+         (kernel (make-kernel-instance
+                  :scheduler (make-scheduler)
+                  :workers (make-array worker-count)
+                  :workers-lock (make-lock)
+                  :worker-info worker-info)))
+    (with-kernel-slots (workers worker-info) kernel
+      (with-worker-info-slots (bindings) worker-info
+        (push (cons '*kernel* kernel) bindings)
+        (map-into workers (lambda () (make-worker kernel)))))
     kernel))
 
 (defun check-kernel ()
@@ -157,8 +163,9 @@ the string returned by `bordeaux-threads:thread-name'."
 A new thread which uses the current kernel should be given these
 bindings (see bordeaux-threads:*default-special-bindings*)."
   (check-kernel)
-  (with-kernel-slots (worker-bindings) *kernel*
-    (copy-alist worker-bindings)))
+  (with-kernel-slots (worker-info) *kernel*
+    (with-worker-info-slots (bindings) worker-info
+      (copy-alist bindings))))
 
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."
