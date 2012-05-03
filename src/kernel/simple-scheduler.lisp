@@ -27,6 +27,7 @@
   (pop-biased-queue scheduler))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
+  (declare #.*normal-optimize*)
   (with-lock-predicate/wait
       (biased-queue-lock scheduler)
       (not (biased-queue-empty-p/no-lock scheduler))

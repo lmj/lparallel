@@ -39,6 +39,7 @@
             lparallel.kernel::with-optimizer-slots
             lparallel.kernel::*optimizer*
             lparallel.kernel::steal-work
+            lparallel.promise::fulfilledp/promise
             lparallel.cognate::with-parsed-let-args
             lparallel.cognate::future-let))
 
@@ -174,7 +175,7 @@
 (defmacro force/fast (future)
   (check-type future symbol)
   `(loop
-      (when (fulfilledp ,future)
+      (when (fulfilledp/promise ,future)
         (return (force ,future)))
       (steal-work)))
 

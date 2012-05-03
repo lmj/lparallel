@@ -92,8 +92,14 @@
   ((result :reader result :initform 'no-result)
    (lock                  :initform (make-lock))))
 
-(defmethod fulfilledp ((promise promise-base))
+;;; for work-stealing loop
+(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
+  (declare #.*full-optimize*)
   (not (eq (result promise) 'no-result)))
+
+(defmethod fulfilledp ((promise promise-base))
+  (declare #.*normal-optimize*)
+  (fulfilledp/promise promise))
 
 (defmacro with-lock-operation (operation promise &body body)
   (with-gensyms (lock result)
@@ -122,14 +128,24 @@ promise will store the result. In this case `fulfill' returns true.
 If the promise is already fulfilled, or if it actively being
 fulfilled, then `body' will not be executed and `fulfill' returns
 false."
-  `(typecase ,promise
-     (promise-base
-      (with-unfulfilled/no-wait ,promise
-        (fulfill-hook ,promise (multiple-value-list (progn ,@body)))
-        t))
-     (otherwise
-      ;; non-promises are always fulfilled
-      nil)))
+  (with-gensyms (exec)
+    `(flet ((,exec ()
+              (fulfill-hook ,promise (multiple-value-list (progn ,@body)))))
+       (declare (dynamic-extent (function ,exec)))
+       (typecase ,promise
+         (promise
+          (with-unfulfilled/wait ,promise
+            (,exec)
+            t))
+         (plan
+          ;; acquire-lock failure means the plan is being computed;
+          ;; don't bother waiting
+          (with-unfulfilled/no-wait ,promise
+            (,exec)
+            t))
+         (otherwise
+          ;; non-promises are always fulfilled
+          nil)))))
 
 (defmethod force ((promise promise-base))
   (declare #.*normal-optimize*)
