@@ -75,7 +75,6 @@
                          &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (etypecase sequence
-    ;; TODO: non-array, non-list sequences
     (array (apply #'preduce-partial/array
                   function sequence start size parts keyword-args))
     (list  (apply #'preduce-partial/list
@@ -142,11 +141,18 @@ the first pass only.
 `initial-value' means \"initial value of each part\"."
   (declare (ignore key from-end initial-value parts recurse))
   (declare (dynamic-extent args))
-  (apply #'preduce/common
-         function
-         sequence
-         (subsize sequence (length sequence) start end)
-         args))
+  (typecase sequence
+    ((or vector list)
+     (apply #'preduce/common
+            function
+            sequence
+            (subsize sequence (length sequence) start end)
+            args))
+    (otherwise
+     (apply #'reduce
+            function
+            sequence
+            (remove-props '(:parts :recurse) args)))))
 
 (defun preduce-partial (function sequence &rest args
                         &key key from-end (start 0) end initial-value parts)

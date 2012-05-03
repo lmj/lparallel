@@ -79,3 +79,9 @@
      :for (key value) :on plist :by #'cddr
      :unless (eq key target-key)
      :nconc (list key value)))
+
+(defun remove-props (keys plist)
+  (loop
+     :for (key value) :on plist :by #'cddr
+     :unless (member key keys)
+     :nconc (list key value)))
