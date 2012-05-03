@@ -296,6 +296,8 @@ return value is the number of tasks that would have been killed if
 
 `kill-tasks' is not available in ABCL."
   (when *kernel*
+    (when (null task-category)
+      (error "task category cannot be NIL in `kill-tasks'"))
     (with-kernel-slots (workers scheduler) *kernel*
       (with-locked-scheduler scheduler
         (let1 victims (map 'vector 
