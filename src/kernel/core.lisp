@@ -336,9 +336,9 @@ return value is the number of tasks that would have been killed if
 (defun shutdown (channel kernel)
   (with-kernel-slots (scheduler) kernel
     (with-idle-kernel channel kernel
-      (distribute-tasks/no-lock scheduler
-                                (make-array (%kernel-worker-count kernel)
-                                            :initial-element nil)))))
+      (distribute-tasks/no-lock
+       scheduler (make-array (%kernel-worker-count kernel)
+                             :initial-element nil)))))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
