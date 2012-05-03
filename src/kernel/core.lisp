@@ -39,11 +39,11 @@
   ;; already inside call-with-task-handler
   (declare #.*normal-optimize*)
   (with-worker-slots (running-category) worker
-    (setf running-category (task-category task))
-    (unwind-protect
-         ;; already inside call-with-task-handler
-         (funcall (task-fn task))
-      (setf running-category nil))))
+    (let1 prev-category running-category
+      (unwind-protect/ext
+       :prepare (setf running-category (task-category task))
+       :main    (funcall (task-fn task))
+       :cleanup (setf running-category prev-category)))))
 
 (defun/type exec-task/non-worker (task) (task) t
   ;; not inside call-with-task-handler
