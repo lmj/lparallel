@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.ptree)
 
+#.(import 'lparallel.kernel::*kernel-thread-locals*)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; errors

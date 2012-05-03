@@ -132,12 +132,6 @@
         #:lparallel.biased-queue)
   (:import-from #:bordeaux-threads
                 #:destroy-thread)
-  (:intern #:unwrap-result
-           #:make-task-fn
-           #:make-task
-           #:call-with-kernel-handler
-           #:submit-raw-task)
-  (:intern #:*kernel-thread-locals*)
   (:export #:make-kernel
            #:kernel-worker-count
            #:check-kernel
@@ -184,8 +178,6 @@
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.kernel)
-  (:import-from #:lparallel.kernel
-                #:*kernel-thread-locals*)
   (:export #:ptree
            #:ptree-fn
            #:make-ptree
@@ -201,12 +193,6 @@
         #:lparallel.util
         #:lparallel.thread-util
         #:lparallel.kernel)
-  (:import-from #:lparallel.kernel
-                #:unwrap-result
-                #:make-task-fn
-                #:make-task
-                #:call-with-kernel-handler
-                #:submit-raw-task)
   (:export #:promise
            #:future
            #:speculate

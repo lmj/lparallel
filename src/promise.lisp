@@ -28,8 +28,6 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.promise)
-
 ;;; 
 ;;; inheritance:
 ;;; 
@@ -38,6 +36,14 @@
 ;;;             promise   plan
 ;;;                       /  \
 ;;;    speculation = future  delay
+
+(in-package #:lparallel.promise)
+
+#.(import '(lparallel.kernel::unwrap-result
+            lparallel.kernel::make-task-fn
+            lparallel.kernel::make-task
+            lparallel.kernel::call-with-kernel-handler
+            lparallel.kernel::submit-raw-task))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
