@@ -34,31 +34,81 @@
 
 (in-package #:lparallel.raw-queue)
 
-(deftype raw-queue () '(cons list list))
-(deftype raw-queue-count () '(integer 0 #.most-positive-fixnum))
+(deftype raw-queue-count () '(integer 0))
 
-(defun/type make-raw-queue
-    (&optional initial-capacity) (&optional fixnum) raw-queue
-  (declare (ignore initial-capacity))
-  (cons nil nil))
+#-lparallel.with-vector-queue
+(progn
+  (deftype raw-queue () '(cons list list))
 
-(defun/type push-raw-queue (value z) (t raw-queue) t
-  (declare #.*normal-optimize*)
-  (let1 new (cons value nil)
+  (defun/type make-raw-queue
+      (&optional initial-capacity) (&optional raw-queue-count) raw-queue
+    (declare (ignore initial-capacity))
+    (cons nil nil))
+
+  (defun/type push-raw-queue (value z) (t raw-queue) t
+    (declare #.*normal-optimize*)
+    (let1 new (cons value nil)
+      (if (car z)
+          (setf (cddr z) new)
+          (setf (car  z) new))
+      (setf (cdr z) new)))
+
+  (defun/type pop-raw-queue (z) (raw-queue) (values t boolean)
+    (declare #.*normal-optimize*)
     (if (car z)
-        (setf (cddr z) new)
-        (setf (car  z) new))
-    (setf (cdr z) new)))
+        (multiple-value-prog1 (values (caar z) t)
+          (unless (setf (car z) (cdar z))
+            ;; clear lingering ref
+            (setf (cdr z) nil)))
+        (values nil nil)))
 
-(defun/type pop-raw-queue (z) (raw-queue) (values t boolean)
-  (declare #.*normal-optimize*)
-  (if (car z)
-      (multiple-value-prog1 (values (caar z) t)
-        (unless (setf (car z) (cdar z))
-          ;; clear lingering ref
-          (setf (cdr z) nil)))
-      (values nil nil)))
+  (defun/inline raw-queue-count   (z) (length (the list (car z))))
+  (defun/inline raw-queue-empty-p (z) (not (car z)))
+  (defun/inline peek-raw-queue    (z) (values (caar z) (if (car z) t nil))))
 
-(defun/inline raw-queue-count   (z) (length (the list (car z))))
-(defun/inline raw-queue-empty-p (z) (not (car z)))
-(defun/inline peek-raw-queue    (z) (values (caar z) (if (car z) t nil)))
+#+lparallel.with-vector-queue
+(progn
+  (defslots raw-queue ()
+    ((data                                      :type array)
+     (start :initform 0                         :type raw-queue-count)
+     (count :initform 0 :reader raw-queue-count :type raw-queue-count)))
+
+  (defun make-raw-queue (&optional (initial-capacity 2)) 
+    (declare #.*normal-optimize*)
+    (make-raw-queue-instance
+     :data (make-array initial-capacity :adjustable t)))
+
+  (defun/type push-raw-queue (value queue) (t raw-queue) null
+    (declare #.*normal-optimize*)
+    (with-raw-queue-slots (data start count) queue
+      (let1 size (length data)
+        (cond ((eql count size)
+               (adjust-array data (if (zerop size) 1 (* 2 size)))
+               (replace data data :start1 size :start2 0 :end2 start)
+               (fill data nil :start 0 :end start)
+               (setf (aref data (mod (+ start count) (length data))) value))
+              (t
+               (setf (aref data (mod (+ start count) size)) value))))
+      (incf count)
+      nil))
+
+  (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
+    (declare #.*normal-optimize*)
+    (with-raw-queue-slots (data start count) queue
+      (if (plusp count)
+          (multiple-value-prog1 (values (aref data start) t)
+            (setf (aref data start) nil
+                  start (mod (1+ start) (length data)))
+            (decf count))
+          (values nil nil))))
+
+  (defun/type/inline peek-raw-queue (queue) (raw-queue) (values t boolean)
+    (declare #.*normal-optimize*)
+    (with-raw-queue-slots (data start count) queue
+      (if (plusp count)
+          (values (aref data start) t)
+          (values nil nil))))
+
+  (defun/type/inline raw-queue-empty-p (queue) (raw-queue) t
+    (declare #.*normal-optimize*)
+    (zerop (raw-queue-count queue))))
