@@ -41,8 +41,8 @@
 (defparameter *benches* '(bench-pmap
                           bench-psort
                           bench-preduce
-                          bench-fib
-                          bench-mm))
+                          bench-pfib
+                          bench-pmm))
 
 (defparameter *sizes* '(10 100 500 1000 5000 10000 50000 100000 200000))
 
@@ -176,7 +176,7 @@
            (b (fib-plet-if (- n 2))))
         (+ a b))))
 
-(defun bench-fib ()
+(defun bench-pfib ()
   (let ((fns        '(fib-let fib-plet fib-plet-if))
         (trials     *trials*)
         (rehearsals *rehearsals*))
@@ -247,7 +247,7 @@
            (make-array (* n n) :initial-element 2)
            (make-array (* n n) :initial-element nil)))
 
-(defun bench-mm ()
+(defun bench-pmm ()
   (let ((fns        '(mm pmm))
         (trials     *trials*)
         (rehearsals *rehearsals*))
@@ -268,7 +268,14 @@
                :desc-fn (lambda (time)
                           (desc-n n fn time)))))))))))
 
-(defun execute (num-workers)
+(defun execute (num-workers &key fns)
+  (when fns
+    (setf *benches* (mapcar (lambda (sym)
+                              (intern (concatenate 'string
+                                                   (symbol-name 'bench-)
+                                                   (symbol-name sym))
+                                      :lparallel-bench))
+                            (mklist fns))))
   (format t "~%")
   (when (find :swank *features*)
     (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))

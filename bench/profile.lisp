@@ -28,14 +28,60 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem :lparallel-bench
-  :depends-on (:lparallel
-               :trivial-garbage)
-  :serial t
-  :components ((:file "packages-bench")
-               (:module "bench"
-                :serial t
-                :components ((:file "util")
-                             (:file "bench")
-                             (:file "suite")
-                             #+sbcl (:file "profile"))))) 
+(in-package #:lparallel-bench)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; util
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun home-symbols (pkg)
+    (loop
+       :for sym :being :the :present-symbols :in pkg
+       :when (eq (find-package pkg) (symbol-package sym))
+       :collect sym))
+
+  (defun home-functions (pkg)
+    (remove-if-not #'fboundp (home-symbols pkg)))
+
+  (defun packages-passing (predicate)
+    (remove-if-not (curry predicate) (list-all-packages)))
+
+  (defun home-functions-in-packages-passing (predicate)
+    (reduce #'nconc (packages-passing predicate) :key #'home-functions))
+
+  (defun match-package-p (string pkg)
+    (search string (package-name pkg) :test #'equalp)))
+
+(defmacro without-warnings (&body body)
+  `(handler-bind ((warning #'muffle-warning))
+     ,@body))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; profile
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro profile-fns (syms)
+  ;; for small lambda-parameters-limit
+  `(progn
+     ,@(loop
+          :for sym :in syms
+          :collect `(sb-profile:profile ,sym))))
+
+(defun enable-profiling ()
+  (profile-fns #.(home-functions-in-packages-passing
+                  (curry 'match-package-p "lparallel")))
+  ;; causes recursion problem in profiler
+  #+(or)
+  (profile-fns (sort map-into map reduce)))
+
+(defun profile (&rest args)
+  (without-warnings
+    (enable-profiling))
+  (sb-profile:reset)
+  (apply #'execute args)
+  (sb-profile:report))

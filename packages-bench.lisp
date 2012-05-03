@@ -36,4 +36,5 @@
         #:lparallel.kernel)
   (:import-from #:trivial-garbage
                 #:gc)
-  (:export #:execute))
+  (:export #:execute
+           #+sbcl #:profile))
