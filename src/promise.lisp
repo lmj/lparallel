@@ -114,13 +114,13 @@
 (defmacro/once fulfill (&once promise &body body)
   "Fulfill a promise.
 
-If the promise is not yet fulfilled (or if it is currently being
-fulfilled) then the implicit progn `body' will be executed and the
-promise will be fulfilled with the result. In this case `fulfill'
-returns true.
+If the promise is not yet fulfilled and if it is not currently being
+fulfilled, then the implicit progn `body' will be executed and the
+promise will store the result. In this case `fulfill' returns true.
 
-If the promise is already fulfilled then `body' will not be executed
-and `fulfill' returns false."
+If the promise is already fulfilled, or if it actively being
+fulfilled, then `body' will not be executed and `fulfill' returns
+false."
   `(typecase ,promise
      (promise-base
       (with-unfulfilled/no-wait ,promise
