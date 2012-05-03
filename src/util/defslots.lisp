@@ -62,14 +62,21 @@ error will be signaled."))
      :collect value))
 
 (defun parse-defslots (name supers slots options)
-  (assert (<= (length supers) 1))
-  (assert (and (<= (length options) 1)
-               (or (null options)
-                   (eq (caar options) :documentation))))
+  (unless (<= (length supers) 1)
+    (error "More than one superclass specified in `defslots': ~s" supers))
+  (unless (<= (length options) 1)
+    (error "Too many options in `defslots': ~{~s ~}" options))
+  (unless (or (null options)
+              (eq (caar options) :documentation))
+    (error "Option `~s' in `defslots' is not `:documentation'" (caar options)))
   (loop
+     :with allowed := '(:initform :type :reader)
      :for (nil . plist) :in slots
      :for keys := (plist-keys plist)
-     :do (assert (null (set-difference keys '(:initform :type :reader)))))
+     :do (let1 diff (set-difference keys allowed)
+           (unless (null diff)
+             (error "Slot option `~s' in `defslots' is not one of ~s"
+                    (first diff) allowed))))
   (values (intern-conc '#:make- name '#:-instance)
           (intern-conc '#:with- name '#:-slots)))
 
