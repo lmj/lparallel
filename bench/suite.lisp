@@ -41,22 +41,22 @@
 (defparameter *benches*
   `((bench-pmap
      (map pmap)
-     (10 100 500 1000 5000 10000 50000 100000 500000)
+     (10 50 100 500 1000 5000 10000 50000 100000 500000)
      ,*trials*
      ,*rehearsals*)
+
+    (bench-preduce
+     (reduce preduce)
+     (10 50 100 500 1000 5000 10000 50000 100000 500000)
+     ;; needs more unthrottling
+     ,(+ 10 *trials*)
+     ,(+ 10 *rehearsals*))
 
     (bench-psort
      (sort psort)
      (10 50 100 500 1000 5000 10000 50000 100000 200000)
      ,*trials*
      ,*rehearsals*)
-
-    (bench-preduce
-     (reduce preduce)
-     (10 100 500 1000 5000 10000 50000 100000 500000)
-     ;; needs more unthrottling
-     ,(+ 10 *trials*)
-     ,(+ 10 *rehearsals*))
 
     (bench-pfib
      (fib-let fib-plet fib-plet-if)
@@ -66,7 +66,7 @@
 
     (bench-pmatrix-mul
      (matrix-mul pmatrix-mul)
-     (10 50 100 200)
+     (5 10 50 100 200)
      ,*trials*
      ,*rehearsals*)))
 
@@ -181,7 +181,7 @@
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (if (< n 2)
       n
-      (plet-if (> n 20)
+      (plet-if (> n 15)
           ((a (fib-plet-if (- n 1)))
            (b (fib-plet-if (- n 2))))
         (+ a b))))
