@@ -9,6 +9,8 @@ lparallel Changes
   enabled by default on SBCL, others default to central queue
 * added pfind, pcount, plet-if, pfuncall
 * fixed redundant restart in `chain'
+* `fulfill' now accepts non-promises (never succeeds)
+* removed high optimizations exposed in some API functions
 * added shell script for unthrottling CPUs in Linux
 * renamed *kernel-task-category* -> *task-category*
           *kernel-task-priority* -> *task-priority*
