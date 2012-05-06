@@ -230,6 +230,7 @@
       (let ((x (future (error 'foo-error))))
         (is (equal '(3 4) (multiple-value-list (force x))))))))
 
+#-abcl
 (lp-base-test kill-future-test
   (handler-bind ((warning (lambda (w)
                             (when-let (r (find-restart 'muffle-warning w))

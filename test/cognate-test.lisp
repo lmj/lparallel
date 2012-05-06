@@ -679,8 +679,6 @@
   (is (zerop (pcount-if 'non-function '())))
   (is (zerop (pcount-if 'non-function #())))
   (signals error
-    (count-if 'non-function '() :start 2))
-  (signals error
     (pcount-if 'non-function '() :start 2))
   (loop
      :for size :from 1 :below 100

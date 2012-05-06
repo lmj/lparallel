@@ -68,6 +68,7 @@
     (repeat 1000
       (is (null (receive-result channel))))))
 
+#-abcl
 (lp-base-test kill-during-end-kernel-test
   (let* ((*kernel* (make-kernel 2))
          (kernel *kernel*)
@@ -235,6 +236,7 @@
       (is (equal '(6 6 6)
                  (collect-n 3 (receive-result channel)))))))
 
+#-abcl
 (lp-test killed-worker-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
@@ -254,6 +256,7 @@
               #'lparallel.kernel::thread
               (lparallel.kernel::workers *kernel*))))
 
+#-abcl
 (lp-base-test active-worker-replacement-test
   (with-thread-count-check
     (with-new-kernel (2)
@@ -269,6 +272,7 @@
             (receive-result channel))))
       (is (all-workers-alive-p)))))
 
+#-abcl
 (lp-base-test sleeping-worker-replacement-test
   (with-thread-count-check
     (with-new-kernel (2 :bindings (list (cons '*error-output*
@@ -358,6 +362,7 @@
       (is (eql 3 (receive-result channel)))
       (is (eq 'timeout (receive-result channel))))))
 
+#+z
 (lp-base-test cancel-timeout-test
   (with-new-kernel (2)
     (let* ((channel (make-channel))
@@ -366,6 +371,7 @@
       (cancel-timeout timeout 'a)
       (is (eq 'a (receive-result channel))))))
 
+#-abcl
 (lp-base-test kill-timeout-test
   (with-new-kernel (2)
     (let* ((channel (make-channel))
