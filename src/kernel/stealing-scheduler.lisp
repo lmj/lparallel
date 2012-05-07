@@ -136,13 +136,13 @@
          (maybe-sleep)))))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
-  (with-scheduler-slots (workers) scheduler
+  (with-scheduler-slots (workers low-priority-tasks) scheduler
     (do-workers (worker (random-fixnum (length workers)) scheduler)
       (with-pop-success task (tasks worker)
         (if task
             (return-from steal-task task)
             ;; don't steal nil, the end condition flag
-            (push-spin-queue task (tasks worker))))))
+            (push-spin-queue task low-priority-tasks)))))
   nil)
 
 (defun/type scheduler-empty-p (scheduler) (scheduler) boolean
