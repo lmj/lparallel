@@ -79,9 +79,10 @@
                         (match-package-p "bordeaux-threads" pkg)
                         #+(and sbcl lparallel.with-stealing-scheduler)
                         (match-package-p "sb-concurrency" pkg)))))
+  (profile-fns (random rem mod map reduce))
   #+(or)
   ;; causes recursion problem in profiler
-  (profile-fns (sort map-into map reduce)))
+  (profile-fns (sort)))
 
 (defun profile (&rest args)
   (without-warnings
