@@ -60,14 +60,22 @@
     t))
 
 (defun/type handshake/to-worker (worker) (worker) t
-  (with-worker-slots (from-worker to-worker) worker
-    (push-queue 'proceed to-worker)
-    (assert (eq 'ok (pop-queue from-worker)))))
+  (with-worker-slots (handshake/from-worker handshake/to-worker) worker
+    (push-queue 'proceed handshake/to-worker)
+    (assert (eq 'ok (pop-queue handshake/from-worker)))))
 
 (defun/type handshake/from-worker (worker) (worker) t
-  (with-worker-slots (from-worker to-worker) worker
-    (assert (eq 'proceed (pop-queue to-worker)))
-    (push-queue 'ok from-worker)))
+  (with-worker-slots (handshake/from-worker handshake/to-worker) worker
+    (assert (eq 'proceed (pop-queue handshake/to-worker)))
+    (push-queue 'ok handshake/from-worker)))
+
+(defun/type notify-exit (worker) (worker) t
+  (with-worker-slots (exit-notification) worker
+    (push-queue 'exit exit-notification)))
+
+(defun/type wait-for-worker (worker) (worker) t
+  (with-worker-slots (exit-notification) worker
+    (assert (eq 'exit (pop-queue exit-notification)))))
 
 (defun/type replace-worker (kernel worker) (kernel worker) t
   (with-kernel-slots (workers workers-lock) kernel
@@ -130,12 +138,11 @@
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
       (let* ((worker (%make-worker index tasks))
-             (worker-thread (with-worker-slots (from-worker to-worker) worker
-                              (with-thread (:bindings bindings :name name)
-                                (unwind-protect/ext
-                                 :prepare (handshake/from-worker worker)
-                                 :main    (enter-worker-loop kernel worker)
-                                 :cleanup (push-queue 'exit from-worker))))))
+             (worker-thread (with-thread (:bindings bindings :name name)
+                              (unwind-protect/ext
+                               :prepare (handshake/from-worker worker)
+                               :main    (enter-worker-loop kernel worker)
+                               :cleanup (notify-exit worker)))))
         (with-worker-slots (thread) worker
           (setf thread worker-thread))
         worker))))
@@ -344,7 +351,7 @@ return value is the number of tasks that would have been killed if
     (repeat (length workers)
       (schedule-task scheduler nil :low))
     (dosequence (worker workers)
-      (assert (eq 'exit (pop-queue (from-worker worker)))))))
+      (wait-for-worker worker))))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.

@@ -35,14 +35,17 @@
    (context  :type function)
    (name     :type string)))
 
-(defslots worker ()
-  ((thread           :reader thread)
-   (running-category :reader running-category :initform nil)
-   (index            :reader worker-index     :type fixnum)
-   (from-worker      :reader from-worker :initform (make-queue)   :type queue)
-   (to-worker        :reader to-worker   :initform (make-queue)   :type queue)
+(defslots worker-notifications ()
+  ((handshake/from-worker :initform (make-queue))
+   (handshake/to-worker   :initform (make-queue))
+   (exit-notification     :initform (make-queue))))
+
+(defslots worker (worker-notifications)
+  ((thread            :reader thread)
+   (running-category  :reader running-category :initform nil)
+   (index             :reader worker-index     :type fixnum)
    #+lparallel.with-stealing-scheduler
-   (tasks            :reader tasks            :type spin-queue)))
+   (tasks             :reader tasks            :type spin-queue)))
 
 #+lparallel.with-stealing-scheduler
 (defslots scheduler ()
