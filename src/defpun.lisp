@@ -236,8 +236,8 @@ The syntax of `defpun' matches that of `defun'. The difference is that
 The symbols in the binding positions of `plet' and `plet-if' should be
 viewed as lazily evaluated immutable references.
 
-Inside a `defpun' form the name of the function being defined as well
-as the names of other functions defined by `defpun' are macrolets, so
+Inside a `defpun' form the name of the function being defined--as well
+as the names of other functions defined by `defpun'--are macrolets, so
 using #' will be an error.
 
 A `defpun' function must exist before it is referenced inside another
