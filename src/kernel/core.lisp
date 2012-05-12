@@ -33,8 +33,6 @@
 #.(import '(bordeaux-threads:destroy-thread
             bordeaux-threads:current-thread))
 
-(define-circular-print-object kernel)
-
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler
   (declare #.*normal-optimize*)
@@ -382,6 +380,22 @@ deadlocked or infinite looping tasks."
                  (cons (with-thread (:name "lparallel kernel shutdown manager")
                          (shutdown channel kernel))
                        threads))))))))
+
+(defun print-plist (plist stream)
+  (loop
+     :for (k v . more) :on plist :by #'cddr
+     :do (format stream "~a=~s" k v)
+     :when more :do (format stream " ")))
+
+(defmethod print-object ((kernel kernel) stream)
+  (with-kernel-slots (workers worker-info) kernel
+    (with-worker-info-slots (name) worker-info
+      (let1 plist (list :worker-count (length workers) :worker-name name)
+        #+lparallel.with-stealing-scheduler
+        (with-scheduler-slots (spin-count) (scheduler kernel)
+          (setf plist (append plist (list :spin-count spin-count))))
+        (print-unreadable-object (kernel stream :type t :identity t)
+          (print-plist plist stream))))))
 
 ;;; deprecated
 #-abcl

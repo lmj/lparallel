@@ -80,8 +80,7 @@ See http://lparallel.org for documentation and examples.
                              (:file "spin-queue")
                              (:module "kernel"
                               :serial t
-                              :components ((:file "util")
-                                           (:file "specials")
+                              :components ((:file "specials")
                                            (:file "handling")
                                            (:file "classes")
        #-lparallel.with-stealing-scheduler (:file "central-scheduler")
