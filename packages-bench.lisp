@@ -37,4 +37,8 @@
   (:import-from #:trivial-garbage
                 #:gc)
   (:export #:execute
-           #+sbcl #:profile))
+           #+sbcl #:profile
+           #+sbcl #:stat-profile))
+
+#+sbcl
+(require :sb-sprof)

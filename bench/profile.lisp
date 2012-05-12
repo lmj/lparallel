@@ -90,3 +90,16 @@
   (sb-profile:reset)
   (apply #'execute args)
   (sb-profile:report))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; stat-profile
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun stat-profile (&rest args)
+  (sb-sprof:with-profiling (:max-samples 100000
+                            :report :graph
+                            :loop nil
+                            :show-progress nil)
+    (apply #'execute args)))
