@@ -76,8 +76,7 @@
          (channel (make-channel))
          (handled (make-queue))
          (finished (make-queue)))
-    (task-handler-bind ((error
-                         (lambda (e) (invoke-restart 'transfer-error e))))
+    (task-handler-bind ((error #'invoke-transfer-error))
       (submit-task channel (lambda ()
                              (setf *error-output* (make-broadcast-stream))
                              (infinite-loop))))
@@ -113,9 +112,7 @@
                      #'<)))))
 
 (lp-test kernel-client-error-test
-  (task-handler-bind
-      ((client-error (lambda (e)
-                       (invoke-restart 'transfer-error e))))
+  (task-handler-bind ((client-error #'invoke-transfer-error))
     (let1 channel (make-channel)
       (submit-task channel (lambda () (error 'client-error)))
       (signals client-error

@@ -161,7 +161,8 @@
            #:do-fast-receives
            #:kill-tasks
            #:task-handler-bind
-           #:task-categories-running)
+           #:task-categories-running
+           #:invoke-transfer-error)
   (:export #:*kernel*
            #:*kernel-spin-count*
            #:*task-category*

@@ -68,6 +68,11 @@
     `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)
        ,@body)))
 
+(defun invoke-transfer-error (error)
+  "Invoke the `transfer-error' restart with given argument. This is
+provided as mere convenience for passing to `task-handler-bind'."
+  (invoke-restart 'transfer-error error))
+
 (defun condition-handler (condition)
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
