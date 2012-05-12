@@ -1,6 +1,6 @@
 (in-package #:lparallel.util)
 
-(defmacro defpair (name supers (a b))
+(defmacro defpair (name supers (a b) &optional doc)
   "Define a cons type using defclass syntax.
 
 Exactly two slots and zero superclasses must be given.
@@ -16,6 +16,9 @@ All slots must be initialized when an instance is created, else an
 error will be signaled."
   (unless (null supers)
     (error "Non-empty superclass list ~a in DEFPAIR ~a" supers name))
+  (when doc
+    (unless (and (consp doc) (eq :documentation (car doc)))
+      (error "Expected `:documentation' option in DEFPAIR, got ~a" doc)))
   (setf a (mklist a))
   (setf b (mklist b))
   (labels ((slot-name     (slot) (car slot))
