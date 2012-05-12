@@ -135,6 +135,7 @@
          (maybe-sleep)))))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
+  (declare #.*full-optimize*)
   (with-scheduler-slots (workers low-priority-tasks) scheduler
     (do-workers (worker (random-fixnum (length workers)) scheduler)
       (with-pop-success task (tasks worker)
