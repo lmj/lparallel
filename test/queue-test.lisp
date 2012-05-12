@@ -140,15 +140,13 @@
     :pop-queue   pop-queue
     :queue-count queue-count)
 
-#+sbcl
-(progn
-  (defun sb-dequeue/wait (queue)
-    (loop (multiple-value-bind (item presentp) (sb-concurrency:dequeue queue)
-            (when presentp
-              (return item)))))
+(defun pop-spin-queue/wait (queue)
+  (loop (multiple-value-bind (item presentp) (pop-spin-queue queue)
+          (when presentp
+            (return item)))))
 
-  (define-grind-queue grind-sb-queue-test
-      :make-queue  sb-concurrency:make-queue
-      :push-queue  sb-concurrency:enqueue
-      :pop-queue   sb-dequeue/wait
-      :queue-count sb-concurrency:queue-count))
+(define-grind-queue grind-spin-queue-test
+    :make-queue  make-spin-queue
+    :push-queue  push-spin-queue
+    :pop-queue   pop-spin-queue/wait
+    :queue-count spin-queue-count)
