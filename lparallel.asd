@@ -91,6 +91,7 @@ See http://lparallel.org for documentation and examples.
                              (:file "kernel-util")
                              (:file "promise")
                              (:file "ptree")
+                             (:file "defpun")
                              (:module "cognate"
                               :serial t
                               :components ((:file "util")
@@ -104,8 +105,7 @@ See http://lparallel.org for documentation and examples.
                                            (:file "premove")
                                            (:file "pfind")
                                            (:file "pcount")
-                                           (:file "psort")))
-                             (:file "defpun")))))
+                                           (:file "psort")))))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))

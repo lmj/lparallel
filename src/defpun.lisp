@@ -39,9 +39,7 @@
             lparallel.kernel::with-optimizer-slots
             lparallel.kernel::*optimizer*
             lparallel.kernel::steal-work
-            lparallel.promise::fulfilledp/promise
-            lparallel.cognate::with-parsed-let-args
-            lparallel.cognate::future-let))
+            lparallel.promise::fulfilledp/promise))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -65,6 +63,41 @@
 
 (defun/type/inline negate (x) (fixnum) fixnum
   (- 0 x))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; future-let
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun pairp (form)
+  (and (consp form) (eql (length form) 2)))
+
+(defmacro/once with-parsed-let-args ((pairs non-pairs syms)
+                                     &once bindings
+                                     &body body)
+  `(let* ((,pairs     (remove-if-not #'pairp ,bindings))
+          (,non-pairs (remove-if     #'pairp ,bindings))
+          (,syms      (loop
+                         :for (name nil) :in ,pairs
+                         :collect (gensym (symbol-name name)))))
+     ,@body))
+
+(defmacro future-let (&key future force bindings pre-body body)
+  (with-parsed-body (nil declares body)
+    (with-parsed-let-args (pairs non-pairs syms) bindings
+      `(symbol-macrolet ,(loop
+                            :for sym :in syms
+                            :for (name nil) :in pairs
+                            :collect `(,name (,force ,sym)))
+         (let (,@(loop
+                    :for sym :in syms
+                    :for (nil form) :in pairs
+                    :collect `(,sym (,future ,form)))
+               ,@non-pairs)
+           ,@declares
+           ,@(unsplice pre-body)
+           ,@body)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
