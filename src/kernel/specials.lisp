@@ -80,3 +80,23 @@
 ;;; On a Core-i7 3.4GHz, a single spin takes about 2.5 microseconds.
 (defvar *kernel-spin-count* 2000
   "Default value of the `spin-count' argument to `make-kernel'.")
+
+(defvar *debug-tasks-p* t
+  "If true, the debugger is invoked when an error goes unhandled
+  inside a task, i.e. when the handlers established by
+  `task-handler-bind' (if any) do not handle it.
+
+  If false, unhandled errors from tasks are automatically transferred
+  to their parent thread (and/or any dependent threads) via the
+  `transfer-error' restart. This is for convenience -- sometimes you
+  wish to avoid N debugger popups arising from N errors in N worker
+  threads.
+
+  The default value of `*debug-tasks-p*' is true. 
+
+  For local control over debugger invocation, bind a task handler:
+
+    (task-handler-bind ((error #'invoke-debugger)) ...)
+
+    (task-handler-bind ((error #'invoke-transfer-error)) ...)")
+

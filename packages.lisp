@@ -164,7 +164,8 @@
   (:export #:*kernel*
            #:*kernel-spin-count*
            #:*task-category*
-           #:*task-priority*)
+           #:*task-priority*
+           #:*debug-tasks-p*)
   (:export #:transfer-error
            #:no-kernel-error
            #:task-killed-error)

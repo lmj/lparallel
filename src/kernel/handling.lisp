@@ -68,16 +68,18 @@
     `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)
        ,@body)))
 
-(defun condition-handler (con)
+(defun condition-handler (condition)
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
   (loop
-     :for (name . fn)  :in *client-handlers*
-     :for (nil . tail) :on *client-handlers*
-     :do (when (subtypep (type-of con) name)
-           (let1 *client-handlers* tail
+     :for (condition-type . handler) :in *client-handlers*
+     :do (when (typep condition condition-type)
+           (let1 *client-handlers* (rest *client-handlers*)
              (handler-bind ((condition #'condition-handler))
-               (funcall fn con))))))
+               (funcall handler condition)))))
+  (when (and (typep condition 'error)
+             (not *debug-tasks-p*))
+    (invoke-restart 'transfer-error condition)))
 
 (defun make-debugger-hook ()
   "Record `*debugger-error*' for the `transfer-error' restart."
