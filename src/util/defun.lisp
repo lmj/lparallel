@@ -33,6 +33,14 @@
 (defun has-lambda-keywords-p (list)
   (some (lambda (p) (find p lambda-list-keywords)) list))
 
+(defun constrain-return-type (return-type)
+  (if (and (consp return-type)
+           (eq 'values (first return-type)))
+      (if (has-lambda-keywords-p return-type)
+          return-type
+          (append return-type '(&optional)))
+      `(values ,return-type &optional)))
+
 #-lparallel.with-debug
 (progn
   (defmacro defun/inline (name params &body body)
@@ -46,7 +54,9 @@
   (defmacro defun/type (name params arg-types return-type &body body)
     "Shortcut for 
        (declaim (ftype (function arg-types return-type) foo) 
-       (defun foo ...)."
+       (defun foo ...).
+    Additionally constrains return-type to the number of values provided."
+    (setf return-type (constrain-return-type return-type))
     (with-parsed-body (docstring declares body)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
@@ -70,6 +80,7 @@
 #+lparallel.with-debug
 (progn
   (defmacro defun/type (name params arg-types return-type &body body)
+    (setf return-type (constrain-return-type return-type))
     (with-parsed-body (docstring declares body)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
