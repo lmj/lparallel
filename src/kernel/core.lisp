@@ -147,14 +147,9 @@
           (setf thread worker-thread))
         worker))))
 
-(defvar *optimizer* nil)
-
 (defgeneric make-optimizer-data (specializer)
   (:method ((specializer (eql nil)))
     (declare (ignore specializer))))
-
-(defvar *kernel-spin-count* 10  ; need data to determine a good number
-  "Default value of the `spin-count' argument to `make-kernel'.")
 
 (defun make-kernel (worker-count
                     &key

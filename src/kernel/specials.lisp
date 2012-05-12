@@ -30,6 +30,12 @@
 
 (in-package #:lparallel.kernel)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; thread-locals
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-thread-locals *kernel-thread-locals*
   (*debugger-error* nil
    "Thread-local. Track the error inside the debugger for the
@@ -51,7 +57,7 @@
     tasks at low priority. Default value is `:default'.")
 
   (*worker* nil
-   "Thread local. The worker instance if inside a worker thread,
+   "Thread-local. The worker instance if inside a worker thread,
    otherwise nil."))
 
 ;;; This is managed separately due to self-reference.
@@ -60,3 +66,17 @@
 ;;; deprecated
 (define-symbol-macro *kernel-task-category* *task-category*)
 (define-symbol-macro *kernel-task-priority* *task-priority*)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; non-thread-local
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar *optimizer* nil
+  "Determines which kernel optimizer plugin is active. This is
+  an eql specializer for the `make-optimizer-data' generic function")
+
+;;; On a Core-i7 3.4GHz, a single spin takes about 2.5 microseconds.
+(defvar *kernel-spin-count* 2000
+  "Default value of the `spin-count' argument to `make-kernel'.")

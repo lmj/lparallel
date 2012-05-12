@@ -81,7 +81,7 @@ See http://lparallel.org for documentation and examples.
                              (:module "kernel"
                               :serial t
                               :components ((:file "util")
-                                           (:file "thread-locals")
+                                           (:file "specials")
                                            (:file "handling")
                                            (:file "classes")
        #-lparallel.with-stealing-scheduler (:file "central-scheduler")
