@@ -278,13 +278,13 @@
                    *benches*))
           fn-names))
 
-(defun execute (num-workers &key fns)
+(defun execute (num-workers &rest fns)
   (format t "~%")
   (when (find :swank *features*)
     (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
   (let1 benches (if fns
-                    (select-benches (mklist fns))
+                    (select-benches fns)
                     *benches*)
     (apply #'run-suite num-workers #'reset (mapcar #'car benches))))
