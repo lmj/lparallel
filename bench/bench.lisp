@@ -140,13 +140,3 @@ results are riffled for comparison."
   (let1 *kernel* (make-kernel worker-count :spin-count 10000)
     (unwind-protect (funcall fn)
       (end-kernel :wait t))))
-
-(defun run-suite (worker-count reset-fn &rest fns)
-  (when fns
-    (call-with-temp-kernel
-     worker-count
-     (lambda ()
-       (dolist (fn fns)
-         (funcall reset-fn)
-         (funcall fn)))))
-  nil)

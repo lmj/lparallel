@@ -70,6 +70,8 @@
      ,*trials*
      ,*rehearsals*)))
 
+(defparameter *one-worker-less* '(bench-pfib bench-pmatrix-mul))
+
 (defun data (name)
   (rest (find name *benches* :key #'first)))
 
@@ -284,7 +286,11 @@
     (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
-  (let1 benches (if fns
-                    (select-benches fns)
-                    *benches*)
-    (apply #'run-suite num-workers #'reset (mapcar #'car benches))))
+  (dolist (spec (if fns (select-benches fns) *benches*))
+    (let1 fn (first spec)
+      (cond ((member fn *one-worker-less*)
+             (format t "Using ~a workers for ~a.~%~%" (- num-workers 1) fn)
+             (call-with-temp-kernel (- num-workers 1) fn))
+            (t
+             (call-with-temp-kernel num-workers fn)))
+      (reset))))
