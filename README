@@ -2,8 +2,7 @@
 lparallel
 =========
 
-lparallel is a library for writing efficient parallel programs in
-Common Lisp, featuring
+lparallel is a library for parallelism in Common Lisp, featuring
 
   * a simple model of task submission with receiving queue
   * constructs for expressing fine-grained parallelism
@@ -29,8 +28,6 @@ test suite:
   * Clozure
   * LispWorks
   * SBCL
-
-These are the only implementations which have been tested so far.
 
 To run the tests, load lparallel-test.asd and call lparallel-test:execute.
 
