@@ -53,9 +53,15 @@
       (lambda (x) (funcall test item x))
       (typecase item
         ((or number character)
-         (lambda (x) (eql item x)))
+         (lambda (x)
+           ;; in inner loop
+           (declare #.*normal-optimize*)
+           (eql item x)))
         (otherwise
-         (lambda (x) (eq item x))))))
+         (lambda (x)
+           ;; in inner loop
+           (declare #.*normal-optimize*)
+           (eq item x))))))
 
 (defun subsize (seq size start end)
   (let1 result (- (or end size) start)
