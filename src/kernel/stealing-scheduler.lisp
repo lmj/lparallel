@@ -110,7 +110,6 @@
            (find-a-task ()
              (try-pop (tasks worker))
              (do-workers (worker (worker-index worker) scheduler)
-               (declare (type worker worker))
                (try-pop (tasks worker))))
            (maybe-sleep ()
              (with-scheduler-slots (wait-cvar wait-lock wait-count
