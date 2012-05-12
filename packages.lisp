@@ -160,7 +160,8 @@
            #:receive-result
            #:do-fast-receives
            #:kill-tasks
-           #:task-handler-bind)
+           #:task-handler-bind
+           #:task-categories-running)
   (:export #:*kernel*
            #:*kernel-spin-count*
            #:*task-category*

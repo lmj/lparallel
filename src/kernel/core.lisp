@@ -381,6 +381,11 @@ deadlocked or infinite looping tasks."
                          (shutdown channel kernel))
                        threads))))))))
 
+(defun task-categories-running ()
+  "Return a vector containing the task category currently running for
+each worker."
+  (map 'vector #'running-category (workers *kernel*)))
+
 (defun print-plist (plist stream)
   (loop
      :for (k v . more) :on plist :by #'cddr
