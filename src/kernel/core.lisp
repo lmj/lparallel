@@ -216,7 +216,7 @@ the string returned by `bordeaux-threads:thread-name'."
         (setf *kernel* value))))
   nil)
 
-(defun kernel-special-bindings ()
+(defun kernel-bindings ()
   "Return an alist of thread-local special variable bindings.
 A new thread which uses the current kernel should be given these
 bindings (see bordeaux-threads:*default-special-bindings*)."
@@ -386,3 +386,6 @@ deadlocked or infinite looping tasks."
 ;;; deprecated
 #-abcl
 (alias-function emergency-kill-tasks kill-tasks)
+
+;;; deprecated
+(alias-function kernel-special-bindings kernel-bindings)

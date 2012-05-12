@@ -150,9 +150,9 @@
         #:lparallel.spin-queue)
   (:export #:make-kernel
            #:kernel-worker-count
+           #:kernel-bindings
            #:check-kernel
-           #:end-kernel
-           #:kernel-special-bindings)
+           #:end-kernel)
   (:export #:make-channel
            #:submit-task
            #:submit-timeout
@@ -169,10 +169,11 @@
   (:export #:transfer-error
            #:no-kernel-error
            #:task-killed-error)
-  (:export #:*kernel-task-category* ; deprecated; same as *task-category*
-           #:*kernel-task-priority* ; deprecated; same as *task-priority*
-           #:emergency-kill-tasks   ; deprecated; same as kill-tasks
-           #:kernel-handler-bind))  ; deprecated; same as task-handler-bind
+  (:export #:*kernel-task-category*    ; deprecated; same as *task-category*
+           #:*kernel-task-priority*    ; deprecated; same as *task-priority*
+           #:emergency-kill-tasks      ; deprecated; same as kill-tasks
+           #:kernel-handler-bind       ; deprecated; same as task-handler-bind
+           #:kernel-special-bindings)) ; deprecated; same as kernel-bindings
 
 (defpackage #:lparallel.kernel-util
   (:use #:cl
