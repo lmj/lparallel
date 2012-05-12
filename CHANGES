@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.4.1
+
+* fixed defpun benchmarks
+
 = 1.4.0
 
 * added function task-categories-running
