@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.4.2
+
+* functions defined with defpun now report argument names in slime et al
+* added defpun/type, typed version of defpun
+
 = 1.4.1
 
 * fixed defpun benchmarks
