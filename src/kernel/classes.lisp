@@ -81,7 +81,7 @@
 
    `spin-count' -- see `make-kernel'.
 
-   `low-priority-tasks' -- tasks submitted when `*task-category*' is `:low'."))
+   `low-priority-tasks' -- tasks submitted when `*task-priority*' is `:low'."))
 
 #-lparallel.with-stealing-scheduler
 (progn
