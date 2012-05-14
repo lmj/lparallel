@@ -193,7 +193,9 @@
       (incf count delta)
       ;; `<=' returns generalized boolean
       (setf optimizer-flag (to-boolean
-                            (<= count (1+ (%kernel-worker-count kernel))))))))
+                            (<= count
+                                (the fixnum
+                                  (1+ (%kernel-worker-count kernel)))))))))
 
 (defun/type update-task-count (kernel delta) (kernel fixnum) t
   (declare #.*normal-optimize*)
