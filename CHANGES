@@ -10,7 +10,8 @@ lparallel Changes
 
 * added function task-categories-running
 * new special variable *debug-tasks-p* -- setting it to false will
-  suppress debugger invocation inside tasks; default is true
+  transfer errors instead of invoking the debugger inside tasks;
+  default is true
 * added convenience function invoke-transfer-error for local control
   over debugging tasks:
     (task-handler-bind ((error #'invoke-transfer-error)) ...)
