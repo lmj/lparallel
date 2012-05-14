@@ -294,10 +294,9 @@ intent:
                       `(plet-if/fast ,predicate ,bindings ,@body))
                     ,@(registered-macrolets))
            ,@body))
-       (defun ,name (&rest params)
+       (defun ,name ,params
          ,@(unsplice docstring)
-         (declare (dynamic-extent params))
          (check-kernel)
-         (apply (function ,(unchecked-name name)) params))
+         (,(unchecked-name name) ,@params))
        (eval-when (:compile-toplevel :load-toplevel :execute)
          (register-fn ',name)))))
