@@ -261,7 +261,29 @@
                ,bindings
                ,body))
 
-(defmacro defpun (name params &body body)
+(defmacro define-defpun (defpun defun doc &rest types)
+  `(defmacro ,defpun (name params ,@types &body body)
+     ,doc
+     (with-parsed-body (docstring declares body)
+       (validate-registered-fns)
+       (register-fn-name name)
+       `(progn
+          (,',defun ,(unchecked-name name) ,params ,,@types
+            ,@declares
+            (macrolet ((plet (bindings &body body)
+                         `(plet/fast ,bindings ,@body))
+                       (plet-if (predicate bindings &body body)
+                         `(plet-if/fast ,predicate ,bindings ,@body))
+                       ,@(registered-macrolets))
+              ,@body))
+          (,',defun ,name ,params ,,@types
+            ,@(unsplice docstring)
+            (check-kernel)
+            (,(unchecked-name name) ,@params))
+          (eval-when (:compile-toplevel :load-toplevel :execute)
+            (register-fn ',name))))))
+
+(define-defpun defpun defun
   "`defpun' defines a function which is specially geared for
 fine-grained parallelism. If you have many small tasks which bog down
 the system, `defpun' may help.
@@ -281,22 +303,18 @@ func2 reference each other--then use `declaim-defpun' to specify
 intent:
 
     (declaim-defpun func1 func2)
-"
-  (with-parsed-body (docstring declares body)
-    (validate-registered-fns)
-    (register-fn-name name)
-    `(progn
-       (defun ,(unchecked-name name) ,params
-         ,@declares
-         (macrolet ((plet (bindings &body body)
-                      `(plet/fast ,bindings ,@body))
-                    (plet-if (predicate bindings &body body)
-                      `(plet-if/fast ,predicate ,bindings ,@body))
-                    ,@(registered-macrolets))
-           ,@body))
-       (defun ,name ,params
-         ,@(unsplice docstring)
-         (check-kernel)
-         (,(unchecked-name name) ,@params))
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-         (register-fn ',name)))))
+")
+
+(define-defpun defpun/type defun/type
+  "Typed version of `defpun'. 
+
+`arg-types' is an unevaluated list of argument types.
+
+`return-type' is an unevaluated form of the return type, possibly
+indicating multiple values as in (values fixnum float).
+
+\(As a technical point, when `return-type' is a `values' form
+containing no lambda list keywords, then `&optional' is appended to
+the final ftype form in order to constrain the number of multiple
+values to match the number given.)"
+  arg-types return-type)

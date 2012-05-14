@@ -272,6 +272,7 @@
         #:lparallel.promise
         #:lparallel.cognate)
   (:export #:defpun
+           #:defpun/type
            #:declaim-defpun))
 
 (macrolet ((define-merged-package (name packages)

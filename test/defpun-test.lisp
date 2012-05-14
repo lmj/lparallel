@@ -103,3 +103,31 @@
   (loop
      :for n :from 1 :to 15
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))
+
+;;; typed
+
+(defun/type fib-let/type (n) (fixnum) fixnum
+  (if (< n 2)
+      n
+      (let ((a (fib-let/type (- n 1)))
+            (b (fib-let/type (- n 2))))
+        (+ a b))))
+
+(defpun/type fib-plet/type (n) (fixnum) fixnum
+  (if (< n 2)
+      n
+      (plet ((a (fib-plet/type (- n 1)))
+             (b (fib-plet/type (- n 2))))
+        (+ a b))))
+
+(defpun/type fib-plet-if/type (n) (fixnum) fixnum
+  (if (< n 2)
+      n
+      (plet-if (> n 5) ((a (fib-plet-if/type (- n 1)))
+                        (b (fib-plet-if/type (- n 2))))
+        (+ a b))))
+
+(lp-test defpun/type-fib-test
+  (loop
+     :for n :from 1 :to 15
+     :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
