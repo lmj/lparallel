@@ -295,7 +295,7 @@ viewed as lazily evaluated immutable references.
 
 Inside a `defpun' form the name of the function being defined--as well
 as the names of other functions defined by `defpun'--are macrolets, so
-using #' will be an error.
+using #' on them will be an error.
 
 A `defpun' function must exist before it is referenced inside another
 `defpun' function. If this is not possible--for example if func1 and
@@ -313,8 +313,7 @@ intent:
 `return-type' is an unevaluated form of the return type, possibly
 indicating multiple values as in (values fixnum float).
 
-\(As a technical point, when `return-type' is a `values' form
-containing no lambda list keywords, then `&optional' is appended to
-the final ftype form in order to constrain the number of multiple
-values to match the number given.)"
+\(As a technical point, if `return-type' contains no lambda list
+keywords then the return type given to ftype will be additionally
+contrained to match the number of return values specified.)"
   arg-types return-type)
