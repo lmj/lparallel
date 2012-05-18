@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.4.4
+
+* include fix for sbcl map-into bug #1001043
+
 = 1.4.3
 
 * compensate for upcoming sbcl thread changes (only affects tests)
