@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.4.3
+
+* compensate for upcoming sbcl thread changes (only affects tests)
+* documentation updates
+
 = 1.4.2
 
 * functions defined with defpun now report argument names in slime et al
