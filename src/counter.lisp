@@ -57,9 +57,7 @@
 
 #+sbcl
 (progn
-  (deftype counter-value () '(unsigned-byte
-                              #+x86-64 64
-                              #-x86-64 32))
+  (deftype counter-value () 'sb-ext:word)
 
   (defstruct (counter (:constructor make-counter (&optional value)))
     (value 0 :type counter-value))
