@@ -151,12 +151,16 @@
 
 (defun make-kernel (worker-count
                     &key
+                    (name "lparallel")
                     (bindings `((*standard-output* . ,*standard-output*)
                                 (*error-output*    . ,*error-output*)))
                     (context #'funcall)
-                    (name "lparallel-worker")
                     (spin-count *kernel-spin-count*))
   "Create a kernel with `worker-count' number of worker threads.
+
+`name' is a string identifier for this kernel which is reported by
+`print-object'. Worker threads will also be given this name, shown in
+`bordeaux-threads:all-threads'.
 
 `bindings' is an alist for establishing thread-local variables inside
 worker threads (see bordeaux-threads for more information). By default
@@ -165,13 +169,12 @@ workers will have *standard-output* and *error-output* bindings.
 Dynamic context for each worker may be established with the function
 `context'. The argument passed to `context' is a function which must
 be funcalled. It begins the worker loop and will not return until the
-worker exits. Default value of `context' is #'funcall.
+worker exits. Default value of `context' is #'funcall. The special
+variables in `bindings' have been defined when `context' is called.
 
 When a worker discovers that no tasks are available, `spin-count' is
-the number of stealing iterations done by the worker before sleeping.
-
-`name' is a string identifier for worker threads. It corresponds to
-the string returned by `bordeaux-threads:thread-name'."
+the number of task-searching iterations done by the worker before
+sleeping."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
   (let* ((bindings (nconc (copy-alist bindings)
                           (list (cons '*debugger-hook* *debugger-hook*))
@@ -215,7 +218,7 @@ the string returned by `bordeaux-threads:thread-name'."
   nil)
 
 (defun kernel-bindings ()
-  "Return an alist of thread-local special variable bindings.
+  "Returns an alist of thread-local special variable bindings.
 A new thread which uses the current kernel should be given these
 bindings (see bordeaux-threads:*default-special-bindings*)."
   (check-kernel)
@@ -395,7 +398,8 @@ each worker."
 (defmethod print-object ((kernel kernel) stream)
   (with-kernel-slots (workers worker-info) kernel
     (with-worker-info-slots (name) worker-info
-      (let1 plist (list :worker-count (length workers) :worker-name name)
+      (let1 plist (list :name name
+                        :worker-count (length workers))
         #+lparallel.with-stealing-scheduler
         (with-scheduler-slots (spin-count) (scheduler kernel)
           (setf plist (append plist (list :spin-count spin-count))))
