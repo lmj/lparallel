@@ -72,6 +72,8 @@
 
 (defparameter *one-worker-less* '(bench-pfib bench-pmatrix-mul))
 
+(defparameter *spin-count* 20000)
+
 (defun data (name)
   (rest (find name *benches* :key #'first)))
 
@@ -279,6 +281,10 @@
             (assoc (intern (symbol-name name) :lparallel-bench)
                    *benches*))
           fn-names))
+
+(defun call-with-temp-kernel (worker-count fn)
+  (with-temp-kernel (worker-count :spin-count *spin-count*)
+    (funcall fn)))
 
 (defun execute (num-workers &rest fns)
   (format t "~%")

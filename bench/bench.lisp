@@ -66,6 +66,12 @@
 (defun flatten (list)
   (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; wall time
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 #+sbcl
 (progn
   (defun get-time ()
@@ -83,10 +89,15 @@
   (defun time-interval (start end)
     (- end start)))
 
+(defmacro with-wall-time (&body body)
+  (with-gensyms (start end)
+    `(let1 ,start (get-time)
+       (values (progn ,@body) 
+               (let1 ,end (get-time)
+                 (time-interval ,start ,end))))))
+
 (defun wall-time (fn args)
-  (let1 start (get-time)
-    (apply fn args)
-    (time-interval start (get-time))))
+  (second (multiple-value-list (with-wall-time (apply fn args)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -136,7 +147,8 @@ results are riffled for comparison."
                        (mapcar 'exec-fn specs)
                        (mapcar (compose 'funcall 'args-fn) specs)))))))))
 
-(defun call-with-temp-kernel (worker-count fn)
-  (let1 *kernel* (make-kernel worker-count :spin-count 10000)
-    (unwind-protect (funcall fn)
-      (end-kernel :wait t))))
+(defmacro with-temp-kernel ((&rest make-kernel-args) &body body)
+  `(let1 *kernel* (make-kernel ,@make-kernel-args)
+     (unwind-protect
+          (progn ,@body)
+       (end-kernel :wait t))))

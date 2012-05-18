@@ -38,7 +38,9 @@
                 #:gc)
   (:export #:execute
            #+sbcl #:profile
-           #+sbcl #:stat-profile))
+           #+sbcl #:stat-profile)
+  (:export #:with-temp-kernel
+           #:with-wall-time))
 
 #+sbcl
 (require :sb-sprof)
