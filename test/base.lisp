@@ -39,13 +39,10 @@
 (defun debug-execute ()
   (debug!))
 
-(defmacro/once with-new-kernel ((&once worker-count
-                                 &rest args
-                                 &key bindings context name spin-count)
-                                &body body)
-  (declare (ignore bindings context name spin-count))
-  `(let1 *kernel* (make-kernel ,worker-count ,@args)
-     (unwind-protect (progn ,@body)
+(defmacro with-new-kernel ((&rest args) &body body)
+  `(let1 *kernel* (make-kernel ,@args)
+     (unwind-protect
+          (progn ,@body)
        (end-kernel :wait t))))
 
 (defmacro lp-base-test (name &body body)
