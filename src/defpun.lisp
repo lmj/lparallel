@@ -276,10 +276,11 @@
                          `(plet-if/fast ,predicate ,bindings ,@body))
                        ,@(registered-macrolets))
               ,@body))
-          (,',defun ,name ,params ,,@types
+          (defun ,name (&rest args)
             ,@(unsplice docstring)
+            (declare (dynamic-extent args))
             (check-kernel)
-            (,(unchecked-name name) ,@params))
+            (apply #',(unchecked-name name) args))
           (eval-when (:compile-toplevel :load-toplevel :execute)
             (register-fn ',name))))))
 
