@@ -145,7 +145,10 @@ larger parts are recursed upon.
 
 `max-part-size' defaults to (/ (length sequence) parts). 
 
-`parts' defaults to (kernel-worker-count)."
+`parts' defaults to (kernel-worker-count).
+
+At present `psort' is only parallelized for vectors; other types are
+handled by `cl:sort'."
   (typecase sequence
     (vector
      (check-type parts         (or null fixnum))
