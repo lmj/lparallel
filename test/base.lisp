@@ -82,8 +82,16 @@
      :collect elem))
 
 (defun invoke-abort-thread ()
-  (invoke-restart #-sbcl 'abort
-                  #+sbcl 'sb-thread:terminate-thread))
+  (flet ((fail () (error "Can't find an abort-like restart in this CL!")))
+    (let ((restarts (mapcar #'restart-name (compute-restarts))))
+      (if (find 'abort restarts)
+          (invoke-restart 'abort)
+          #-sbcl (fail)
+          #+sbcl (let1 term (find-symbol (string '#:terminate-thread)
+                                         'sb-thread)
+                   (if (and term (find term restarts))
+                       (invoke-restart term)
+                       (fail)))))))
 
 (defmacro with-thread-count-check (&body body)
   (with-gensyms (old-thread-count)
