@@ -122,7 +122,7 @@
 (defvar *registered-fns* nil)
 
 (defun unchecked-name (name)
-  (intern (conc-syms '#:%p name '#:/no-check) (symbol-package name)))
+  (intern (conc-syms '#:%par- name) (symbol-package name)))
 
 (defun defpun-loaded-p (name)
   (ignore-errors
