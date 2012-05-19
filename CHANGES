@@ -2,7 +2,7 @@
 lparallel Changes
 =================
 
-= 1.4.4
+= 1.4.5
 
 * include fix for sbcl map-into bug #1001043
 
