@@ -46,7 +46,7 @@
 ;;; the end during mapping (if MAP even gets that far).
 (defun map-into (result-sequence function &rest sequences)
   (declare (dynamic-extent sequences))
-  (let ((really-fun (%coerce-callable-to-fun function)))
+  (let ((really-fun (ensure-function function)))
     ;; For each result type, define a mapping function which is
     ;; responsible for replacing RESULT-SEQUENCE elements and for
     ;; terminating itself if the end of RESULT-SEQUENCE is reached.
