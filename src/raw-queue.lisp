@@ -45,26 +45,27 @@
     (declare (ignore initial-capacity))
     (cons nil nil))
 
-  (defun/type push-raw-queue (value z) (t raw-queue) t
+  (defun/type push-raw-queue (value queue) (t raw-queue) t
     (declare #.*normal-optimize*)
     (let1 new (cons value nil)
-      (if (car z)
-          (setf (cddr z) new)
-          (setf (car  z) new))
-      (setf (cdr z) new)))
+      (if (car queue)
+          (setf (cddr queue) new)
+          (setf (car  queue) new))
+      (setf (cdr queue) new)))
 
-  (defun/type pop-raw-queue (z) (raw-queue) (values t boolean)
+  (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
     (declare #.*normal-optimize*)
-    (if (car z)
-        (multiple-value-prog1 (values (caar z) t)
-          (unless (setf (car z) (cdar z))
+    (if (car queue)
+        (multiple-value-prog1 (values (caar queue) t)
+          (unless (setf (car queue) (cdar queue))
             ;; clear lingering ref
-            (setf (cdr z) nil)))
+            (setf (cdr queue) nil)))
         (values nil nil)))
 
-  (defun/inline raw-queue-count   (z) (length (the list (car z))))
-  (defun/inline raw-queue-empty-p (z) (not (car z)))
-  (defun/inline peek-raw-queue    (z) (values (caar z) (if (car z) t nil))))
+  (defun/inline raw-queue-count   (queue) (length (the list (car queue))))
+  (defun/inline raw-queue-empty-p (queue) (not (car queue)))
+  (defun/inline peek-raw-queue    (queue) (values (caar queue)
+                                                  (if (car queue) t nil))))
 
 #+lparallel.with-vector-queue
 (progn
