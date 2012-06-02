@@ -29,6 +29,8 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage #:lparallel-bench
+  (:documentation
+   "Benchmarks for lparallel.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.cognate

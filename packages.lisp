@@ -29,6 +29,8 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage #:lparallel.util
+  (:documentation
+   "(private) Miscellaneous utilities.")
   (:use #:cl)
   (:export #:with-gensyms
            #:defmacro/once
@@ -58,6 +60,8 @@
            #:*full-optimize*))
 
 (defpackage #:lparallel.thread-util
+  (:documentation
+   "(private) Thread utilities.")
   (:use #:cl
         #:lparallel.util
         #:bordeaux-threads)
@@ -78,6 +82,8 @@
            #:condition-wait))
 
 (defpackage #:lparallel.raw-queue
+  (:documentation
+   "(private) Raw queue data structure.")
   (:use #:cl
         #:lparallel.util)
   (:export #:raw-queue
@@ -89,6 +95,8 @@
            #:raw-queue-empty-p))
 
 (defpackage #:lparallel.queue
+  (:documentation
+   "Blocking FIFO queue for communication between threads.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
@@ -104,6 +112,8 @@
            #:with-locked-queue))
 
 (defpackage #:lparallel.biased-queue
+  (:documentation
+   "(private) Blocking two-tiered priority queue.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
@@ -120,6 +130,8 @@
            #:with-locked-biased-queue))
 
 (defpackage #:lparallel.counter
+  (:documentation
+   "(private) Atomic counter.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util)
@@ -130,6 +142,8 @@
            #:counter-value))
 
 (defpackage #:lparallel.spin-queue
+  (:documentation
+   "(private) Thread-safe FIFO queue which spins instead of locks.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.raw-queue
@@ -143,6 +157,10 @@
            #:spin-queue-empty-p))
 
 (defpackage #:lparallel.kernel
+  (:documentation
+   "Encompasses the scheduling and execution of parallel tasks using a
+   pool of worker threads. All parallelism in lparallel is done on top
+   of the kernel.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
@@ -180,6 +198,9 @@
            #:kernel-special-bindings)) ; deprecated; same as kernel-bindings
 
 (defpackage #:lparallel.kernel-util
+  (:documentation
+   "(semi-private) Abstracts some common patterns for submitting and
+   receiving tasks. This probably won't change, but no guarantees.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
@@ -199,6 +220,9 @@
            #:receive-cancelables))
 
 (defpackage #:lparallel.ptree
+  (:documentation
+   "A ptree is a computation represented by a tree together with
+   functionality to execute the tree in parallel.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
@@ -214,6 +238,8 @@
            #:ptree-redefinition-error))
 
 (defpackage #:lparallel.promise
+  (:documentation
+   "Promises and futures.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
@@ -228,6 +254,8 @@
            #:chain))
 
 (defpackage #:lparallel.cognate
+  (:documentation
+   "Parallelized versions of some Common Lisp functions.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
@@ -268,6 +296,7 @@
   (:export #:preduce/partial)) ; deprecated; same as preduce-partial
 
 (defpackage #:lparallel.defpun
+  (:documentation "Fine-grained parallelism.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
@@ -278,9 +307,10 @@
            #:defpun/type
            #:declaim-defpun))
 
-(macrolet ((define-merged-package (name packages)
+(macrolet ((define-merged-package (name doc &rest packages)
              `(defpackage ,name
-                (:use ,@packages)
+                (:documentation ,doc)
+                (:use #:cl ,@packages)
                 (:export
                  ,@(loop
                       :for pkg :in packages
@@ -288,8 +318,12 @@
                                 :for sym :being :the :external-symbols :in pkg
                                 :collect (make-symbol (string sym))))))))
   (define-merged-package #:lparallel
-      (#:lparallel.kernel
-       #:lparallel.promise
-       #:lparallel.cognate
-       #:lparallel.defpun
-       #:lparallel.ptree)))
+      "This is a convenience package which exports the external
+symbols of lparallel.kernel, lparallel.promise, lparallel.cognate,
+lparallel.defpun, and lparallel.ptree."
+
+    #:lparallel.kernel
+    #:lparallel.promise
+    #:lparallel.cognate
+    #:lparallel.defpun
+    #:lparallel.ptree))

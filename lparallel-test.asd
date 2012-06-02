@@ -29,6 +29,9 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defsystem :lparallel-test
+  :description "Test suite for lparallel."
+  :licence "BSD"
+  :author "James M. Lawrence <llmjjmll@gmail.com>"
   :depends-on (:eos
                :lparallel)
   :serial t
