@@ -389,22 +389,18 @@ deadlocked or infinite looping tasks."
 each worker."
   (map 'vector #'running-category (workers *kernel*)))
 
-(defun print-plist (plist stream)
-  (loop
-     :for (k v . more) :on plist :by #'cddr
-     :do (format stream "~a=~s" k v)
-     :when more :do (format stream " ")))
+(defun kernel-info (kernel)
+  (with-kernel-slots (worker-info) kernel
+    (with-worker-info-slots (name) worker-info
+      (nconc (list :name name
+                   :worker-count (%kernel-worker-count kernel))
+             #+lparallel.with-stealing-scheduler
+             (with-scheduler-slots (spin-count) (scheduler kernel)
+               (list :spin-count spin-count))))))
 
 (defmethod print-object ((kernel kernel) stream)
-  (with-kernel-slots (workers worker-info) kernel
-    (with-worker-info-slots (name) worker-info
-      (let1 plist (list :name name
-                        :worker-count (length workers))
-        #+lparallel.with-stealing-scheduler
-        (with-scheduler-slots (spin-count) (scheduler kernel)
-          (setf plist (append plist (list :spin-count spin-count))))
-        (print-unreadable-object (kernel stream :type t :identity t)
-          (print-plist plist stream))))))
+  (print-unreadable-object (kernel stream :type t :identity t)
+    (format stream "~{~s~^ ~}" (kernel-info kernel))))
 
 ;;; deprecated
 #-abcl
