@@ -97,10 +97,9 @@ error will be signaled."))
        ,@body))
 
   (defmacro define-with-slots-macro (name package conc-name)
-    (with-gensyms (slots instance body)
-      `(defmacro/once ,name (,slots &once ,instance &body ,body)
-         `(define-slots-macrolet ,',package ,',conc-name ,,slots ,,instance
-            ,@,body))))
+    `(defmacro/once ,name (slots &once instance &body body)
+       `(define-slots-macrolet ,',package ,',conc-name ,slots ,instance
+          ,@body)))
 
   (defmacro define-struct (name supers slots options conc-name constructor)
     `(defstruct (,name (:conc-name ,conc-name)
@@ -147,17 +146,16 @@ error will be signaled."))
   #.*defslots-doc*
   (parse-defslots supers slots options)
   (multiple-value-bind (constructor slots-macro-name) (defslots-names name)
-    (with-gensyms (slot-names instance body args)
-      `(progn
-         (defclass ,name ,supers
-           ,(loop
-               :for slot      :in (copy-list slots)
-               :for slot-name := (first slot)
-               :for initarg   := (intern (symbol-name slot-name) 'keyword)
-               :collect `(,@slot :initarg ,initarg))
-           ,@options)
-         (defmacro ,slots-macro-name (,slot-names ,instance &body ,body)
-           `(with-slots ,,slot-names ,,instance ,@,body))
-         (defun ,constructor (&rest ,args)
-           (apply #'make-instance ',name ,args))
-         ',name))))
+    `(progn
+       (defclass ,name ,supers
+         ,(loop
+             :for slot      :in (copy-list slots)
+             :for slot-name := (first slot)
+             :for initarg   := (intern (symbol-name slot-name) 'keyword)
+             :collect `(,@slot :initarg ,initarg))
+         ,@options)
+       (defmacro ,slots-macro-name (slot-names instance &body body)
+         `(with-slots ,slot-names ,instance ,@body))
+       (defun ,constructor (&rest args)
+         (apply #'make-instance ',name args))
+       ',name)))
