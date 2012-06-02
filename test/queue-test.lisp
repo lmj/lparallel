@@ -150,3 +150,15 @@
     :push-queue  push-spin-queue
     :pop-queue   pop-spin-queue/wait
     :queue-count spin-queue-count)
+
+(define-grind-queue grind-biased-queue-1-test
+    :make-queue  lparallel.biased-queue:make-biased-queue
+    :push-queue  lparallel.biased-queue:push-biased-queue
+    :pop-queue   lparallel.biased-queue:pop-biased-queue
+    :queue-count lparallel.biased-queue:biased-queue-count)
+
+(define-grind-queue grind-biased-queue-2-test
+    :make-queue  lparallel.biased-queue:make-biased-queue
+    :push-queue  lparallel.biased-queue:push-biased-queue/low
+    :pop-queue   lparallel.biased-queue:pop-biased-queue
+    :queue-count lparallel.biased-queue:biased-queue-count)

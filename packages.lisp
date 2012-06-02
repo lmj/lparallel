@@ -127,6 +127,7 @@
            #:biased-queue-empty-p  #:biased-queue-empty-p/no-lock
            #:try-pop-biased-queue  #:try-pop-biased-queue/no-lock
            #:pop-biased-queue      #:pop-biased-queue/no-lock
+           #:biased-queue-count    #:biased-queue-count/no-lock
            #:with-locked-biased-queue))
 
 (defpackage #:lparallel.counter
