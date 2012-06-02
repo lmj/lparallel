@@ -38,6 +38,9 @@
 (defmacro while (test &body body)
   `(loop :while ,test :do (progn ,@body)))
 
+(defmacro until (test &body body)
+  `(loop :until ,test :do (progn ,@body)))
+
 (defmacro repeat (n &body body)
   `(loop :repeat ,n :do (progn ,@body)))
 

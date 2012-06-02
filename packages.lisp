@@ -37,6 +37,7 @@
            #:symbolicate
            #:with-parsed-body)
   (:export #:while
+           #:until
            #:repeat
            #:when-let
            #:while-let
