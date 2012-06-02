@@ -305,7 +305,9 @@
         #:lparallel.cognate)
   (:export #:defpun
            #:defpun/type
-           #:declaim-defpun))
+           #:declaim-defpun
+           #:plet
+           #:plet-if))
 
 (macrolet ((define-merged-package (name doc &rest packages)
              `(defpackage ,name
