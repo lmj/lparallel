@@ -55,13 +55,13 @@
   (setf *memo* :main)
   (with-thread ()
     (setf *memo* :child))
-  (sleep 0.1)
+  (sleep 0.2)
   (is (eq :child *memo*))
 
   (setf *memo* :main)
   (with-thread (:bindings (list (cons '*memo* *memo*)))
     (setf *memo* :child))
-  (sleep 0.1)
+  (sleep 0.2)
   (is (eq :main *memo*)))
 
 #-abcl
