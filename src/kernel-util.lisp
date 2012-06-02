@@ -30,6 +30,11 @@
 
 (in-package #:lparallel.kernel-util)
 
+(defun receive-and-discard-results (channel count)
+  (declare #.*normal-optimize*)
+  (do-fast-receives (result channel count)
+    (declare (ignore result))))
+
 (defmacro with-submit-counted (&body body)
   (with-gensyms (count channel)
     `(let ((,count   0)
@@ -40,9 +45,9 @@
                 (apply #'submit-task ,channel args)
                 (incf ,count))
               (receive-counted ()
-                (do-fast-receives (result ,channel ,count)
-                  (declare (ignore result)))))
-         (declare (inline submit-counted))
+                (receive-and-discard-results ,channel ,count)))
+         (declare (inline submit-counted receive-counted)
+                  (dynamic-extent #'submit-counted #'receive-counted))
          ,@body))))
 
 (defmacro with-submit-dynamic-counted (&body body)
@@ -72,10 +77,10 @@
                 (submit-task
                  ,channel #'indexing-wrapper ,array index function args))
               (receive-indexed ()
-                (do-fast-receives (result ,channel ,count)
-                  (declare (ignore result)))
+                (receive-and-discard-results ,channel ,count)
                 ,array))
-         (declare (inline submit-indexed))
+         (declare (inline submit-indexed receive-indexed))
+         (declare (dynamic-extent #'submit-indexed #'receive-indexed))
          ,@body))))
 
 (defmacro with-submit-cancelable (&body body)
