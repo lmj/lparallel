@@ -62,7 +62,7 @@
 (defmacro/syms map-into/vector/1-vector/range (dst fn src start end)
   (with-gensyms (index)
     `(let1 ,index ,start
-       (declare (fixnum ,index))
+       (declare (type index ,index))
        (until (eql ,index ,end)
          (setf (aref ,dst ,index) (funcall ,fn (aref ,src ,index)))
          (incf ,index)))))
@@ -70,13 +70,13 @@
 (defmacro/syms pmap-into/vector/1-vector (dst fn src size parts)
   (with-gensyms (start end)
     `(let1 ,start 0
-       (declare (fixnum ,start))
+       (declare (type index ,start))
        (with-parts ,size ,parts
          (with-submit-counted
            (while (next-part)
              (submit-counted (let ((,start ,start)
                                    (,end (+ ,start (part-size))))
-                               (declare (fixnum ,start ,end))
+                               (declare (type index ,start ,end))
                                (lambda ()
                                  (map-into/vector/1-vector/range
                                   ,dst ,fn ,src ,start ,end))))

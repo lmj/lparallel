@@ -32,8 +32,6 @@
 
 ;;; placeholder fix until the next SBCL release
 
-(deftype index () `(integer 0 #.array-dimension-limit))
-
 (defun map-into (result-sequence function &rest sequences)
   (declare (dynamic-extent sequences))
   (let ((really-fun (ensure-function function)))

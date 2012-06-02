@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.cognate)
 
+(deftype index () `(integer 0 #.array-dimension-limit))
+
 (defun zip/vector (seqs)
   (apply #'map 'vector (lambda (&rest args) args) seqs))
 
