@@ -36,9 +36,6 @@
 ;;; I submitted a `map-into' replacement to SBCL which is pending
 ;;; review. A userland version of that submission follows.
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (shadow 'map-into))
-
 (deftype index () `(integer 0 #.array-dimension-limit))
 
 ;;; Uses the machinery of (MAP NIL ...). For non-vectors we avoid

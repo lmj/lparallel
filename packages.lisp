@@ -232,6 +232,7 @@
         #:lparallel.kernel
         #:lparallel.kernel-util
         #:lparallel.promise)
+  #+sbcl (:shadow #:map-into) ; sbcl bug fix
   (:export #:pand
            #:pcount
            #:pcount-if
