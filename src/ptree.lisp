@@ -200,13 +200,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots ptree ()
+(defslots %ptree ()
   ((nodes :initform (make-hash-table :test #'eq) :type hash-table)))
 
 (defun check-ptree (ptree)
   "Verify that all nodes have been defined with an associated
 function. If not, `ptree-undefined-function-error' is signaled."
-  (with-ptree-slots (nodes) ptree
+  (with-%ptree-slots (nodes) ptree
     (maphash (lambda (name node)
                (declare (ignore name))
                (check-node node))
@@ -214,7 +214,7 @@ function. If not, `ptree-undefined-function-error' is signaled."
 
 (defun make-ptree ()
   "Create a ptree instance."
-  (make-ptree-instance))
+  (make-%ptree-instance))
 
 (defun ptree-fn (name args function ptree)
   "Define a ptree node labeled `name' (a symbol) in `ptree' (a ptree instance).
@@ -224,7 +224,7 @@ The names of its child nodes are the symbols in `args'.
 `function' is the function associated with this node. The arguments
 passed to `function' are the respective results of the child node
 computations."
-  (with-ptree-slots (nodes) ptree
+  (with-%ptree-slots (nodes) ptree
     (flet ((fetch (name) (or (gethash name nodes)
                              (setf (gethash name nodes)
                                    (make-node-instance :name name)))))
@@ -249,7 +249,7 @@ If the node is uncomputed, compute the result.
 
 If the node is already computed, return the computed result. A node is
 never computed twice."
-  (with-ptree-slots (nodes) ptree
+  (with-%ptree-slots (nodes) ptree
     (let1 root (gethash name nodes)
       (unless root
         (error 'ptree-undefined-function-error :name name))
