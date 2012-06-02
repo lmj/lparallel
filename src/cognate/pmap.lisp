@@ -119,16 +119,17 @@ manually."
 
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
   (multiple-value-bind (size parts-hint) (pop-options seqs)
-    (let* ((fn          (ensure-function fn))
-           (has-fill-p  (and (arrayp result-seq)
-                             (array-has-fill-pointer-p result-seq)))
-           (result-size (if has-fill-p
-                            (array-total-size result-seq)
-                            (length result-seq)))
-           (parts-hint  (get-parts-hint parts-hint))
-           (size        (if seqs
-                            (min result-size (or size (find-min-length seqs)))
-                            (if size (min result-size size) result-size))))
+    (let* ((fn         (ensure-function fn))
+           (has-fill-p (and (arrayp result-seq)
+                            (array-has-fill-pointer-p result-seq)))
+           (parts-hint (get-parts-hint parts-hint))
+           (size       (or size
+                           (let1 limit (if has-fill-p
+                                           (array-total-size result-seq)
+                                           (length result-seq))
+                             (if seqs
+                                 (min limit (find-min-length seqs))
+                                 limit)))))
       (prog1
           (if seqs
               (pmap-into/parsed map-into result-seq fn seqs size parts-hint)
