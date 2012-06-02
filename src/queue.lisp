@@ -96,7 +96,7 @@
                  :for (fn doc) :in specs
                  :for down-fn := (string-downcase (string fn))
                  :for no-lock-doc := (format nil no-lock-ctl down-fn)
-                 :for no-lock := (intern-conc fn '#:/no-lock)
+                 :for no-lock := (symbolicate fn '#:/no-lock)
                  :collect `(progn
                              (fn-doc ,fn ,doc)
                              (when (fboundp ',no-lock)

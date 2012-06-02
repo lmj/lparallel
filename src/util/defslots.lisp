@@ -79,9 +79,9 @@ error will be signaled."))
                     (first diff) allowed)))))
 
 (defun defslots-names (name)
-  (values (intern-conc '#:make- name '#:-instance)
-          (intern-conc '#:with- name '#:-slots)
-          (make-symbol-conc '#:%%%%. name '#:.)
+  (values (symbolicate '#:make- name '#:-instance)
+          (symbolicate '#:with- name '#:-slots)
+          (symbolicate/no-intern '#:%%%%. name '#:.)
           (make-symbol (package-name *package*))))
 
 #-lparallel.with-debug
@@ -92,7 +92,7 @@ error will be signaled."))
          ,(loop
              :for entry :in entries
              :for (name slot) := (if (consp entry) entry `(,entry ,entry))
-             :for accessor := (intern (conc-syms conc-name slot) package)
+             :for accessor := (symbolicate/package package conc-name slot)
              :collect `(,name (,accessor ,instance)))
        ,@body))
 
@@ -123,7 +123,7 @@ error will be signaled."))
     `(progn
        ,@(loop
             :for (slot-name . plist) :in slots
-            :for private := (intern-conc conc-name slot-name)
+            :for private := (symbolicate conc-name slot-name)
             :for type := (getf plist :type)
             :nconc (loop
                       :for public :in (plist-values-for-key plist :reader)

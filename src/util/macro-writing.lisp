@@ -55,16 +55,20 @@
 (defun unsplice (form)
   (if form (list form) nil))
 
-(defun conc-syms (&rest syms)
-  (apply #'concatenate 'string (mapcar #'symbol-name syms)))
+(defun conc-string-designators (&rest string-designators)
+  (apply #'concatenate 'string (mapcar #'string string-designators)))
 
-(defun intern-conc (&rest syms)
-  "Concatenate `syms' then intern the result."
-  (intern (apply #'conc-syms syms)))
+(defun symbolicate (&rest string-designators)
+  "Concatenate `string-designators' then intern the result."
+  (intern (apply #'conc-string-designators string-designators)))
 
-(defun make-symbol-conc (&rest syms)
-  "Concatenate `syms' then make-symbol the result."
-  (make-symbol (apply #'conc-syms syms)))
+(defun symbolicate/package (package &rest string-designators)
+  "Concatenate `string-designators' then intern the result into `package'."
+  (intern (apply #'conc-string-designators string-designators) package))
+
+(defun symbolicate/no-intern (&rest string-designators)
+  "Concatenate `string-designators' then make-symbol the result."
+  (make-symbol (apply #'conc-string-designators string-designators)))
 
 (defun has-docstring-p (body)
   (and (stringp (car body)) (cdr body)))

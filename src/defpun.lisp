@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.defpun)
 
-#.(import '(lparallel.util::conc-syms
+#.(import '(lparallel.util::symbolicate/package
             lparallel.kernel::kernel
             lparallel.kernel::%kernel-worker-count
             lparallel.kernel::make-optimizer-data
@@ -122,7 +122,7 @@
 (defvar *registered-fns* nil)
 
 (defun unchecked-name (name)
-  (intern (conc-syms '#:%par- name) (symbol-package name)))
+  (symbolicate/package (symbol-package name) '#:%par- name) )
 
 (defun defpun-loaded-p (name)
   (ignore-errors

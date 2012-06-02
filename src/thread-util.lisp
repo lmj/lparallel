@@ -66,7 +66,7 @@
                                   defun/no-lock
                                   arg-types/no-lock return-type/no-lock
                                   &body body)
-  (let1 name/no-lock (intern-conc name '#:/no-lock)
+  (let1 name/no-lock (symbolicate name '#:/no-lock)
     `(progn
        (,defun/no-lock ,name/no-lock ,args
          ,@(unsplice arg-types/no-lock)

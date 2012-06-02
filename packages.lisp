@@ -34,7 +34,7 @@
            #:defmacro/once
            #:mklist
            #:unsplice
-           #:intern-conc
+           #:symbolicate
            #:with-parsed-body)
   (:export #:while
            #:repeat

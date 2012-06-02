@@ -44,7 +44,7 @@ error will be signaled."
        (deftype ,name () `(cons ,',(slot-type a)
                                 ,',(slot-type b)))
 
-       (defun/type/inline ,(intern-conc '#:make- name '#:-instance)
+       (defun/type/inline ,(symbolicate '#:make- name '#:-instance)
            (&key (,(slot-name a) ,(slot-initform a))
                  (,(slot-name b) ,(slot-initform b)))
            (&key (,(slot-initarg a) ,(slot-type a))
