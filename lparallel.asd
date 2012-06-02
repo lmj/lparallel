@@ -39,10 +39,9 @@
   :description "Parallelism for Common Lisp"
   :long-description
 "
-lparallel is a library for writing efficient parallel programs in
-Common Lisp, featuring
+lparallel is a library for parallelism in Common Lisp, featuring
 
-  * a simple model of task submission with receive queue
+  * a simple model of task submission with receiving queue
   * fine-grained parallelism
   * asynchronous condition handling across thread boundaries
   * parallel versions of map, reduce, sort, remove, and many others
