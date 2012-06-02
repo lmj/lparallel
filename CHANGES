@@ -2,6 +2,18 @@
 lparallel Changes
 =================
 
+= 1.5.0
+
+* pmap and pmap-into are now open-coded in the case of 1 vector being
+  mapped to a vector -- allows a large performance boost in some CL
+  implementations (like SBCL) when array types are known
+
+* SBCL is now able to terminate when live kernel(s) exist --
+  previously, end-kernel needed to be called on all kernels before
+  exiting (which is good practice but is no longer required)
+
+* added try-receive-result -- non-blocking version of receive-result
+
 = 1.4.5
 
 * include fix for sbcl map-into bug #1001043
