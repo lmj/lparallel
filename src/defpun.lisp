@@ -39,6 +39,7 @@
             lparallel.kernel::with-optimizer-slots
             lparallel.kernel::*optimizer*
             lparallel.kernel::steal-work
+            lparallel.promise::%future
             lparallel.promise::fulfilledp/promise))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -211,7 +212,7 @@
               (progn ,@body)
            (update-task-count ,kernel -1))))))
 
-(defun/type force/fast (future) (future) t
+(defun/type force/fast (future) (%future) t
   (declare #.*normal-optimize*)
   (loop
      (when (fulfilledp/promise future)

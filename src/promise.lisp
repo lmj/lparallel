@@ -36,6 +36,8 @@
 ;;;             promise   plan
 ;;;                       /  \
 ;;;    speculation = future  delay
+;;; 
+;;; Class names are prefixed with % to avoid being exported.
 
 (in-package #:lparallel.promise)
 
@@ -150,17 +152,17 @@ false."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots promise (promise-base)
+(defslots %promise (promise-base)
   ((cvar       :initform nil)
    (availablep :initform t :type boolean)))
 
 (defun promise ()
   "Create a promise. A promise is a receptacle for a result which is
 unknown at the time it is created."
-  (make-promise-instance))
+  (make-%promise-instance))
 
-(defmethod fulfill-hook ((promise promise) client-fn)
-  (with-promise-slots (result lock cvar availablep) promise
+(defmethod fulfill-hook ((promise %promise) client-fn)
+  (with-%promise-slots (result lock cvar availablep) promise
     ;; spin until a promise claims it
     (loop
        :do (with-unfulfilled/no-wait promise
@@ -170,9 +172,9 @@ unknown at the time it is created."
              (return t))
        :while availablep)))
 
-(defmethod force-hook ((promise promise))
+(defmethod force-hook ((promise %promise))
   (with-unfulfilled/wait promise
-    (with-promise-slots (result lock cvar forcedp) promise
+    (with-%promise-slots (result lock cvar forcedp) promise
       (unless cvar
         (setf cvar (make-condition-variable)))
       (loop
@@ -210,19 +212,19 @@ unknown at the time it is created."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots delay (plan) ())
+(defslots %delay (plan) ())
 
 (defmacro delay (&body body)
   "Create a delay. A delay is a promise which is fulfilled when
 `force' is called upon it."
-  `(make-delay-instance :fn (lambda () ,@body)))
+  `(make-%delay-instance :fn (lambda () ,@body)))
 
-(defmethod fulfill-hook ((delay delay) client-fn)
+(defmethod fulfill-hook ((delay %delay) client-fn)
   (with-unfulfilled/no-wait delay
     (fulfill-plan/values delay (multiple-value-list (funcall client-fn)))
     t))
 
-(defmethod force-hook ((delay delay))
+(defmethod force-hook ((delay %delay))
   ;; do not use task handler
   (with-unfulfilled/wait delay
     (fulfill-plan/values
@@ -234,33 +236,33 @@ unknown at the time it is created."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots future (plan)
+(defslots %future (plan)
   ((canceledp :initform nil :type boolean)))
 
-(defmethod fulfill-hook ((future future) client-fn)
+(defmethod fulfill-hook ((future %future) client-fn)
   ;; If we are here then we've stolen the task from the kernel.
   (with-unfulfilled/no-wait future
-    (with-future-slots (canceledp) future
+    (with-%future-slots (canceledp) future
       (setf canceledp t)
       (fulfill-plan/values future (multiple-value-list (funcall client-fn))))
     t))
 
-(defmethod force-hook ((future future))
+(defmethod force-hook ((future %future))
   ;; If we are here then we've stolen the task from the kernel.
   (with-unfulfilled/wait future
-    (with-future-slots (canceledp) future
+    (with-%future-slots (canceledp) future
       (setf canceledp t)
       (fulfill-plan/call future))))
 
 (defmacro with-unfulfilled-future/no-wait (future &body body)
   (with-gensyms (lock canceledp result)
-    `(with-future-slots
+    `(with-%future-slots
          ((,lock lock) (,canceledp canceledp) (,result result)) ,future
        (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
                                                (eq ,result 'no-result))
          ,@body))))
 
-(defun/type make-future-task (future) (future) task
+(defun/type make-future-task (future) (%future) task
   (make-task
     (lambda ()
       (with-unfulfilled-future/no-wait future
@@ -272,7 +274,7 @@ unknown at the time it is created."
 (defun make-future (fn)
   (declare #.*normal-optimize*)
   (check-kernel)
-  (let1 future (make-future-instance :fn fn)
+  (let1 future (make-%future-instance :fn fn)
     (submit-raw-task (make-future-task future) *kernel*)
     future))
 
@@ -301,26 +303,26 @@ fulfilled by the caller of `force'."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defslots chain ()
+(defslots %chain ()
   ((object :reader chain-object)))
 
 (defun chain (object)
   "Create a chain. A chain links objects together by relaying `force'
 and `fulfilledp' calls."
-  (make-chain-instance :object object))
+  (make-%chain-instance :object object))
 
-(defmethod force ((chain chain))
+(defmethod force ((chain %chain))
   (force (chain-object chain)))
 
-(defmethod fulfilledp ((chain chain))
+(defmethod fulfilledp ((chain %chain))
   (fulfilledp (chain-object chain)))
 
-(defmethod fulfill-hook ((chain chain) client-fn)
+(defmethod fulfill-hook ((chain %chain) client-fn)
   (fulfill-hook (chain-object chain) client-fn))
 
 (defun force/no-restart (promise)
   (force-hook promise)
   (values-list (result promise)))
 
-(defmethod unwrap-result ((chain chain))
+(defmethod unwrap-result ((chain %chain))
   (unwrap-result (force/no-restart (chain-object chain))))
