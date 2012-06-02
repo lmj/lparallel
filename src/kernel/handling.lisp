@@ -135,7 +135,9 @@ control (or not)."
   (alias-function %call-with-task-handler funcall)
   (alias-function call-with-task-handler  funcall))
 
-(define-condition task-killed-error (error) ())
+(define-condition task-killed-error (error) ()
+  (:documentation
+   "The thread running the task was killed."))
 
 (define-condition no-kernel-error (error) ()
   (:report (lambda (condition stream)

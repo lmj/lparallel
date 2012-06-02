@@ -46,7 +46,9 @@
   ()
   (:report
    (lambda (err stream)
-     (format stream "ptree function redefined: ~a" (ptree-error-name err)))))
+     (format stream "ptree function redefined: ~a" (ptree-error-name err))))
+  (:documentation
+   "Attempted to redefine a node's function."))
 
 (define-condition ptree-undefined-function-error (ptree-error)
   ((refs :initarg :refs :reader ptree-error-refs))
@@ -55,7 +57,9 @@
      (format stream
              "Function not found in ptree: ~a~%Referenced by: ~{~a ~}"
              (ptree-error-name err)
-             (ptree-error-refs err)))))
+             (ptree-error-refs err))))
+  (:documentation
+   "Attempted to execute a node which had no function."))
 
 (define-condition ptree-lambda-list-keyword-error (ptree-error)
   ((keyword :initarg :keyword :reader ptree-error-keyword))
@@ -65,7 +69,9 @@
              "Function arguments in PTREE cannot contain lambda list ~
               keywords:~%Found ~a in the definition of ~a"
              (ptree-error-keyword err)
-             (ptree-error-name err)))))
+             (ptree-error-name err))))
+  (:documentation
+   "Lambda list keywords found in function definition."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
