@@ -30,65 +30,64 @@
 
 (in-package #:lparallel.cognate)
 
-;;; SBCL has a very slow, much-consing implementation of `map-into'
-;;; which affects most pmap functions.
-
-;;; I submitted a `map-into' replacement to SBCL which is pending
-;;; review. A userland version of that submission follows.
+;;; placeholder fix until the next SBCL release
 
 (deftype index () `(integer 0 #.array-dimension-limit))
 
-;;; Uses the machinery of (MAP NIL ...). For non-vectors we avoid
-;;; computing the length of the result sequence since we can detect
-;;; the end during mapping (if MAP even gets that far).
 (defun map-into (result-sequence function &rest sequences)
   (declare (dynamic-extent sequences))
   (let ((really-fun (ensure-function function)))
-    ;; For each result type, define a mapping function which is
-    ;; responsible for replacing RESULT-SEQUENCE elements and for
-    ;; terminating itself if the end of RESULT-SEQUENCE is reached.
-    ;;
-    ;; The mapping function is defined with MAP-LAMBDA, whose syntax
-    ;; matches that of LAMBDA. Note (MAP-INTO SEQ (LAMBDA () ...)) is
-    ;; a different animal, hence the awkward flip between MAP and LOOP
-    ;; in the definition of MAP-LAMBDA.
     (macrolet ((map-lambda (params &body body)
                  `(flet ((f ,params ,@body))
                     (declare (dynamic-extent #'f))
                     (if sequences
                         (apply #'map nil #'f sequences)
                         (loop (f))))))
-      ;; Optimize MAP-LAMBDAs since they are the inner loops. Because
-      ;; we are manually doing bounds checking with known types, turn
-      ;; off safety for vectors and lists but keep it for generic
-      ;; sequences.
       (etypecase result-sequence
         (vector
-         (let ((index 0)
-               (end (array-dimension result-sequence 0)))
+         (let ((index 0))
            (declare (type index index))
-           (block mapping
-             ;; might as well optimize vector types
-             (macrolet
-                 ((map-into-vector (type ref)
-                    `(map-lambda (&rest args)
-                       (declare (dynamic-extent args)
-                                (optimize speed (safety 0)))
-                       (when (eql index end)
-                         (return-from mapping))
-                       (setf (,ref (the ,type result-sequence) index)
-                             (apply really-fun args))
-                       (incf index))))
-               (typecase result-sequence
-                 (simple-vector (map-into-vector simple-vector svref))
-                 (simple-string (map-into-vector simple-string aref))
-                 (vector        (map-into-vector vector aref)))))
+           (if (and sequences
+                    (not (rest sequences))
+                    (vectorp (first sequences)))
+               ;; 1 vector special case
+               (let* ((src (first sequences))
+                      (end (min (array-total-size result-sequence)
+                                (length src))))
+                 (declare (type index end))
+                 (declare #.*full-optimize*)
+                 (macrolet
+                     ((dispatch (ref)
+                        `(loop until (eql index end)
+                               do (setf (,ref result-sequence index)
+                                        (funcall really-fun (aref src index)))
+                                  (incf index))))
+                   (typecase result-sequence
+                     (simple-vector (dispatch svref))
+                     (vector        (dispatch aref)))))
+               (let ((end (array-total-size result-sequence)))
+                 (declare (type index end))
+                 (block mapping
+                   (macrolet
+                       ((dispatch (ref)
+                          `(map-lambda (&rest args)
+                             (declare (dynamic-extent args))
+                             (declare #.*full-optimize*)
+                             (when (eql index end)
+                               (return-from mapping))
+                             (setf (,ref result-sequence index)
+                                   (apply really-fun args))
+                             (incf index))))
+                     (typecase result-sequence
+                       (simple-vector (dispatch svref))
+                       (vector        (dispatch aref)))))))
            (when (array-has-fill-pointer-p result-sequence)
              (setf (fill-pointer result-sequence) index))))
         (list
          (let ((node result-sequence))
            (map-lambda (&rest args)
-             (declare (dynamic-extent args) (optimize speed (safety 0)))
+             (declare (dynamic-extent args))
+             (declare #.*full-optimize*)
              (when (null node)
                (return-from map-into result-sequence))
              (setf (car node) (apply really-fun args))

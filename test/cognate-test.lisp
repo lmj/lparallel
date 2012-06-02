@@ -869,3 +869,18 @@
               (pmap 'vector 'identity (vector))))
   (is (equalp #(1 2 3)
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
+
+(lp-test pmap-notinline-test
+  (declare (notinline pmap))
+  (is (equalp #(1 2 3)
+              (pmap 'vector 'identity (vector 1 2 3))))
+  (is (equalp #(1 2 3)
+              (pmap 'vector 'identity :size 3 (vector 1 2 3))))
+  (is (equalp #(1 2)
+              (pmap 'vector 'identity :size 2 (vector 1 2 3))))
+  (is (equalp #()
+              (pmap 'vector 'identity :size 0 (vector 1 2 3))))
+  (is (equalp #()
+              (pmap 'vector 'identity (vector))))
+  (is (equalp #(1 2 3)
+              (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
