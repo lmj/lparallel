@@ -316,5 +316,5 @@ indicating multiple values as in (values fixnum float).
 
 \(As a technical point, if `return-type' contains no lambda list
 keywords then the return type given to ftype will be additionally
-contrained to match the number of return values specified.)"
+constrained to match the number of return values specified.)"
   arg-types return-type)

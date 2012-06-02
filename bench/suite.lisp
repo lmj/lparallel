@@ -208,7 +208,7 @@
               :desc-fn (lambda (time)
                          (desc-n n fn time))))))))))
 
-;;; mm (matrix mulitply) adapted from Vladimir Sedach's eager-future2,
+;;; mm (matrix multiply) adapted from Vladimir Sedach's eager-future2,
 ;;; which in turn credits the following:
 ;;; 
 ;;; benchmarks from Appendix A of Marc Feeley's PhD dissertation:
