@@ -159,6 +159,7 @@
            #:submit-timeout
            #:cancel-timeout
            #:receive-result
+           #:try-receive-result
            #:do-fast-receives
            #:kill-tasks
            #:task-handler-bind

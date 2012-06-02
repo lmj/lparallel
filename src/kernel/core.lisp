@@ -286,6 +286,16 @@ As an optimization, an internal size may be given with
 will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))
 
+(defun/type try-receive-result (channel) (channel) (values t boolean)
+  "Non-blocking version of `receive-result'.
+
+If a result is available then it is returned as the primary value
+in (values result t). Otherwise (values nil nil) is returned."
+  (multiple-value-bind (result presentp) (try-pop-queue (channel-queue channel))
+    (if presentp
+        (values (unwrap-result result) t)
+        (values nil nil))))
+
 (defmacro/once do-fast-receives ((result &once channel &once count) &body body)
   "Receive `count' number of results, where `body' is cheap.
 

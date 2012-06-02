@@ -111,6 +111,20 @@
                             (receive-result channel))
                      #'<)))))
 
+(lp-test try-receive-test
+  (let1 channel (make-channel)
+    (multiple-value-bind (a b) (try-receive-result channel)
+      (is (null a))
+      (is (null b)))
+    (submit-task channel (lambda () 3))
+    (sleep 0.1)
+    (multiple-value-bind (a b) (try-receive-result channel)
+      (is (= 3 a))
+      (is (eq t b)))
+    (multiple-value-bind (a b) (try-receive-result channel)
+      (is (null a))
+      (is (null b)))))
+
 (lp-test kernel-client-error-test
   (task-handler-bind ((client-error #'invoke-transfer-error))
     (let1 channel (make-channel)
