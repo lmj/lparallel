@@ -142,8 +142,3 @@
             ;; don't steal nil, the end condition flag
             (push-spin-queue task low-priority-tasks)))))
   nil)
-
-(defun/type scheduler-empty-p (scheduler) (scheduler) boolean
-  (with-scheduler-slots (workers) scheduler
-    (every (lambda (worker) (spin-queue-empty-p (tasks worker)))
-           workers)))

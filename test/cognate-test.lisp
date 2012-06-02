@@ -44,7 +44,70 @@
     (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
     (is (equal '(15) a))
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
-    (is (equal '(15) a))))
+    (is (equal '(15) a)))
+  (let1 a (vector nil nil nil)
+    (pmap-into a '+ '(5 6 7) '(10 11 12))
+    (is (equalp #(15 17 19) a))
+    (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
+    (is (equalp #(15 17 19) a))
+    (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
+    (is (equalp #(15 17 19) a)))
+  (let1 a (vector nil)
+    (pmap-into a '+ '(5 6 7) '(10 11 12))
+    (is (equalp #(15) a))
+    (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
+    (is (equalp #(15) a))
+    (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
+    (is (equalp #(15) a))))
+
+#+sbcl
+(lp-base-test map-into-test
+  (let1 a (list nil nil nil)
+    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
+    (is (equal '(15 17 19) a)))
+  (let1 a (list nil)
+    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
+    (is (equal '(15) a)))
+  (let1 a (vector nil nil nil)
+    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
+    (is (equalp #(15 17 19) a)))
+  (let1 a (vector nil)
+    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
+    (is (equalp #(15) a)))
+  (let1 a (vector 9 9 9)
+    (lparallel.cognate::map-into a 'identity #(3 4 5))
+    (is (equalp #(3 4 5) a))))
+
+#+sbcl
+(progn
+  (defclass my-seq (sequence) ())
+  (defmethod sb-sequence:length ((s my-seq))
+    2)
+  (defmethod sb-sequence:elt ((s my-seq) index)
+    (case index
+      (0 77)
+      (1 99)))
+  (defmethod sb-sequence:iterator-step ((s my-seq) iterator from-end)
+    (if from-end
+        (1- iterator)
+        (1+ iterator)))
+  (defmethod sb-sequence:iterator-endp ((s my-seq) iterator limit from-end)
+    (= iterator limit))
+  (defmethod sb-sequence:iterator-element ((s my-seq) iterator)
+    (case iterator
+      (0 77)
+      (1 99)))
+  (defmethod (setf sb-sequence:iterator-element) (o (s my-seq) iterator)
+    (declare (ignore o s iterator)))
+  (defmethod sb-sequence:iterator-index ((s my-seq) iterator)
+    iterator)
+  (defmethod sb-sequence:iterator-copy ((s my-seq) iterator)
+    iterator)
+  (lp-base-test generic-map-into-test
+    (is (equalp '(77 99)
+                (map 'list 'identity
+                     (lparallel.cognate::map-into
+                      (make-instance 'my-seq) 'identity #(0 0)))))))
 
 (lp-test degenerate-pmaps-test
   (is (eq (map  nil #'identity '(0 1 2 3))
@@ -343,6 +406,16 @@
        (,fn-name))))
 
 (define-plet-test plet-test plet-test-fn defun)
+
+(lp-base-test plet-if-test
+  (setf *memo* 0)
+  (plet-if (plusp *memo*)
+      ((a 3))
+    (is (= 3 a)))
+  (signals no-kernel-error
+    (plet-if (zerop *memo*)
+        ((a 3))
+      (is (= 3 a)))))
 
 (lp-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
@@ -760,6 +833,11 @@
          (pfind-if (lambda (x) (< x 5)) '(9 9 6 7 3 9 6))
          (find-if  (lambda (x) (< x 5)) #(9 9 6 7 3 9 6))
          (pfind-if (lambda (x) (< x 5)) #(9 9 6 7 3 9 6))))
+  (is (= 3
+         (find-if-not  (lambda (x) (>= x 5)) '(9 9 6 7 3 9 6))
+         (pfind-if-not (lambda (x) (>= x 5)) '(9 9 6 7 3 9 6))
+         (find-if-not  (lambda (x) (>= x 5)) #(9 9 6 7 3 9 6))
+         (pfind-if-not (lambda (x) (>= x 5)) #(9 9 6 7 3 9 6))))
   (loop
      :for size :from 1 :below 100
      :for source := (collect-n size (random 1.0))
@@ -792,6 +870,8 @@
                                       :start 20 :end 77)))))))
 
 (lp-test pfind-test
+  (signals error
+    (pfind 3 '(3 3 3) :test #'eql :test-not #'eql))
   (loop
      :for size :from 1 :below 100
      :for a := (make-random-list size)
@@ -826,35 +906,42 @@
                           :adjustable t
                           :initial-contents (list 3 4 x 4 9 x 2)))))))
 
-(lp-test pmap-into-compiler-macro-test
-  (is (equalp #(1 2 3)
-              (pmap-into (vector 9 9 9) 'identity (vector 1 2 3))))
-  (is (equalp #(1 2 3)
-              (pmap-into (vector 9 9 9) 'identity :size 3 (vector 1 2 3))))
-  (is (equalp #(1 2 9)
-              (pmap-into (vector 9 9 9) 'identity :size 2 (vector 1 2 3))))
-  (is (equalp #(9 9 9)
-              (pmap-into (vector 9 9 9) 'identity :size 0 (vector 1 2 3))))
-  (is (equalp #(9 9 9)
-              (pmap-into (vector 9 9 9) 'identity (vector))))
-  (is (equalp #()
-              (pmap-into (vector) 'identity (vector 1 2 3))))
-  (let1 v (make-array 3 :fill-pointer 0)
-    (is (equalp #(1 2 3)
-                (pmap-into v 'identity (vector 1 2 3))))
-    (is (equalp #(1 2 3) v)))
-  (let1 v (make-array 3 :fill-pointer 0)
-    (is (equalp #(1 2)
-                (pmap-into v 'identity (vector 1 2))))
-    (is (equalp #(1 2) v)))
-  (let1 v (make-array 3 :fill-pointer 3)
-    (is (equalp #(1 2)
-                (pmap-into v 'identity (vector 1 2))))
-    (is (equalp #(1 2) v)))
-  (let1 v (make-array 3 :fill-pointer 3)
-    (is (equalp #(1)
-                (pmap-into v 'identity :size 1 (vector 1 2))))
-    (is (equalp #(1) v))))
+(defmacro define-pmap-into-edge-test (name decl)
+  `(lp-test ,name
+     ,@(unsplice decl)
+     (is (equalp #(1 2 3)
+                 (pmap-into (vector 9 9 9) 'identity (vector 1 2 3))))
+     (is (equalp #(1 2 3)
+                 (pmap-into (vector 9 9 9) 'identity :size 3 (vector 1 2 3))))
+     (is (equalp #(1 2 9)
+                 (pmap-into (vector 9 9 9) 'identity :size 2 (vector 1 2 3))))
+     (is (equalp #(9 9 9)
+                 (pmap-into (vector 9 9 9) 'identity :size 0 (vector 1 2 3))))
+     (is (equalp #(9 9 9)
+                 (pmap-into (vector 9 9 9) 'identity (vector))))
+     (is (equalp #()
+                 (pmap-into (vector) 'identity (vector 1 2 3))))
+     (let1 v (make-array 3 :fill-pointer 0)
+       (is (equalp #(1 2 3)
+                   (pmap-into v 'identity (vector 1 2 3))))
+       (is (equalp #(1 2 3) v)))
+     (let1 v (make-array 3 :fill-pointer 0)
+       (is (equalp #(1 2)
+                   (pmap-into v 'identity (vector 1 2))))
+       (is (equalp #(1 2) v)))
+     (let1 v (make-array 3 :fill-pointer 3)
+       (is (equalp #(1 2)
+                   (pmap-into v 'identity (vector 1 2))))
+       (is (equalp #(1 2) v)))
+     (let1 v (make-array 3 :fill-pointer 3)
+       (is (equalp #(1)
+                   (pmap-into v 'identity :size 1 (vector 1 2))))
+       (is (equalp #(1) v)))))
+
+(define-pmap-into-edge-test
+    pmap-into-open-edge-test nil)
+(define-pmap-into-edge-test
+    pmap-into-closed-edge-test (declare (notinline pmap-into)))
 
 (lp-test pmap-compiler-macro-test
   (is (equalp #(1 2 3)

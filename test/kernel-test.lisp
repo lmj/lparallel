@@ -203,11 +203,34 @@
            (is (eq :worker *memo*))))
     (end-kernel))
   (with-new-kernel (4 :bindings (acons '*memo* :worker nil))
+    (let1 node (assoc '*memo* (kernel-bindings))
+      (is (eq (cdr node) :worker)))
     (let1 channel (make-channel)
       (setf *memo* :main)
       (submit-task channel (lambda () *memo*))
       (is (eq :worker (receive-result channel)))
       (is (eq :main *memo*)))))
+
+(lp-base-test task-categories-test
+  (with-new-kernel (2)
+    (is (notany #'identity (task-categories-running)))
+    (let1 channel (make-channel)
+      (submit-task channel (lambda () (sleep 0.4)))
+      (sleep 0.2)
+      (is (eql 1 (count :default (task-categories-running))))))
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
+      (let1 *task-category* :foo
+        (submit-task channel (lambda () (sleep 0.4))))
+      (sleep 0.2)
+      (is (eql 1 (count :foo (task-categories-running))))))
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
+      (let1 *task-category* :foo
+        (submit-task channel (lambda () (sleep 0.4)))
+        (submit-task channel (lambda () (sleep 0.4))))
+      (sleep 0.2)
+      (is (eql 2 (count :foo (task-categories-running)))))))
 
 (lp-base-test no-kernel-restart-test
   (let1 *kernel* nil
@@ -373,7 +396,7 @@
       (is (eql 3 (receive-result channel)))
       (is (eq 'timeout (receive-result channel))))))
 
-#+z
+#-abcl
 (lp-base-test cancel-timeout-test
   (with-new-kernel (2)
     (let* ((channel (make-channel))

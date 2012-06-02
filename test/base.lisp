@@ -75,12 +75,6 @@
      :until (queue-empty-p queue)
      :collect (pop-queue queue)))
 
-(defun peer-queue (queue)
-  (loop
-     :for elem :in (extract-queue queue)
-     :do (push-queue elem queue)
-     :collect elem))
-
 (defun invoke-abort-thread ()
   (flet ((fail () (error "Can't find an abort-like restart in this CL!")))
     (let ((restarts (mapcar #'restart-name (compute-restarts))))

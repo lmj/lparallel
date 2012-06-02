@@ -261,14 +261,3 @@ are also accepted (see `pmap')."
   (declare (ignore start end initial-value parts recurse))
   (declare (dynamic-extent args))
   (apply #'preduce reduce-function sequence :key map-function args))
-
-(defun map-parts (result-type function sequence &key size parts)
-  (let* ((parts-hint  (get-parts-hint parts))
-         (size        (or size (length sequence)))
-         (input-parts (make-input-parts (list sequence) size parts-hint)))
-    (with-parts size parts-hint
-      (map result-type
-           (lambda (seqs)
-             (next-part)
-             (funcall function (first seqs) (part-size)))
-           input-parts))))
