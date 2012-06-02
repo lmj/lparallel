@@ -214,7 +214,7 @@ sleeping."
         (setf *kernel* (make-kernel worker-count)))
       (store-value (value)
         :report "Assign a value to lparallel:*kernel*."
-        :interactive (lambda () (interact "Value for lparallel:*kernel: "))
+        :interactive (lambda () (interact "Value for lparallel:*kernel*: "))
         (setf *kernel* value))))
   nil)
 
