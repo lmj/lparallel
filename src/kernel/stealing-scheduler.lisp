@@ -92,14 +92,12 @@
                                 (length (the simple-vector ,workers))))
                (,victim       (the fixnum ,worker-index)))
            (declare (fixnum ,worker-count ,victim))
-           (loop
-              :repeat (the fixnum ,worker-count)
-              :do (progn
-                    (inc-mod ,victim ,worker-count)
-                    (let1 ,worker-var (svref (the simple-vector ,workers)
-                                             ,victim)
-                      (declare (type worker ,worker-var))
-                      ,@body))))))))
+           (repeat (the fixnum ,worker-count)
+             (inc-mod ,victim ,worker-count)
+             (let1 ,worker-var (svref (the simple-vector ,workers)
+                                      ,victim)
+               (declare (type worker ,worker-var))
+               ,@body)))))))
 
 (defun/type next-task (scheduler worker) (scheduler worker) (or task null)
   (declare #.*normal-optimize*)
