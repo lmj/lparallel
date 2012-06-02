@@ -104,7 +104,8 @@
     (unwind-protect/ext
        :main  (loop (exec-task/worker (or (next-task scheduler worker) (return))
                                       worker))
-       :abort (replace-worker kernel worker))))
+       :abort (unless *lisp-exiting-p*
+                (replace-worker kernel worker)))))
 
 (defun/type call-with-worker-context (fn worker-context kernel)
     (function function kernel) t
