@@ -100,6 +100,7 @@ See http://lparallel.org for documentation and examples.
                                            (:file "pandor")
                                            (:file "plet")
                                            (:file "pmap")
+                                           (:file "pmap-open-coded")
                                            (:file "pqualifier")
                                            (:file "preduce")
                                            (:file "premove")
