@@ -131,7 +131,10 @@ promise will store the result. In this case `fulfill' returns true.
 
 If the promise is already fulfilled, or if it actively being
 fulfilled, then `body' will not be executed and `fulfill' returns
-false."
+false.
+
+If a non-promise is passed then false is returned immediately, with
+`body' being ignored."
   `(fulfill-hook ,promise (lambda () ,@body)))
 
 (defgeneric force-hook (promise))
