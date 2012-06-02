@@ -34,6 +34,7 @@
   (with-gensyms (count channel)
     `(let ((,count   0)
            (,channel (make-channel)))
+       (declare (fixnum ,count))
        (flet ((submit-counted (&rest args)
                 (declare (dynamic-extent args))
                 (apply #'submit-task ,channel args)

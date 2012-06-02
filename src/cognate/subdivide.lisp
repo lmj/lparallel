@@ -30,7 +30,8 @@
 
 (in-package #:lparallel.cognate)
 
-(defun find-num-parts (size parts-hint)
+(defun/type find-num-parts (size parts-hint)
+    (t fixnum) (values fixnum fixnum fixnum)
   (multiple-value-bind (quo rem) (floor size parts-hint)
     (values (if (zerop quo) rem parts-hint) quo rem)))
 
@@ -38,9 +39,11 @@
   (with-gensyms (quo rem index num-parts part-offset part-size)
     `(multiple-value-bind
            (,num-parts ,quo ,rem) (find-num-parts ,seq-size ,parts-hint)
+       (declare (fixnum ,num-parts ,quo ,rem))
        (let ((,index       0)
              (,part-offset 0)
              (,part-size   0))
+         (declare (fixnum ,index ,part-offset ,part-size))
          (flet ((next-part ()
                   (when (< ,index ,num-parts)
                     (unless (zerop ,index)
