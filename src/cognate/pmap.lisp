@@ -208,7 +208,12 @@ also accepted.
 The `parts' option divides the sequence into `parts' number of parts.
 Default is (kernel-worker-count).
 
-The `size' option limits the number of elements mapped to `size'."
+The `size' option limits the number of elements mapped to `size'. When
+given, no `length' calls are made on the sequence(s) passed.
+
+Warning: `size' must be less than or equal to the length of the
+smallest sequence passed. It is unspecified what happens when that
+condition is not met."
   (pmap/unparsed result-type function sequences))
 
 (defun pmapcar (function &rest sequences)
