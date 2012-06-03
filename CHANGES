@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.5.1
+
+* disable the new open coding on ABCL, which fails compile uses of it
+
 = 1.5.0
 
 * pmap and pmap-into are now open-coded in the case of 1 vector being
