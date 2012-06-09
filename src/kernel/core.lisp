@@ -124,6 +124,11 @@
        context
        kernel))))
 
+(defun make-all-bindings (kernel bindings)
+  (append bindings
+          (list (cons '*kernel* kernel))
+          *kernel-thread-locals*))
+
 #+lparallel.with-stealing-scheduler
 (defun %make-worker (index tasks)
   (make-worker-instance :thread nil :index index :tasks tasks))
@@ -137,7 +142,8 @@
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
       (let* ((worker (%make-worker index tasks))
-             (worker-thread (with-thread (:bindings bindings :name name)
+             (all-bindings (make-all-bindings kernel bindings))
+             (worker-thread (with-thread (:bindings all-bindings :name name)
                               (unwind-protect/ext
                                :prepare (handshake/from-worker worker)
                                :main    (enter-worker-loop kernel worker)
@@ -177,31 +183,20 @@ When a worker discovers that no tasks are available, `spin-count' is
 the number of task-searching iterations done by the worker before
 sleeping."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
-  (let* ((bindings (nconc (copy-alist bindings)
-                          (list (cons '*debugger-hook* *debugger-hook*))
-                          (copy-alist *kernel-thread-locals*)))
-         (worker-info (make-worker-info-instance
-                       :bindings bindings
-                       :context context
-                       :name name))
-         (workers (make-array worker-count))
-         (kernel (make-kernel-instance
-                  :scheduler (make-scheduler workers spin-count)
-                  :workers workers
-                  :workers-lock (make-lock)
-                  :worker-info worker-info
-                  :optimizer-data (make-optimizer-data *optimizer*))))
-    (with-kernel-slots (workers worker-info) kernel
-      (with-worker-info-slots (bindings) worker-info
-        (push (cons '*kernel* kernel) bindings)
-        (let1 index 0
-          (map-into workers
-                    (lambda ()
-                      (make-worker kernel
-                                   (prog1 index (incf index))
-                                   (make-spin-queue))))
-          (dosequence (worker workers)
-            (handshake/to-worker worker)))))
+  (let* ((workers (make-array worker-count))
+         (kernel  (make-kernel-instance
+                   :scheduler (make-scheduler workers spin-count)
+                   :workers workers
+                   :workers-lock (make-lock)
+                   :worker-info (make-worker-info-instance
+                                 :bindings bindings
+                                 :context context
+                                 :name name)
+                   :optimizer-data (make-optimizer-data *optimizer*))))
+    (dotimes (index worker-count)
+      (setf (aref workers index) (make-worker kernel index (make-spin-queue))))
+    (dosequence (worker workers)
+      (handshake/to-worker worker))
     kernel))
 
 (defun check-kernel ()
@@ -219,9 +214,7 @@ sleeping."
   nil)
 
 (defun kernel-bindings ()
-  "Returns an alist of thread-local special variable bindings.
-A new thread which uses the current kernel should be given these
-bindings (see bordeaux-threads:*default-special-bindings*)."
+  "Return the bindings passed to `make-kernel'."
   (check-kernel)
   (with-kernel-slots (worker-info) *kernel*
     (with-worker-info-slots (bindings) worker-info
