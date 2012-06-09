@@ -62,7 +62,10 @@
                        &rest args
                        &key from-end (start 0) end key parts)
   "Parallel version of `remove-if-not'. Note the `count' and option is
-not supported."
+not supported.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args))
   (typecase sequence
     (list      (premove-if-not/list test sequence
@@ -73,7 +76,10 @@ not supported."
                    &rest args
                    &key from-end (start 0) end key parts)
   "Parallel version of `remove-if'. Note the `count' and option is not
-supported."
+supported.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args))
   (typecase sequence
     (list (premove-if-not/list (complement test) sequence
@@ -84,7 +90,10 @@ supported."
                 &rest args
                 &key test test-not from-end (start 0) end key parts)
   "Parallel version of `remove'. Note the `count' and option is not
-supported."
+supported.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args))
   (typecase sequence
     (list (premove-if-not/list (complement (item-predicate item test test-not))

@@ -31,7 +31,10 @@
 (in-package #:lparallel.cognate)
 
 (defun pcount-if (predicate sequence &key from-end (start 0) end key parts)
-  "Parallel version of `count-if'."
+  "Parallel version of `count-if'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (let1 subsize (subsize sequence (length sequence) start end)
     (if (zerop subsize)
         0
@@ -56,13 +59,19 @@
 (defun pcount-if-not (predicate sequence
                       &rest args
                       &key from-end start end key parts)
-  "Parallel version of `count-if-not'."
+  "Parallel version of `count-if-not'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
   (apply #'pcount-if (complement predicate) sequence args))
 
 (defun pcount (item sequence
                &key from-end (start 0) end key test test-not parts)
-  "Parallel version of `count'."
+  "Parallel version of `count'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (pcount-if (item-predicate item test test-not) sequence
              :from-end from-end :start start :end end :key key :parts parts))

@@ -205,7 +205,7 @@ manually."
   "Parallel version of `map'. Keyword arguments `parts' and `size' are
 also accepted.
 
-The `parts' option divides the sequence into `parts' number of parts.
+The `parts' option divides each sequence into `parts' number of parts.
 Default is (kernel-worker-count).
 
 The `size' option limits the number of elements mapped to `size'. When

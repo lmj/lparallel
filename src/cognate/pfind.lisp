@@ -75,7 +75,10 @@
 (defun pfind-if (predicate sequence
                  &rest args
                  &key from-end start end key parts)
-  "Parallel version of `find-if'."
+  "Parallel version of `pfind-if'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
   (typecase sequence
@@ -86,7 +89,10 @@
 (defun pfind-if-not (predicate sequence
                      &rest args
                      &key from-end start end key parts)
-  "Parallel version of `find-if-not'."
+  "Parallel version of `pfind-if-not'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
   (apply #'pfind-if (complement predicate) sequence args))
@@ -94,7 +100,10 @@
 (defun pfind (item sequence
               &rest args
               &key from-end test test-not start end key parts)
-  "Parallel version of `find'."
+  "Parallel version of `pfind'.
+
+The `parts' option divides `sequence' into `parts' number of parts.
+Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
   (apply #'pfind-if (item-predicate item test test-not) sequence args))
