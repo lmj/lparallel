@@ -39,7 +39,7 @@
   :description "Parallelism for Common Lisp"
   :long-description
 "
-lparallel is a library for parallelism in Common Lisp, featuring
+lparallel is a library for parallel programming in Common Lisp, featuring
 
   * a simple model of task submission with receiving queue
   * fine-grained parallelism

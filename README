@@ -2,7 +2,7 @@
 lparallel
 =========
 
-lparallel is a library for parallelism in Common Lisp, featuring
+lparallel is a library for parallel programming in Common Lisp, featuring
 
   * a simple model of task submission with receiving queue
   * constructs for expressing fine-grained parallelism
