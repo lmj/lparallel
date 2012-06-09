@@ -112,5 +112,5 @@
                           :collect `(check-type ,var ,type))
                      (values ,@return-vars))))))))
 
-  (setf (macro-function 'defun/inline) (macro-function 'defun))
-  (setf (macro-function 'defun/type/inline) (macro-function 'defun/type)))
+  (alias-macro defun/inline defun)
+  (alias-macro defun/type/inline defun/type))

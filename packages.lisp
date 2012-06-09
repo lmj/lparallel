@@ -47,6 +47,8 @@
            #:rebind
            #:let1
            #:alias-function
+           #:alias-macro
+           #:alias-special
            #:unwind-protect/ext)
   (:export #:defun/inline
            #:defun/type

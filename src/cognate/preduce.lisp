@@ -170,5 +170,4 @@ Returns the partial results as a vector."
          :partial t
          args))
 
-;;; deprecated
-(alias-function preduce/partial preduce-partial)
+(alias-function preduce/partial preduce-partial :deprecate t)

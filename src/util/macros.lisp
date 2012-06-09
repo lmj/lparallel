@@ -69,12 +69,6 @@
             :collect `(,var ,var))
      ,@body))
 
-(defmacro alias-function (alias fn)
-  `(progn
-     (setf (symbol-function ',alias) #',fn)
-     (define-compiler-macro ,alias (&rest args)
-       `(,',fn ,@args))))
-
 (defmacro unwind-protect/ext (&key prepare main cleanup abort)
   "Extended `unwind-protect'.
 
@@ -111,3 +105,33 @@
                        ,cleanup)
                     main))
             `(progn ,cleanup nil)))))
+
+;;;; alias
+
+(defun doc-deprecate (deprecated preferred doc-type)
+  (setf (documentation deprecated doc-type)
+        (format nil "Deprecated. Use `~a' instead."
+                (string-downcase (string preferred)))))
+
+(defmacro alias-function (alias orig &key deprecate)
+  (check-type deprecate boolean)
+  `(progn
+     (setf (symbol-function ',alias) #',orig)
+     (define-compiler-macro ,alias (&rest args)
+       `(,',orig ,@args))
+     ,@(when deprecate `((doc-deprecate ',alias ',orig 'function)))
+     ',alias))
+
+(defmacro alias-macro (alias orig &key deprecate)
+  (check-type deprecate boolean)
+  `(progn
+     (setf (macro-function ',alias) (macro-function ',orig))
+     ,@(when deprecate `((doc-deprecate ',alias ',orig 'function)))
+     ',alias))
+
+(defmacro alias-special (alias orig &key deprecate)
+  (check-type deprecate boolean)
+  `(progn
+     (define-symbol-macro ,alias ,orig)
+     ,@(when deprecate `((doc-deprecate ',alias ',orig 'variable)))
+     ',alias))

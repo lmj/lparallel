@@ -64,8 +64,8 @@
 (defvar *kernel* nil "Thread-local. The current kernel, or nil.")
 
 ;;; deprecated
-(define-symbol-macro *kernel-task-category* *task-category*)
-(define-symbol-macro *kernel-task-priority* *task-priority*)
+(alias-special *kernel-task-category* *task-category* :deprecate t)
+(alias-special *kernel-task-priority* *task-priority* :deprecate t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

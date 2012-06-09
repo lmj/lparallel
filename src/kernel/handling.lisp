@@ -156,5 +156,4 @@ message from appearing in the future (N is the number of workers):
 ")))
   (:documentation "Error signaled when `*kernel*' is nil."))
 
-;;; deprecated
-(setf (macro-function 'kernel-handler-bind) (macro-function 'task-handler-bind))
+(alias-macro kernel-handler-bind task-handler-bind :deprecate t)

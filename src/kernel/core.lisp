@@ -413,9 +413,5 @@ each worker."
   (print-unreadable-object (kernel stream :type t :identity t)
     (format stream "~{~s~^ ~}" (kernel-info kernel))))
 
-;;; deprecated
-#-abcl
-(alias-function emergency-kill-tasks kill-tasks)
-
-;;; deprecated
-(alias-function kernel-special-bindings kernel-bindings)
+(alias-function emergency-kill-tasks kill-tasks :deprecate t)
+(alias-function kernel-special-bindings kernel-bindings :deprecate t)
