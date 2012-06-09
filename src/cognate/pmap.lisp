@@ -152,13 +152,7 @@ manually."
     ((or array list)
      (pmap-into/unparsed #'map-into result-sequence function sequences))
     (t
-     ;; CLHS: "The types vector and the type list are disjoint
-     ;; subtypes of type sequence, but are not necessarily an
-     ;; exhaustive partition of sequence."
-     (warn "Result sequence type ~a not supported for pmap-into.~%~
-            Using intermediate vector."
-           (type-of result-sequence))
-     (replace result-sequence (apply #'pmap 'vector function sequences))))
+     (apply #'map-into result-sequence function sequences)))
   result-sequence)
 
 (defun pmap-iterate/parts (map fn seqs size parts-hint)
