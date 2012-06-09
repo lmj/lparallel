@@ -391,7 +391,9 @@ deadlocked or infinite looping tasks."
 (defun task-categories-running ()
   "Return a vector containing the task category currently running for
 each worker."
-  (map 'vector #'running-category (workers *kernel*)))
+  (if *kernel*
+      (map 'vector #'running-category (workers *kernel*))
+      #()))
 
 (defun kernel-info (kernel)
   (with-kernel-slots (worker-info) kernel
