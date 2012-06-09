@@ -957,6 +957,15 @@
   (is (equalp #(1 2 3)
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
 
+(lp-test pmap-compiler-macro-parts-test
+  (dotimes (parts 25)
+    (let ((src (make-array
+                20 :initial-contents (loop :for i :below 20 :collect i)))
+          (dst (make-array 20)))
+      (is (equalp src (pmap 'vector 'identity src)))
+      (is (equalp src (pmap-into dst 'identity src)))
+      (is (equalp src dst)))))
+
 (lp-test pmap-notinline-test
   (declare (notinline pmap))
   (is (equalp #(1 2 3)
