@@ -4,7 +4,7 @@ lparallel Changes
 
 = 1.5.1
 
-* disable the new open coding on ABCL, which fails compile uses of it
+* disable the new open coding on ABCL, which fails to compile uses of it
 
 = 1.5.0
 
