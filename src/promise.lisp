@@ -243,16 +243,16 @@ unknown at the time it is created."
   ((canceledp :initform nil :type boolean)))
 
 (defmethod fulfill-hook ((future %future) client-fn)
-  ;; If we are here then we've stolen the task from the kernel.
   (with-unfulfilled/no-wait future
+    ;; If we are here then we've stolen the task from the kernel.
     (with-%future-slots (canceledp) future
       (setf canceledp t)
       (fulfill-plan/values future (multiple-value-list (funcall client-fn))))
     t))
 
 (defmethod force-hook ((future %future))
-  ;; If we are here then we've stolen the task from the kernel.
   (with-unfulfilled/wait future
+    ;; If we are here then we've stolen the task from the kernel.
     (with-%future-slots (canceledp) future
       (setf canceledp t)
       (fulfill-plan/call future))))
