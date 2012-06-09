@@ -52,16 +52,17 @@
     (setf test (complement test-not))
     (setf test-not nil))
   (if test
-      (lambda (x) (funcall test item x))
+      (let1 test (ensure-function test)
+        (lambda (x)
+          (declare #.*normal-optimize*)
+          (funcall test item x)))
       (typecase item
         ((or number character)
          (lambda (x)
-           ;; in inner loop
            (declare #.*normal-optimize*)
            (eql item x)))
         (otherwise
          (lambda (x)
-           ;; in inner loop
            (declare #.*normal-optimize*)
            (eq item x))))))
 
