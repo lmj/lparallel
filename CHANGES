@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.5.2
+
+* handle nil kernel in task-categories-running
+* kernel-bindings was returning superfluous bindings
+
 = 1.5.1
 
 * disable the new open coding on ABCL, which fails to compile uses of it
