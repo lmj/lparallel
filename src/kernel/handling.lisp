@@ -69,8 +69,8 @@
        ,@body)))
 
 (defun invoke-transfer-error (error)
-  "Invoke the `transfer-error' restart with given argument. This is
-provided as mere convenience for passing to `task-handler-bind'."
+  "Invoke the `transfer-error' restart with the given argument. This
+is provided as mere convenience for use in `task-handler-bind'."
   (invoke-restart 'transfer-error error))
 
 (defun condition-handler (condition)
