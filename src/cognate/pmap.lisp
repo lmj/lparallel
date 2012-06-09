@@ -50,11 +50,11 @@
 
 (defun maplist-into (result-list fn &rest lists)
   "A variation of map-into."
-  ;; This is an inner loop.
-  (declare #.*normal-optimize*)
   (let1 fn (ensure-function fn)
     (apply #'mapl
            (lambda (result &rest args)
+             ;; This is an inner loop.
+             (declare #.*normal-optimize*)
              (declare (dynamic-extent args))
              (setf (car result) (apply fn args)))
            result-list
@@ -66,11 +66,11 @@
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
-  ;; This is an inner loop.
-  (declare #.*normal-optimize*)
   (let1 index 0
     (apply map
            (lambda (&rest args)
+             ;; This is an inner loop.
+             (declare #.*normal-optimize*)
              (declare (dynamic-extent args))
              (when (eql index size)
                (return-from map-iterate nil))
@@ -133,15 +133,15 @@ manually."
       (prog1
           (if seqs
               (pmap-into/parsed map-into result-seq fn seqs size parts-hint)
-              (locally (declare #.*normal-optimize*)
-                (pmap-into/parsed map-into
-                                  result-seq
-                                  (lambda (x)
-                                    (declare (ignore x))
-                                    (funcall fn))
-                                  (list result-seq)
-                                  size
-                                  parts-hint)))
+              (pmap-into/parsed map-into
+                                result-seq
+                                (lambda (x)
+                                  (declare #.*normal-optimize*)
+                                  (declare (ignore x))
+                                  (funcall fn))
+                                (list result-seq)
+                                size
+                                parts-hint))
         (when has-fill-p
           (setf (fill-pointer result-seq) size))))))
 
