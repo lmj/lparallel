@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.5.3
+
+* Allegro fixed
+
 = 1.5.2
 
 * handle nil kernel in task-categories-running

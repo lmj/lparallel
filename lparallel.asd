@@ -35,7 +35,7 @@
     (values))
 
 (defsystem :lparallel
-  :version "1.5.2"
+  :version "1.5.3"
   :description "Parallelism for Common Lisp"
   :long-description
 "
