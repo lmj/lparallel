@@ -240,15 +240,13 @@ As an optimization, an internal size may be given with
    :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
 
 (defmacro make-task-fn (&body body)
-  (with-gensyms (client-handlers body-fn)
-    `(flet ((,body-fn () ,@body))
-       (declare (dynamic-extent (function ,body-fn)))
-       (if *client-handlers*
-           (let1 ,client-handlers *client-handlers*
-             (lambda ()
-               (let1 *client-handlers* ,client-handlers
-                 (,body-fn))))
-           (lambda () (,body-fn))))))
+  (with-gensyms (client-handlers)
+    `(if *client-handlers*
+         (let1 ,client-handlers *client-handlers*
+           (lambda ()
+             (let1 *client-handlers* ,client-handlers
+               ,@body)))
+         (lambda () ,@body))))
 
 (defun/type/inline make-task (fn) (function) task
   (make-task-instance :category *task-category* :fn fn))
