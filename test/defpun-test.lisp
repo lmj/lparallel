@@ -101,7 +101,7 @@
 
 (lp-test defpun-fib-test
   (loop
-     :for n :from 1 :to 15
+     :for n :from 1 :to #-allegro 15 #+allegro 3
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))
 
 ;;; typed
@@ -129,5 +129,5 @@
 
 (lp-test defpun/type-fib-test
   (loop
-     :for n :from 1 :to 15
+     :for n :from 1 :to #-allegro 15 #+allegro 3
      :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
