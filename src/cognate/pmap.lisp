@@ -61,11 +61,11 @@
            lists)
     result-list))
 
-(defun/type map-iterate (map size fn seqs)
-    (function (integer 0) function list) t
+(defun map-iterate (map size fn seqs)
   "A variation of (map nil ...)/mapc/mapl with size constrained.
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
+  (check-type size (integer 0))
   (let1 index 0
     (apply map
            (lambda (&rest args)
