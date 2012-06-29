@@ -101,10 +101,5 @@
     (task-handler-bind ((error #'invoke-transfer-error)) ...)")
 
 (defvar *lisp-exiting-p* nil
-  "True if the Lisp process is exiting. Needed in SBCL for skipping
-  auto-replacement of killed workers to avoid hanging.")
-
-#+sbcl
-(progn
-  (defun track-exit () (setf *lisp-exiting-p* t))
-  (pushnew 'track-exit sb-ext:*exit-hooks*))
+  "True if the Lisp process is exiting; for skipping auto-replacement
+  of killed workers during exit.")
