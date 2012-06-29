@@ -90,8 +90,9 @@
                 (return (values body declares (first docstrings))))))
 
 (defmacro with-parsed-body ((docstring declares body) &body own-body)
-  "Pop declarations and maybe docstring off `body-var' and assign them
-to `preamble'."
+  "Pop docstring and declarations off `body-var' and assign them to
+the variables `docstring' and `declares' respectively. If `docstring'
+is nil then no docstring is parsed."
   (if docstring
       `(multiple-value-bind
              (,body ,declares ,docstring) (parse-body ,body :documentation t)
