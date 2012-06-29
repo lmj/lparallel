@@ -80,7 +80,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots node ()
-  ((name             :reader name                     :type symbol)
+  ((name             :reader name)
    (function                            :initform nil :type (or function null))
    (children                            :initform nil :type list)
    (parents                             :initform nil :type list)

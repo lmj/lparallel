@@ -174,3 +174,15 @@
                   (list area width height border)))))
       (let1 *kernel* *ptree-node-kernel*
         (end-kernel)))))
+
+(lp-test ptree-node-id-test
+  (let ((tree   (make-ptree))
+        (area   (cons nil nil))
+        (width  (cons nil nil))
+        (height 'height)
+        (border (cons nil nil)))
+    (ptree-fn area   (list width height) (lambda (w h) (* w h))       tree)
+    (ptree-fn width  (list border)       (lambda (b)   (+ 7 (* 2 b))) tree)
+    (ptree-fn height (list border)       (lambda (b)   (+ 5 (* 2 b))) tree)
+    (ptree-fn border '()                 (lambda ()    1)             tree)
+    (is (= 63 (call-ptree area tree)))))
