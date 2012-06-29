@@ -40,13 +40,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-condition ptree-error (error)
-  ((name :initarg :name :reader ptree-error-name)))
+  ((id :initarg :id :reader ptree-error-id)))
 
 (define-condition ptree-redefinition-error (ptree-error)
   ()
   (:report
    (lambda (err stream)
-     (format stream "ptree function redefined: ~a" (ptree-error-name err))))
+     (format stream "ptree function redefined: ~a" (ptree-error-id err))))
   (:documentation
    "Attempted to redefine a node's function."))
 
@@ -56,7 +56,7 @@
    (lambda (err stream)
      (format stream
              "Function not found in ptree: ~a~%Referenced by: ~{~a ~}"
-             (ptree-error-name err)
+             (ptree-error-id err)
              (ptree-error-refs err))))
   (:documentation
    "Attempted to execute a node which had no function."))
@@ -69,7 +69,7 @@
              "Function arguments in PTREE cannot contain lambda list ~
               keywords:~%Found ~a in the definition of ~a"
              (ptree-error-keyword err)
-             (ptree-error-name err))))
+             (ptree-error-id err))))
   (:documentation
    "Lambda list keywords found in function definition."))
 
@@ -80,7 +80,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defslots node ()
-  ((name             :reader name)
+  ((id               :reader id)
    (function                            :initform nil :type (or function null))
    (children                            :initform nil :type list)
    (parents                             :initform nil :type list)
@@ -95,11 +95,11 @@
     during the call of a node function."))
 
 (defun check-node (node)
-  (with-node-slots (name function parents) node
+  (with-node-slots (id function parents) node
     (unless function
       (error 'ptree-undefined-function-error
-             :name name
-             :refs (mapcar #'name parents)))))
+             :id id
+             :refs (mapcar #'id parents)))))
 
 (defun/type compute-node (node) (node) node
   (declare #.*normal-optimize*)
@@ -207,8 +207,8 @@
   "Verify that all nodes have been defined with an associated
 function. If not, `ptree-undefined-function-error' is signaled."
   (with-%ptree-slots (nodes) ptree
-    (maphash (lambda (name node)
-               (declare (ignore name))
+    (maphash (lambda (id node)
+               (declare (ignore id))
                (check-node node))
              nodes)))
 
@@ -216,43 +216,46 @@ function. If not, `ptree-undefined-function-error' is signaled."
   "Create a ptree instance."
   (make-%ptree-instance))
 
-(defun ptree-fn (name args function ptree)
-  "Define a ptree node labeled `name' (a symbol) in `ptree' (a ptree instance).
+(defun ptree-fn (id args function ptree)
+  "Define a ptree node with identifier `id', which is some unique
+object suitable for `eq' comparison, such as symbol.
 
-The names of its child nodes are the symbols in `args'.
+The ids of its child nodes are elements of the list `args'.
 
 `function' is the function associated with this node. The arguments
 passed to `function' are the respective results of the child node
-computations."
+computations.
+
+`ptree' is the ptree instance in which the node is being defined."
   (with-%ptree-slots (nodes) ptree
-    (flet ((fetch (name) (or (gethash name nodes)
-                             (setf (gethash name nodes)
-                                   (make-node-instance :name name)))))
-      (let1 node (fetch name)
+    (flet ((fetch (id) (or (gethash id nodes)
+                           (setf (gethash id nodes)
+                                 (make-node-instance :id id)))))
+      (let1 node (fetch id)
         (with-node-slots ((node-function function)
                           (node-children children)) node
           (when node-function
-            (error 'ptree-redefinition-error :name name))
+            (error 'ptree-redefinition-error :id id))
           (setf node-function function)
           (let1 children (mapcar #'fetch args)
             (dolist (child children)
               (with-node-slots (parents) child
                 (push node parents)))
             (setf node-children children))))))
-  name)
+  id)
 
-(defun call-ptree (name ptree)
-  "Return the computation result of the node labeled `name' (a symbol)
-in `ptree' (a ptree instance).
+(defun call-ptree (id ptree)
+  "Return the computation result of the node with identifier `id' in
+`ptree'.
 
 If the node is uncomputed, compute the result.
 
 If the node is already computed, return the computed result. A node is
 never computed twice."
   (with-%ptree-slots (nodes) ptree
-    (let1 root (gethash name nodes)
+    (let1 root (gethash id nodes)
       (unless root
-        (error 'ptree-undefined-function-error :name name))
+        (error 'ptree-undefined-function-error :id id))
       (let1 node (if (computed root)
                      root
                      (master-loop root))
@@ -283,22 +286,22 @@ For each `node-name', a symbol macro is defined which expands to a
   (flet ((has-lambda-list-keyword-p (list)
            (some (lambda (elem) (find elem lambda-list-keywords)) list)))
     (dolist (def defs)
-      (destructuring-bind (name args &rest forms) def
+      (destructuring-bind (id args &rest forms) def
         (declare (ignore forms))
-        (check-type name symbol)
+        (check-type id symbol)
         (check-type args list)
         (when-let (keyword (has-lambda-list-keyword-p args))
           (error 'ptree-lambda-list-keyword-error
-                 :name name
+                 :id id
                  :keyword keyword))))
     (with-gensyms (tree)
       `(let1 ,tree (make-ptree)
          ,@(loop
               :for def :in defs
-              :collect (destructuring-bind (name args &rest forms) def
+              :collect (destructuring-bind (id args &rest forms) def
                          `(ptree-fn
-                           ',name ',args (lambda ,args ,@forms) ,tree)))
+                           ',id ',args (lambda ,args ,@forms) ,tree)))
          (symbol-macrolet ,(loop
-                              :for (name nil nil) :in defs
-                              :collect `(,name (call-ptree ',name ,tree)))
+                              :for (id nil nil) :in defs
+                              :collect `(,id (call-ptree ',id ,tree)))
            ,@body)))))

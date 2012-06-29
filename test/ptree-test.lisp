@@ -97,9 +97,9 @@
     (handler-case (check-ptree tree)
       (error (err)
         (is (eq 'ptree-undefined-function-error (type-of err)))
-        (let ((name (lparallel.ptree::ptree-error-name err))
+        (let ((id (lparallel.ptree::ptree-error-id err))
               (refs (lparallel.ptree::ptree-error-refs err)))
-          (is (equal 'border name))
+          (is (equal 'border id))
           (is (equal '(height width)
                      (sort (copy-list refs) #'string<))))))))
 
