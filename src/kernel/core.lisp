@@ -412,5 +412,7 @@ each worker."
   #+sbcl    (pushnew 'track-exit sb-ext:*exit-hooks*)
   #+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal))
 
+#-abcl
 (alias-function emergency-kill-tasks kill-tasks :deprecate t)
+
 (alias-function kernel-special-bindings kernel-bindings :deprecate t)
