@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 1.5.5
+
+* in Allegro, end-kernel is no longer required before exit
+* ptree-fn now accepts non-symbol node identifiers
+
 = 1.5.4
 
 * pmaps had sometimes rejected symbol as function
