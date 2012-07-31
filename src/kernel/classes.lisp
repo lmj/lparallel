@@ -64,9 +64,9 @@
   ((workers                                        :type simple-vector)
    (wait-cvar          :initform (make-condition-variable))
    (wait-lock          :initform (make-lock))
-   (wait-count         :initform 0                 :type fixnum)
+   (wait-count         :initform (make-counter)    :type counter)
    (notify-count       :initform 0)
-   (spin-count)
+   (spin-count                                     :type fixnum)
    (low-priority-tasks :initform (make-spin-queue) :type spin-queue))
   (:documentation
    "A scheduler is responsible for storing tasks and finding the next
@@ -75,9 +75,7 @@
    `workers' -- vector of workers; kernel has the same reference.
 
    `wait-cvar', `wait-lock', `wait-count', `notify-count' -- these
-   coordinate waking/sleeping of workers. The separate counts permit a
-   worker to steal another worker's wake notification, preventing a
-   wasteful sleep of one worker simultaneous with a wake of another.
+   coordinate waking/sleeping of workers.
 
    `spin-count' -- see `make-kernel'.
 

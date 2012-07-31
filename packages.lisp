@@ -170,7 +170,8 @@
         #:lparallel.thread-util
         #:lparallel.queue
         #:lparallel.biased-queue
-        #:lparallel.spin-queue)
+        #:lparallel.spin-queue
+        #:lparallel.counter)
   (:export #:make-kernel
            #:kernel-worker-count
            #:kernel-bindings

@@ -183,6 +183,7 @@ When a worker discovers that no tasks are available, `spin-count' is
 the number of task-searching iterations done by the worker before
 sleeping."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
+  (check-type spin-count (integer 0 #.most-positive-fixnum))
   (let* ((workers (make-array worker-count))
          (kernel  (make-kernel-instance
                    :scheduler (make-scheduler workers spin-count)

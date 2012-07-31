@@ -69,10 +69,9 @@
 (defun/type maybe-wake-a-worker (scheduler) (scheduler) t
   (declare #.*normal-optimize*)
   (with-scheduler-slots (wait-lock wait-cvar wait-count notify-count) scheduler
-    (with-lock-held (wait-lock)
-      (when (plusp wait-count)
-        (incf notify-count)
-        (condition-notify-and-yield wait-cvar)))))
+    (with-lock-predicate/wait wait-lock (plusp (counter-value wait-count))
+      (incf notify-count)
+      (condition-notify-and-yield wait-cvar))))
 
 (defun/type schedule-task (scheduler task priority) (scheduler
                                                      (or task null) t) t
@@ -112,18 +111,16 @@
            (maybe-sleep ()
              (with-scheduler-slots (wait-cvar wait-lock wait-count
                                     notify-count low-priority-tasks) scheduler
-               (with-lock-held (wait-lock)
-                 (try-pop (tasks worker))
-                 (try-pop low-priority-tasks)
-                 (if (plusp notify-count)
-                     (decf notify-count)  ; steal a notification
-                     (unwind-protect/ext
-                      :prepare (incf wait-count)
-                      :main    (loop
-                                  :do      (condition-wait wait-cvar wait-lock)
-                                  :until   (plusp notify-count)
-                                  :finally (decf notify-count))
-                      :cleanup (decf wait-count)))))))
+               (unwind-protect/ext
+                :prepare (inc-counter wait-count)
+                :main    (with-lock-held (wait-lock)
+                           (try-pop (tasks worker))
+                           (try-pop low-priority-tasks)
+                           (loop
+                              :until   (plusp notify-count)
+                              :do      (condition-wait wait-cvar wait-lock)
+                              :finally (decf notify-count)))
+                :cleanup (dec-counter wait-count)))))
     (declare (dynamic-extent #'try-pop #'find-a-task #'maybe-sleep))
     (with-scheduler-slots (spin-count) scheduler
       (loop
