@@ -142,12 +142,12 @@
 (lp-test pmap-nil-test
   (loop
      :for n :in '(0 1 2 3 4 5 6 7 8 9 10 100 1000)
-     :do (let ((a (loop :repeat n :for x :from 0 :collect x))
-               (b (loop :repeat n :for x :from 0 :collect (* 2 x)))
+     :do (let ((a (loop :for x :from 0 :repeat n :collect x))
+               (b (loop :for x :from 0 :repeat n :collect (* 2 x)))
                (q (make-queue)))
            (pmap nil (lambda (x y) (push-queue (+ x y) q)) a b)
            (is (equal (sort (extract-queue q) #'<)
-                      (loop :repeat n :for x :from 0 :collect (* 3 x)))))))
+                      (loop :for x :from 0 :repeat n :collect (* 3 x)))))))
 
 (lp-test pmapcar-test
   (is (equal '(15 17 19)
