@@ -48,6 +48,7 @@
         ;; inner plet was parallelized
         (is (eq :inner (pop-queue queue)))))
 
+#+(or (not allegro) os-threads)
 (lp-base-test defpun-accept-test
   (with-new-kernel (3)
     (sleep 0.1)
@@ -73,6 +74,7 @@
     ;; inner plet was not parallelized
     (is (eq :outer (pop-queue queue)))))
   
+#+(or (not allegro) os-threads)
 (lp-base-test defpun-reject-test
   (with-new-kernel (2)
     (sleep 0.1)
