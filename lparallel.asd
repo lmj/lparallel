@@ -111,3 +111,7 @@ See http://lparallel.org for documentation and examples.
   (declare (ignore o c))
   (load-system '#:lparallel-test)
   (test-system '#:lparallel-test))
+
+(defmethod perform :after ((o load-op) (c (eql (find-system :lparallel))))
+  (declare (ignore o c))
+  (pushnew :lparallel *features*))
