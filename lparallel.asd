@@ -29,10 +29,10 @@
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ;;; default to stealing scheduler on sbcl
-#.(when (and (find :sbcl *features*)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (when (and (find :sbcl *features*)
              (not (find :lparallel.without-stealing-scheduler *features*)))
-    (pushnew :lparallel.with-stealing-scheduler *features*)
-    (values))
+    (pushnew :lparallel.with-stealing-scheduler *features*)))
 
 (defsystem :lparallel
   :version "1.5.5"
