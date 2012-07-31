@@ -230,12 +230,15 @@
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
-        #:lparallel.kernel)
+        #:lparallel.kernel
+        #:lparallel.queue)
   (:export #:ptree
            #:ptree-fn
            #:make-ptree
            #:check-ptree
            #:call-ptree
+           #:clear-ptree
+           #:clear-ptree-errors
            #:*ptree-node-kernel*)
   (:export #:ptree-undefined-function-error
            #:ptree-lambda-list-keyword-error

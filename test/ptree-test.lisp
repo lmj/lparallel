@@ -67,7 +67,7 @@
     (is (= 1
            (call-ptree 'border tree)))))
 
-(lp-test no-double-compute-test
+(lp-test ptree-no-double-compute-test
   (let1 tree (make-ptree)
     (setf *memo* 0)
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
@@ -79,11 +79,11 @@
     (is (= 5 (call-ptree 'x tree)))
     (is (= 1 *memo*))))
 
-(lp-test lone-fn-test
+(lp-test ptree-lone-fn-test
   (ptree ((lone () 7))
     (is (= 7 lone))))
 
-(lp-test missing-node-test
+(lp-test ptree-missing-node-test
   (let1 tree (make-ptree)
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
     (signals ptree-undefined-function-error
@@ -103,7 +103,7 @@
           (is (equal '(height width)
                      (sort (copy-list refs) #'string<))))))))
 
-(lp-test redefinition-test
+(lp-test ptree-redefinition-test
   (signals ptree-redefinition-error
     (let1 tree (make-ptree)
       (ptree-fn 'foo () (lambda () 3) tree)
@@ -116,14 +116,20 @@
     (eval '(ptree ((foo (x &REST y) (list x y)))))))
 
 (lp-test error-inside-ptree-function-test
-  (let1 tree (make-ptree)
-    (ptree-fn 'root '(child) (lambda (x) x) tree)
-    (ptree-fn 'child () (lambda () (error 'foo-error)) tree)
-    (let1 err nil
-      (handler-case (call-ptree 'root tree)
-        (error (result) (setf err result)))
-      (is (not (null err)))
-      (is (eq 'foo-error (type-of err))))))
+  (let1 memo (make-queue)
+    (task-handler-bind ((foo-error (lambda (e)
+                                     (push-queue e memo)
+                                     (invoke-restart 'transfer-error e))))
+      (let1 tree (make-ptree)
+        (ptree-fn 'root '(child) (lambda (x) x) tree)
+        (ptree-fn 'child () (lambda () (error 'foo-error)) tree)
+        (let1 err nil
+          (handler-case (call-ptree 'root tree)
+            (error (result) (setf err result)))
+          (is (not (null err)))
+          (is (eq 'foo-error (type-of err))))))
+    (is (= 1 (queue-count memo)))
+    (is (typep (pop-queue memo) 'foo-error))))
 
 (defmacro/once for-range ((var &once pair) &body body)
   `(loop
@@ -186,3 +192,203 @@
     (ptree-fn height (list border)       (lambda (b)   (+ 5 (* 2 b))) tree)
     (ptree-fn border '()                 (lambda ()    1)             tree)
     (is (= 63 (call-ptree area tree)))))
+
+(lp-test ptree-basic-restart-test
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'nine))))
+    (ptree ((result () (restart-case
+                           (error 'foo-error)
+                         (nine () 9))))
+      (is (= 9 result)))))
+
+(lp-test ptree-restart-test
+  (task-handler-bind ((foo-error (lambda (e)
+                                   (declare (ignore e))
+                                   (invoke-restart 'nine))))
+    (ptree ((area (width height) (* width height))
+            (width () 3)
+            (height () (restart-case
+                           (error 'foo-error)
+                         (nine () 9))))
+      (is (= 27 area))
+      (is (= 3 width))
+      (is (= 9 height)))
+    (ptree ((area (width height) (* width height))
+            (height () (restart-case
+                           (error 'foo-error)
+                         (nine () 9)))
+            (width () 3))
+      (is (= 27 area))
+      (is (= 3 width))
+      (is (= 9 height)))))
+
+(lp-test ptree-transfer-error-test
+  (task-handler-bind ((foo-error #'invoke-transfer-error))
+    (ptree ((area (width height) (* width height))
+            (width () 3)
+            (height () (restart-case
+                           (error 'foo-error)
+                         (nine () 9))))
+      (signals foo-error
+        area)
+      (signals foo-error
+        height)
+      (is (= 3 width)))
+    (ptree ((area (width height) (* width height))
+            (width () 3)
+            (height () (restart-case
+                           (error 'foo-error)
+                         (nine () 9))))
+      (signals foo-error
+        height)
+      (signals foo-error
+        area)
+      (is (= 3 width)))))
+
+#-abcl
+(lp-base-test ptree-kill-test
+  (let ((memo (make-queue))
+        (tree (make-ptree)))
+    (ptree-fn 'inf '() #'infinite-loop tree)
+    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+      (with-thread (:bindings `((*kernel* . ,*kernel*)))
+        (handler-case
+            (call-ptree 'inf tree)
+          (error (e)
+            (push-queue e memo))))
+      (sleep 0.2)
+      (is (= 1 (kill-tasks :default)))
+      (sleep 0.2)
+      (is (= 1 (queue-count memo)))
+      (is (typep (pop-queue memo) 'task-killed-error))
+      (signals task-killed-error
+        (call-ptree 'inf tree))
+      (signals task-killed-error
+        (call-ptree 'inf tree)))))
+
+#-abcl
+(lp-base-test second-ptree-kill-test
+  (let ((memo (make-queue))
+        (tree (make-ptree)))
+    (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
+    (ptree-fn 'height '() #'infinite-loop tree)
+    (ptree-fn 'width '() (constantly 9) tree)
+    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+      (with-thread (:bindings `((*kernel* . ,*kernel*)))
+        (handler-case
+            (call-ptree 'area tree)
+          (error (e)
+            (push-queue e memo))))
+      (sleep 0.2)
+      (is (= 1 (kill-tasks :default)))
+      (sleep 0.2)
+      (is (= 1 (queue-count memo)))
+      (is (typep (pop-queue memo) 'task-killed-error))
+      (signals task-killed-error
+        (call-ptree 'area tree))
+      (signals task-killed-error
+        (call-ptree 'height tree))
+      (is (= 9 (call-ptree 'width tree))))))
+
+#-abcl
+(lp-base-test third-ptree-kill-test
+  (let ((memo (make-queue))
+        (tree (make-ptree)))
+    (ptree-fn 'inf '(five)
+              (lambda (x)
+                (declare (ignore x))
+                (infinite-loop))
+              tree)
+    (ptree-fn 'five '() (constantly 5) tree)
+    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+      (with-thread (:bindings `((*kernel* . ,*kernel*)))
+        (handler-case
+            (call-ptree 'inf tree)
+          (error (e)
+            (push-queue e memo))))
+      (sleep 0.2)
+      (is (= 1 (kill-tasks :default)))
+      (sleep 0.2)
+      (is (= 1 (queue-count memo)))
+      (is (typep (pop-queue memo) 'task-killed-error))
+      (signals task-killed-error
+        (call-ptree 'inf tree))
+      (signals task-killed-error
+        (call-ptree 'inf tree))
+      (is (= 5 (call-ptree 'five tree))))))
+
+(lp-test clear-ptree-test
+  (let ((tree (make-ptree))
+        (count 0))
+    (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
+    (ptree-fn 'height '() (constantly 3) tree)
+    (ptree-fn 'width '() (lambda () (incf count) 9) tree)
+    (is (= 27 (call-ptree 'area tree)))
+    (is (= 1 count))
+    (is (= 27 (call-ptree 'area tree)))
+    (is (= 1 count))
+    (clear-ptree tree)
+    (is (= 27 (call-ptree 'area tree)))
+    (is (= 2 count))))
+
+(lp-test clear-ptree-errors-test
+  (task-handler-bind ((foo-error #'invoke-transfer-error))
+    (let ((tree (make-ptree))
+          (count 0)
+          (ready nil))
+      (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
+      (ptree-fn 'height '() (constantly 3) tree)
+      (ptree-fn 'width '()
+                (lambda ()
+                  (incf count)
+                  (if ready
+                      9
+                      (error 'foo-error)))
+                tree)
+      (signals foo-error
+        (call-ptree 'area tree))
+      (is (= 1 count))
+      (signals foo-error
+        (call-ptree 'area tree))
+      (is (= 1 count))
+      (clear-ptree-errors tree)
+      (setf ready t)
+      (is (= 27 (call-ptree 'area tree)))
+      (is (= 2 count))
+      (is (= 27 (call-ptree 'area tree)))
+      (is (= 2 count)))))
+
+(lp-base-test ptree-multi-error-test
+  (with-new-kernel (2)
+    (task-handler-bind ((foo-error #'invoke-transfer-error))
+      (let ((timer-finish-p nil))
+        (with-thread ()
+          (sleep 0.25)
+          (setf timer-finish-p t))
+        (ptree ((area (width height) (* width height))
+                (width () (sleep 0.5) 99)
+                (height () (error 'foo-error)))
+          (signals foo-error
+            height)
+          (is (not timer-finish-p))
+          (signals foo-error
+            area)
+          (is (not timer-finish-p))
+          (= 99 width)
+          (is (not (null timer-finish-p)))))
+      (let ((timer-finish-p nil))
+        (with-thread ()
+          (sleep 0.25)
+          (setf timer-finish-p t))
+        (ptree ((area (width height) (* width height))
+                (width () (sleep 0.5) 99)
+                (height () (error 'foo-error)))
+          (signals foo-error
+            area)
+          (is (not timer-finish-p))
+          (signals foo-error
+            height)
+          (is (not timer-finish-p))
+          (= 99 width)
+          (is (identity timer-finish-p)))))))
