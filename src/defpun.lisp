@@ -219,39 +219,38 @@
        (return (force future)))
      (steal-work)))
 
-(defmacro %%plet/fast (predicate pairs bindings body)
-  (let1 count (length pairs)
-    (with-gensyms (all-created-p)
-      `(with-lock-predicate/wait*
-           :lock            (lock (optimizer-data *kernel*))
-           :predicate1      ,predicate
-           :predicate2      (accept-task-p)
-           :succeed/lock    (update-task-count/no-lock *kernel* ,count)
-           :succeed/no-lock (let1 ,all-created-p nil
-                              (unwind-protect
-                                   (future-let :future future/fast
-                                               :force force/fast
-                                               :bindings ,bindings
-                                               :pre-body (setf ,all-created-p t)
-                                               :body ,body)
-                                ;; In the rare event of future
-                                ;; creation failure, roll back the
-                                ;; optimizer count.
-                                ;; 
-                                ;; It's OK if some futures were
-                                ;; created; defpun will just
-                                ;; temporarily become more accepting
-                                ;; of tasks.
-                                (when (not ,all-created-p)
-                                  (update-task-count *kernel*
-                                                     (negate ,count)))))
-           :fail            (let ,bindings ,@body)))))
+(defmacro %%plet/fast (predicate future-count bindings body)
+  (with-gensyms (all-created-p)
+    `(with-lock-predicate/wait*
+         :lock            (lock (optimizer-data *kernel*))
+         :predicate1      ,predicate
+         :predicate2      (accept-task-p)
+         :succeed/lock    (update-task-count/no-lock *kernel* ,future-count)
+         :succeed/no-lock (let1 ,all-created-p nil
+                            (unwind-protect
+                                 (future-let :future future/fast
+                                             :force force/fast
+                                             :bindings ,bindings
+                                             :pre-body (setf ,all-created-p t)
+                                             :body ,body)
+                              ;; In the rare event of future
+                              ;; creation failure, roll back the
+                              ;; optimizer count.
+                              ;; 
+                              ;; It's OK if some futures were
+                              ;; created; defpun will just
+                              ;; temporarily become more accepting
+                              ;; of tasks.
+                              (when (not ,all-created-p)
+                                (update-task-count *kernel*
+                                                   (negate ,future-count)))))
+         :fail            (let ,bindings ,@body))))
 
 (defmacro %plet/fast (predicate bindings body)
   (with-parsed-let-args (pairs non-pairs syms) bindings
     (declare (ignore non-pairs syms))
     (if pairs
-        `(%%plet/fast ,predicate ,pairs ,bindings ,body)
+        `(%%plet/fast ,predicate ,(length pairs) ,bindings ,body)
         `(let ,bindings ,@body))))
 
 (defmacro plet/fast (bindings &body body)
