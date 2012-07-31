@@ -50,6 +50,7 @@
      (test #+lparallel.with-debug (,name :compile-at :definition-time)
            #-lparallel.with-debug ,name
        (format t "~&~a~%" ',name)
+       (finish-output)
        ,@body)
      (defun ,name ()
        (debug! ',name))))
