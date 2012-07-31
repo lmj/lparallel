@@ -290,9 +290,9 @@ fine-grained parallelism. If you have many small tasks which bog down
 the system, `defpun' may help.
 
 The syntax of `defpun' matches that of `defun'. The difference is that
-`plet', `plet-if', and `pfuncall' take on new meaning inside `defpun'.
-The symbols in the binding positions of `plet' and `plet-if' should be
-viewed as lazily evaluated immutable references.
+`plet' and `plet-if' take on new meaning inside `defpun'. The symbols
+in the binding positions of `plet' and `plet-if' should be viewed as
+lazily evaluated immutable references.
 
 Inside a `defpun' form the name of the function being defined--as well
 as the names of other functions defined by `defpun'--are macrolets, so
