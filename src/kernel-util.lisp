@@ -59,12 +59,9 @@
                 (inc-counter ,counter)
                 (apply #'submit-task ,channel args))
               (receive-dynamic-counted ()
-                (loop (let1 value (dec-counter ,counter)
-                        (cond ((>= value 0)
-                               (receive-result ,channel))
-                              (t
-                               (inc-counter ,counter)
-                               (return)))))))
+                (loop (if (plusp (dec-counter ,counter))
+                          (receive-result ,channel)
+                          (return)))))
          ,@body))))
 
 (defun indexing-wrapper (array index function args)

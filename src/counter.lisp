@@ -30,30 +30,8 @@
 
 (in-package #:lparallel.counter)
 
-;;; 
-;;; Strangely, Clozure does advertise these atomic operations but does
-;;; not export the symbols.
-;;; 
-
-#+(or clozure lispworks)
-(progn
-  (deftype counter () '(cons fixnum null))
-
-  (defun/type make-counter (&optional (value 0)) (&optional fixnum) counter
-    (declare (fixnum value))
-    (the counter (cons value nil)))
-
-  (alias-function counter-value car)
-
-  (defmacro define-counter-fn (name op)
-    `(defun/type ,name (counter) (counter) t
-       (declare (type counter counter))
-       (the fixnum (,op (car counter)))))
-  
-  (define-counter-fn inc-counter #+clozure   ccl::atomic-incf
-                                 #+lispworks system:atomic-incf)
-  (define-counter-fn dec-counter #+clozure   ccl::atomic-decf
-                                 #+lispworks system:atomic-decf))
+;;; Atomic counters modeled after SBCL, i.e., operations return the
+;;; original value.
 
 #+sbcl
 (progn
@@ -62,27 +40,48 @@
   (defstruct (counter (:constructor make-counter (&optional value)))
     (value 0 :type counter-value))
   
+  (defmacro define-counter-fn (name op)
+    `(defun/inline ,name (counter)
+       (,op (counter-value counter))))
+
+  (define-counter-fn inc-counter sb-ext:atomic-incf)
+  (define-counter-fn dec-counter sb-ext:atomic-decf))
+  
+#+(or clozure lispworks)
+(progn
+  (defun make-counter (&optional (value 0))
+    (cons value nil))
+
+  (alias-function counter-value car)
+
   (defmacro define-counter-fn (name op adjust)
-    `(defun/type/inline ,name (counter) (counter) t
-       (,adjust (,op (counter-value counter)))))
+    `(defun/inline ,name (counter)
+       (,adjust (,op (car counter)))))
+  
+  ;;; Strangely, Clozure does advertise these atomic operations but does
+  ;;; not export the symbols.
 
-  (define-counter-fn inc-counter sb-ext:atomic-incf 1+)
-  (define-counter-fn dec-counter sb-ext:atomic-decf 1-))
+  (define-counter-fn inc-counter #+clozure   ccl::atomic-incf
+                                 #+lispworks system:atomic-incf
+                                 1-)
+  (define-counter-fn dec-counter #+clozure   ccl::atomic-decf
+                                 #+lispworks system:atomic-decf
+                                 1+))
 
-#-(or clozure lispworks sbcl)
+#-(or sbcl clozure lispworks)
 (progn
   (defslots counter ()
-    ((value :reader counter-value :type fixnum)
+    ((value :reader counter-value)
      (lock  :reader lock          :initform (make-lock))))
 
-  (defun/type make-counter (&optional (value 0)) (&optional fixnum) counter
-    (declare (fixnum value))
+  (defun make-counter (&optional (value 0))
     (make-counter-instance :value value))
 
-  (defmacro define-counter-fn (name op)
-    `(define-locking-fn ,name (counter) (counter) fixnum lock
-       (with-counter-slots (value) counter
-         (,op value))))
+  (defmacro define-counter-fn (name op adjust)
+    `(defun/inline ,name (counter)
+       (with-counter-slots (value lock) counter
+         (,adjust (with-lock-held (lock)
+                    (,op value))))))
 
-  (define-counter-fn inc-counter incf)
-  (define-counter-fn dec-counter decf))
+  (define-counter-fn inc-counter incf 1-)
+  (define-counter-fn dec-counter decf 1+))
