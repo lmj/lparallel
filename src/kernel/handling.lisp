@@ -31,16 +31,18 @@
 (in-package #:lparallel.kernel)
 
 (defslots wrapped-error ()
-  ((object :type condition))
+  ((condition :type condition))
   (:documentation
    "This is a container for transferring an error that occurs inside
    `call-with-task-handler' to the calling thread."))
 
-(defun wrap-error (err)
+(defun wrap-error (condition)
+  "Wrap an error. A non-error condition may also be wrapped, though it
+will still be signaled with `error'."
   (make-wrapped-error-instance
-   :object (etypecase err
-             (symbol (make-condition err))
-             (error  err))))
+   :condition (ctypecase condition
+                (symbol (make-condition condition))
+                (condition condition))))
 
 (defgeneric unwrap-result (result)
   (:documentation
@@ -53,8 +55,8 @@
 
 (defmethod unwrap-result ((result wrapped-error))
   "A `wrapped-error' signals an error upon being unwrapped."
-  (with-wrapped-error-slots (object) result
-    (error object)))
+  (with-wrapped-error-slots (condition) result
+    (error condition)))
 
 (defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but reaches into kernel worker threads."
@@ -84,7 +86,7 @@ control (or not)."
                (funcall handler condition)))))
   (when (and (typep condition 'error)
              (not *debug-tasks-p*))
-    (invoke-restart 'transfer-error condition)))
+    (invoke-transfer-error condition)))
 
 (defun make-debugger-hook ()
   "Record `*debugger-error*' for the `transfer-error' restart."
@@ -104,11 +106,7 @@ control (or not)."
 (defconstant +current-task+ 'current-task)
 
 (defun transfer-error-restart (&optional (err *debugger-error*))
-  (throw +current-task+
-    (make-wrapped-error-instance
-     :object (ctypecase err
-               (condition err)
-               (symbol (make-condition err))))))
+  (throw +current-task+ (wrap-error err)))
 
 #-lparallel.without-task-handling
 (progn
