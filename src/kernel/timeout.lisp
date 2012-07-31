@@ -30,6 +30,7 @@
 
 (in-package #:lparallel.kernel)
 
+#-abcl
 (import-now bordeaux-threads:destroy-thread)
 
 (defslots timeout ()
