@@ -90,14 +90,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defconstant +no-result+ 'no-result)
+
 (defslots promise-base ()
-  ((result :reader result :initform 'no-result)
+  ((result :reader result :initform +no-result+)
    (lock                  :initform (make-lock))))
 
 ;;; for work-stealing loop
 (defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
   (declare #.*full-optimize*)
-  (not (eq (result promise) 'no-result)))
+  (not (eq (result promise) +no-result+)))
 
 (defmethod fulfilledp ((promise promise-base))
   (declare #.*normal-optimize*)
@@ -106,7 +108,7 @@
 (defmacro with-lock-operation (operation promise &body body)
   (with-gensyms (lock result)
     `(with-promise-base-slots ((,lock lock) (,result result)) ,promise
-       (,operation ,lock (eq ,result 'no-result)
+       (,operation ,lock (eq ,result +no-result+)
          ,@body))))
 
 (defmacro with-unfulfilled/no-wait (promise &body body)
@@ -182,7 +184,7 @@ unknown at the time it is created."
         (setf cvar (make-condition-variable)))
       (loop
          :do (condition-wait cvar lock)
-         :while (eq result 'no-result))
+         :while (eq result +no-result+))
       (condition-notify-and-yield cvar))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -262,7 +264,7 @@ unknown at the time it is created."
     `(with-%future-slots
          ((,lock lock) (,canceledp canceledp) (,result result)) ,future
        (with-lock-predicate/no-wait ,lock (and (not ,canceledp)
-                                               (eq ,result 'no-result))
+                                               (eq ,result +no-result+))
          ,@body))))
 
 (defun/type make-future-task (future) (%future) task

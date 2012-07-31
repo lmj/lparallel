@@ -101,8 +101,10 @@ control (or not)."
 (defun transfer-error-report (stream)
   (format stream "Transfer this error to dependent threads, if any."))
 
+(defconstant +current-task+ 'current-task)
+
 (defun transfer-error-restart (&optional (err *debugger-error*))
-  (throw 'current-task
+  (throw +current-task+
     (make-wrapped-error-instance
      :object (ctypecase err
                (condition err)
@@ -111,7 +113,7 @@ control (or not)."
 #-lparallel.without-task-handling
 (progn
   (defmacro with-task-context (&body body)
-    `(catch 'current-task
+    `(catch +current-task+
        ,@body))
 
   (defun %call-with-task-handler (fn)
