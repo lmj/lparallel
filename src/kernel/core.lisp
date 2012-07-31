@@ -125,9 +125,7 @@
        kernel))))
 
 (defun make-all-bindings (kernel bindings)
-  (append bindings
-          (list (cons '*kernel* kernel))
-          *kernel-thread-locals*))
+  (append bindings (list (cons '*kernel* kernel))))
 
 #+lparallel.with-stealing-scheduler
 (defun %make-worker (index tasks)

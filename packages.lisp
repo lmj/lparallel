@@ -71,7 +71,6 @@
   (:export #:with-thread
            #:with-lock-predicate/wait
            #:with-lock-predicate/no-wait
-           #:define-thread-locals
            #:define-locking-fn
            #:define-simple-locking-fn
            #:condition-notify-and-yield)

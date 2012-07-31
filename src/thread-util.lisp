@@ -52,15 +52,6 @@
        (when ,predicate
          ,@body))))
 
-(defmacro define-thread-locals (result &rest defvar-forms)
-  `(progn
-     (defvar ,result nil)
-     ,@(loop
-          :for (name value doc) :in defvar-forms
-          :collect `(defvar ,name ,value ,doc)
-          :collect `(unless (assoc ',name ,result)
-                      (push (cons ',name ',value) ,result)))))
-
 (defmacro define-locking-fn/base (name args arg-types return-type
                                   lock-reader
                                   defun/no-lock

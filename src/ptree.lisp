@@ -37,8 +37,7 @@
             lparallel.kernel::make-task-fn
             lparallel.kernel::wrapped-error
             lparallel.kernel::wrap-error
-            lparallel.kernel::unwrap-result
-            lparallel.kernel::*kernel-thread-locals*)
+            lparallel.kernel::unwrap-result)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -171,10 +170,9 @@
               (return-from children-done-p nil)))
           (setf children-done-p t)))))
 
-(define-thread-locals *kernel-thread-locals*
-  (*ptree-node-kernel* nil
-   "Thread-local. When non-nil, `*kernel*' is bound to this value
-    during the call of a node function."))
+(defvar *ptree-node-kernel* nil
+  "Thread-local. When non-nil, `*kernel*' is bound to this value
+  during the call of a node function.")
 
 (defun/type make-node-task (queue node) (queue node) t
   (declare #.*normal-optimize*)

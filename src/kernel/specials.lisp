@@ -30,48 +30,31 @@
 
 (in-package #:lparallel.kernel)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; thread-locals
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-thread-locals *kernel-thread-locals*
-  (*debugger-error* nil
-   "Thread-local. Track the error inside the debugger for the
+(defvar *debugger-error* nil
+  "Thread-local. Track the error inside the debugger for the
     `transfer-error' restart.")
-  
-  (*handler-active-p* nil
-   "Thread-local. Non-nil when handlers have been established via
+
+(defvar *handler-active-p* nil
+  "Thread-local. Non-nil when handlers have been established via
     `call-with-task-handler'.")
 
-  (*client-handlers* nil
-   "Thread-local. Records handlers established with
+(defvar *client-handlers* nil
+  "Thread-local. Records handlers established with
     `task-handler-bind' in the calling thread.")
 
-  (*task-category* :default
-   "Thread-local. See `kill-tasks'. Default value is `:default'.")
+(defvar *task-category* :default
+  "Thread-local. See `kill-tasks'. Default value is `:default'.")
 
-  (*task-priority* :default
-   "Thread-local. When bound to `:low', the kernel schedules submitted
+(defvar *task-priority* :default
+  "Thread-local. When bound to `:low', the kernel schedules submitted
     tasks at low priority. Default value is `:default'.")
 
-  (*worker* nil
-   "Thread-local. The worker instance if inside a worker thread,
-   otherwise nil."))
+(defvar *worker* nil
+  "Thread-local. The worker instance if inside a worker thread,
+   otherwise nil.")
 
-;;; This is managed separately due to self-reference.
-(defvar *kernel* nil "Thread-local. The current kernel, or nil.")
-
-;;; deprecated
-(alias-special *kernel-task-category* *task-category* :deprecate t)
-(alias-special *kernel-task-priority* *task-priority* :deprecate t)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; non-thread-local
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defvar *kernel* nil
+  "Thread-local. The current kernel, or nil.")
 
 (defvar *optimizer* nil
   "Determines which kernel optimizer plugin is active. This is
@@ -103,3 +86,7 @@
 (defvar *lisp-exiting-p* nil
   "True if the Lisp process is exiting; for skipping auto-replacement
   of killed workers during exit.")
+
+;;; deprecated
+(alias-special *kernel-task-category* *task-category* :deprecate t)
+(alias-special *kernel-task-priority* *task-priority* :deprecate t)
