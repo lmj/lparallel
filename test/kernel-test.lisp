@@ -270,8 +270,7 @@
       (is (equal '(6 6 6)
                  (collect-n 3 (receive-result channel)))))))
 
-#-abcl
-(lp-test killed-worker-test
+(lp-test aborted-worker-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-abort-thread))))
@@ -290,7 +289,6 @@
               #'lparallel.kernel::thread
               (lparallel.kernel::workers *kernel*))))
 
-#-abcl
 (lp-base-test active-worker-replacement-test
   (with-thread-count-check
     (with-new-kernel (2)
