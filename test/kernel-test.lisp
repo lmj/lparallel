@@ -107,9 +107,11 @@
     (submit-task channel (lambda () 3))
     (submit-task channel (lambda () 4))
     (is (equal '(3 4)
-               (sort (list  (receive-result channel)
-                            (receive-result channel))
-                     #'<)))))
+               ;; avoid sbcl warning
+               (locally (declare (notinline sort))
+                 (sort (list (receive-result channel)
+                             (receive-result channel))
+                       #'<))))))
 
 (lp-test try-receive-test
   (let1 channel (make-channel)

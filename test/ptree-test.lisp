@@ -101,7 +101,9 @@
               (refs (lparallel.ptree::ptree-error-refs err)))
           (is (equal 'border id))
           (is (equal '(height width)
-                     (sort (copy-list refs) #'string<))))))))
+                     ;; avoid sbcl warning
+                     (locally (declare (notinline sort))
+                       (sort (copy-list refs) #'string<)))))))))
 
 (lp-test ptree-redefinition-test
   (signals ptree-redefinition-error
