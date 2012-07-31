@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.defpun)
 
-#.(import '(lparallel.util::symbolicate/package
+(import-now lparallel.util::symbolicate/package
             lparallel.kernel::kernel
             lparallel.kernel::%kernel-worker-count
             lparallel.kernel::make-optimizer-data
@@ -40,7 +40,7 @@
             lparallel.kernel::*optimizer*
             lparallel.kernel::steal-work
             lparallel.promise::%future
-            lparallel.promise::fulfilledp/promise))
+            lparallel.promise::fulfilledp/promise)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

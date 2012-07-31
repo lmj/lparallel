@@ -41,13 +41,13 @@
 
 (in-package #:lparallel.promise)
 
-#.(import '(lparallel.kernel::unwrap-result
+(import-now lparallel.kernel::unwrap-result
             lparallel.kernel::make-task-fn
             lparallel.kernel::make-task
             lparallel.kernel::task
             lparallel.kernel::call-with-task-handler
             lparallel.kernel::submit-raw-task
-            lparallel.kernel::wrap-error))
+            lparallel.kernel::wrap-error)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

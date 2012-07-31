@@ -135,3 +135,7 @@
      (define-symbol-macro ,alias ,orig)
      ,@(when deprecate `((doc-deprecate ',alias ',orig 'variable)))
      ',alias))
+
+(defmacro import-now (&rest symbols)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (import ',symbols)))

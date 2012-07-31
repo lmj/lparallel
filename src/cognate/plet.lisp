@@ -30,7 +30,7 @@
 
 (in-package #:lparallel.cognate)
 
-#.(import '(lparallel.defpun::future-let))
+(import-now lparallel.defpun::future-let)
 
 (defmacro plet (bindings &body body)
   "The syntax of `plet' matches that of `let'.

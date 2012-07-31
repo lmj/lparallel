@@ -49,7 +49,8 @@
            #:alias-function
            #:alias-macro
            #:alias-special
-           #:unwind-protect/ext)
+           #:unwind-protect/ext
+           #:import-now)
   (:export #:defun/inline
            #:defun/type
            #:defun/type/inline)

@@ -30,8 +30,8 @@
 
 (in-package #:lparallel.kernel)
 
-#.(import '(bordeaux-threads:destroy-thread
-            bordeaux-threads:current-thread))
+(import-now bordeaux-threads:destroy-thread
+            bordeaux-threads:current-thread)
 
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler

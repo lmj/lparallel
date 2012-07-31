@@ -30,8 +30,8 @@
 
 (in-package #:lparallel.ptree)
 
-#.(import '(lparallel.kernel::*kernel-thread-locals*
-            lparallel.kernel::channel))
+(import-now lparallel.kernel::*kernel-thread-locals*
+            lparallel.kernel::channel)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
