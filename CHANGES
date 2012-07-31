@@ -2,6 +2,14 @@
 lparallel Changes
 =================
 
+= 1.6.0
+
+* added clear-ptree-errors -- for resuming after an error
+* added clear-ptree -- for recomputing from scratch
+* improved task handling for ptrees
+* :lparallel now in *features* after load
+* defpun no longer transforms pfuncall forms
+
 = 1.5.5
 
 * in Allegro, end-kernel is no longer required before exit
