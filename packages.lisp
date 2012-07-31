@@ -328,12 +328,14 @@
                                 :for sym :being :the :external-symbols :in pkg
                                 :collect (make-symbol (string sym))))))))
   (define-merged-package #:lparallel
-      "This is a convenience package which exports the external
-symbols of lparallel.kernel, lparallel.promise, lparallel.cognate,
-lparallel.defpun, and lparallel.ptree."
-
+"This is a convenience package which exports the external symbols of:
+   lparallel.kernel
+   lparallel.promise 
+   lparallel.defpun
+   lparallel.cognate
+   lparallel.ptree"
     #:lparallel.kernel
     #:lparallel.promise
-    #:lparallel.cognate
     #:lparallel.defpun
+    #:lparallel.cognate
     #:lparallel.ptree))
