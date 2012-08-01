@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.6.2
+
+* fixed tests on abcl
+
 = 1.6.1
 
 * update and clarify docs
