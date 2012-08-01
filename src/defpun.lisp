@@ -123,7 +123,10 @@
 (defvar *registered-fns* nil)
 
 (defun unchecked-name (name)
-  (symbolicate/package (symbol-package name) '#:%par- name) )
+  ;; We could intern this into a private package and maintain an alist
+  ;; of (public . private) package pairs, but that seems
+  ;; over-engineered. Anonymous packages don't exist anyway.
+  (symbolicate/package (symbol-package name) '#:%%.defpun. name) )
 
 (defun defpun-loaded-p (name)
   (ignore-errors
