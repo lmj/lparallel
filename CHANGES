@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.6.1
+
+* update and clarify docs
+
 = 1.6.0
 
 * added clear-ptree-errors -- for resuming after an error
