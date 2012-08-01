@@ -297,9 +297,9 @@ The syntax of `defpun' matches that of `defun'. The difference is that
 in the binding positions of `plet' and `plet-if' should be viewed as
 lazily evaluated immutable references.
 
-Inside a `defpun' form the name of the function being defined--as well
-as the names of other functions defined by `defpun'--are macrolets, so
-using #' on them will be an error.
+Inside a `defpun' form the name of the function being defined is a
+macrolet, as are the names of other functions which were defined by
+`defpun'. Thus using #' on them is an error.
 
 A `defpun' function must exist before it is referenced inside another
 `defpun' function. If this is not possible--for example if func1 and

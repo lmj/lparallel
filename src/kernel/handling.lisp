@@ -59,7 +59,8 @@ will still be signaled with `error'."
     (error condition)))
 
 (defmacro task-handler-bind (clauses &body body)
-  "Like `handler-bind' but reaches into kernel worker threads."
+  "Like `handler-bind' but handles conditions signaled inside tasks
+that were created in `body'."
   (let1 forms (loop
                  :for clause :in clauses
                  :for (name fn more) := clause
@@ -71,8 +72,9 @@ will still be signaled with `error'."
        ,@body)))
 
 (defun invoke-transfer-error (error)
-  "Invoke the `transfer-error' restart with the given argument. This
-is provided as mere convenience for use in `task-handler-bind'."
+  "Equivalent to (invoke-restart 'transfer-error error).
+
+This is a convenience function for use in `task-handler-bind'."
   (invoke-restart 'transfer-error error))
 
 (defun condition-handler (condition)

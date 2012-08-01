@@ -171,8 +171,8 @@
           (setf children-done-p t)))))
 
 (defvar *ptree-node-kernel* nil
-  "Thread-local. When non-nil, `*kernel*' is bound to this value
-  during the call of a node function.")
+  "When non-nil, `*kernel*' is bound to this value during the call of
+  a node function.")
 
 (defun/type make-node-task (queue node) (queue node) t
   (declare #.*normal-optimize*)
@@ -309,8 +309,7 @@ computations.
 
 If the node is uncomputed, compute the result.
 
-If the node is already computed, return the computed result. A node is
-never computed twice."
+If the node is already computed, return the computed result."
   (let1 root (gethash id (nodes ptree))
     (unless root
       (error 'ptree-undefined-function-error :id id))

@@ -168,14 +168,14 @@
 `bordeaux-threads:all-threads'.
 
 `bindings' is an alist for establishing thread-local variables inside
-worker threads (see bordeaux-threads for more information). By default
-workers will have *standard-output* and *error-output* bindings.
+worker threads. By default workers will have *standard-output* and
+*error-output* bindings.
 
 Dynamic context for each worker may be established with the function
 `context'. The argument passed to `context' is a function which must
 be funcalled. It begins the worker loop and will not return until the
-worker exits. Default value of `context' is #'funcall. The special
-variables in `bindings' have been defined when `context' is called.
+worker exits. The default value of `context' is #'funcall. The special
+variables in `bindings' are available inside the `context' function.
 
 When a worker discovers that no tasks are available, `spin-count' is
 the number of task-searching iterations done by the worker before
@@ -232,7 +232,7 @@ sleeping."
 value of `*kernel*' is stored for use in `submit-task'.
 
 As an optimization, an internal size may be given with
-`initial-capacity'. This does not limit the channel size."
+`initial-capacity'. This does not limit the internal size."
   (check-kernel)
   (make-channel-instance
    :kernel *kernel*
@@ -304,8 +304,8 @@ in (values result t). Otherwise (values nil nil) is returned."
 exceptional circumstances.
 
 A task category is any object suitable for `eq' comparison. When a
-task is submitted, it is assigned the category of
-`*task-category*' (which has a default value of `:default').
+task is submitted, it is assigned the category of `*task-category*'
+which has a default value of `:default'.
 
 `kill-tasks' rudely interrupts running tasks whose category is `eq' to
 `task-category'. The corresponding worker threads are killed and

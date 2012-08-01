@@ -39,7 +39,8 @@
 
 (defmacro pand (&rest forms)
   "Parallel version of `and'. Forms in `forms' may be executed in
-parallel, though not necessarily at the same time."
+parallel, though not necessarily at the same time. If all forms
+evaluate to true, then the result of any form may be returned."
   (with-gensyms (done result next-result)
     `(block ,done
        (with-forms-submitted ,forms
