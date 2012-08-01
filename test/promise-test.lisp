@@ -313,3 +313,16 @@
                 (restart-case (error 'foo-error)
                   (nine () 9))))
       (is (eql 9 (force f))))))
+
+(lp-base-test non-promise-test
+  (dolist (obj (list 3 4.0 'foo (cons nil nil)))
+    (is (fulfilledp obj))
+    (is (eql obj (force obj)))
+    (setf *memo* 11)
+    (is (eql nil (fulfill obj (setf *memo* 22))))
+    (is (eql 11 *memo*)))
+  (let1 obj (chain 3)
+    (is (fulfilledp obj))
+    (setf *memo* 11)
+    (is (eql nil (fulfill obj (setf *memo* 22))))
+    (is (eql 11 *memo*))))

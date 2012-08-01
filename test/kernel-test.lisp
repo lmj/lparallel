@@ -463,3 +463,26 @@
       (submit-task channel (lambda () (sleep 0.2)))
       (sleep 0.1)
       (is (eq nil (lparallel.kernel::steal-work))))))
+
+(lp-base-test kernel-store-value-test
+  (unwind-protect
+       (handler-bind ((no-kernel-error
+                       (lambda (e)
+                         (declare (ignore e))
+                         (invoke-restart 'store-value
+                                         (make-kernel 2)))))
+         (let1 channel (make-channel)
+           (submit-task channel 'identity 3)
+           (is (= 3 (receive-result channel)))))
+    (end-kernel)))
+
+(lp-base-test reject-kill-nil-test
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
+      (submit-task channel (lambda ()
+                             (setf *error-output* (make-broadcast-stream))
+                             (sleep 999)))
+      (sleep 0.2)
+      (signals error
+        (kill-tasks nil))
+      (= 1 (kill-tasks :default)))))

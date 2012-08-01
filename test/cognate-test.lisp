@@ -76,7 +76,11 @@
     (is (equalp #(15) a)))
   (let1 a (vector 9 9 9)
     (lparallel.cognate::map-into a 'identity #(3 4 5))
-    (is (equalp #(3 4 5) a))))
+    (is (equalp #(3 4 5) a)))
+  (let1 a (make-array 5 :fill-pointer 5 :initial-contents '(1 2 3 4 5))
+    (map-into a 'identity #(9 9))
+    (is (= 2 (length a)))
+    (is (equalp #(9 9) a))))
 
 #+sbcl
 (progn
@@ -588,10 +592,15 @@
      :for where := (random 1.0)
      :for a := (make-random-list size)
      :for b := (make-random-vector size)
-     :do (is (equal (remove  where a :test #'<)
-                    (premove where a :test #'<)))
-     :do (is (equalp (remove  where b :test #'<)
-                     (premove where b :test #'<))))
+     :do (progn
+           (is (equal (remove  where a :test #'<)
+                      (premove where a :test #'<)))
+           (is (equal (remove  where a :test-not #'>=)
+                      (premove where a :test-not #'>=)))
+           (is (equalp (remove  where b :test #'<)
+                       (premove where b :test #'<)))
+           (is (equalp (remove  where b :test-not (complement #'<))
+                       (premove where b :test-not (complement #'<))))))
   (is (equal (remove  3 (list 0 1 2 3 4 9 3 2 3 9 1))
              (premove 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
   (is (equalp (remove  3 (make-array 11
@@ -811,10 +820,15 @@
      :for where := (random 1.0)
      :for a := (make-random-list size)
      :for b := (make-random-vector size)
-     :do (is (equal  (count  where a :test #'<)
-                     (pcount where a :test #'<)))
-     :do (is (equalp (count  where b :test #'<)
-                     (pcount where b :test #'<))))
+     :do (progn
+           (is (equal  (count  where a :test #'<)
+                       (pcount where a :test #'<)))
+           (is (equal  (count  where a :test-not (complement #'<))
+                       (pcount where a :test-not (complement #'<))))
+           (is (equalp (count  where b :test #'<)
+                       (pcount where b :test #'<)))
+           (is (equalp (count  where b :test-not (complement #'<))
+                       (pcount where b :test-not (complement #'<))))))
   (is (equal (count  3 (list 0 1 2 3 4 9 3 2 3 9 1))
              (pcount 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
   (is (equalp (count  3 (make-array 11

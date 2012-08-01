@@ -80,6 +80,15 @@
     (sleep 0.1)
     (defpun-reject)))
 
+(defpun not-parallel (a)
+  (end-kernel :wait t)
+  (plet ((x) y)
+    (list a x y)))
+
+(lp-base-test defpun-not-parallel-test
+  (with-new-kernel (2)
+    (is (equal '(3 nil nil) (not-parallel 3)))))
+
 (defun fib-let (n)
   (if (< n 2)
       n
@@ -133,3 +142,30 @@
   (loop
      :for n :from 1 :to #-allegro 15 #+allegro 3
      :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
+
+;;; redefinitions
+
+(lp-base-test redefined-defpun-test
+  (with-new-kernel (2)
+    (setf *memo* 'foo)
+    (eval '(handler-bind ((warning #'muffle-warning))
+            (defpun foo (x) (* x x))))
+    (is (= 9 (funcall *memo* 3)))
+    (eval '(handler-bind ((warning #'muffle-warning))
+            (defun foo (x) (* x x x))))
+    (is (= 27 (funcall *memo* 3)))))
+
+;;; forward ref
+
+(declaim-defpun func1 func2)
+
+(defpun func2 (x)
+  (plet ((y (func1 x)))
+    (* x y)))
+
+(defpun func1 (x)
+  (plet ((y (* x x)))
+    (* x y)))
+
+(lp-test declaim-defpun-test
+  (is (= 81 (func2 3))))
