@@ -476,6 +476,7 @@
            (is (= 3 (receive-result channel)))))
     (end-kernel)))
 
+#-abcl
 (lp-base-test reject-kill-nil-test
   (with-new-kernel (2)
     (let1 channel (make-channel)
