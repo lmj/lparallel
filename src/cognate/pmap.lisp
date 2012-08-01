@@ -66,7 +66,8 @@
 Without a result to delineate sublist boundaries, we must enforce them
 manually."
   (check-type size (integer 0))
-  (let1 index 0
+  (let ((fn (ensure-function fn))
+        (index 0))
     (apply map
            (lambda (&rest args)
              ;; This is an inner loop.
