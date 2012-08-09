@@ -88,7 +88,7 @@
                       (setf (svref workers index) new-worker)
                       (handshake/to-worker new-worker))
            :abort   (warn "lparallel: Worker replacement failed! ~
-                           Kernel is defunct -- call `end-kernel'."))))))
+                           Kernel is defunct."))))))
 
 (defun/type worker-loop (kernel worker) (kernel worker) t
   ;; All implementations tested so far execute unwind-protect clauses
