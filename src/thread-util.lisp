@@ -30,9 +30,23 @@
 
 (in-package #:lparallel.thread-util)
 
+#+clisp
+(defmacro with-abort-restart (&body body)
+  `(restart-case 
+       (progn ,@body)
+     (abort ()
+       :report "Abort thread.")))
+
+#-clisp
+(defmacro with-abort-restart (&body body)
+  `(progn ,@body))
+
 (defmacro with-thread ((&key bindings name) &body body)
   `(let1 *default-special-bindings* ,bindings
-     (make-thread (lambda () ,@body) :name ,name)))
+     (make-thread (lambda ()
+                    (with-abort-restart
+                      ,@body))
+                  :name ,name)))
 
 (defmacro with-lock-predicate/no-wait (lock predicate &body body)
   ;; predicate intentionally evaluated twice

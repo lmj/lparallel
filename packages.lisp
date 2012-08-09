@@ -75,8 +75,7 @@
            #:define-simple-locking-fn
            #:condition-notify-and-yield)
   ;; exported from bordeaux-threads
-  (:export #:make-thread
-           #:make-lock
+  (:export #:make-lock
            #:make-condition-variable
            #:with-lock-held
            #:acquire-lock
