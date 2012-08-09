@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 1.6.3
+
+* add CLISP support
+
 = 1.6.2
 
 * fixed tests on abcl
