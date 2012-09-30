@@ -101,5 +101,6 @@
   (sb-sprof:with-profiling (:max-samples 100000
                             :report :graph
                             :loop nil
+                            :threads :all
                             :show-progress nil)
     (apply #'execute args)))
