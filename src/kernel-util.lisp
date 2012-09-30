@@ -30,10 +30,42 @@
 
 (in-package #:lparallel.kernel-util)
 
-(defun receive-and-discard-results (channel count)
+(import-now lparallel.kernel::*worker*
+            lparallel.kernel::steal-work
+            lparallel.kernel::channel-kernel)
+
+(defun steal-until-receive-result (channel worker fn)
   (declare #.*normal-optimize*)
-  (do-fast-receives (result channel count)
-    (declare (ignore result))))
+  (loop
+     (multiple-value-bind (result presentp) (try-receive-result channel)
+       (when presentp
+         (when fn
+           (locally (declare (type function fn))
+             (funcall fn result)))
+         (return)))
+     (steal-work (channel-kernel channel) worker)))
+
+(defun receive-results (channel count fn)
+  (declare #.*normal-optimize*)
+  (let1 worker *worker*
+    (if worker
+        (repeat count
+          (steal-until-receive-result channel worker fn))
+        (if fn
+            (do-fast-receives (result channel count)
+              (locally (declare (type function fn))
+                (funcall fn result)))
+            (do-fast-receives (result channel count)
+              (declare (ignore result)))))))
+
+(defun receive-results/dynamic (channel counter)
+  (declare #.*normal-optimize*)
+  (let1 worker *worker*
+    (if worker
+        (while (plusp (dec-counter counter))
+          (steal-until-receive-result channel worker nil))
+        (while (plusp (dec-counter counter))
+          (receive-result channel)))))
 
 (defmacro with-submit-counted (&body body)
   (with-gensyms (count channel)
@@ -45,7 +77,7 @@
                 (apply #'submit-task ,channel args)
                 (incf ,count))
               (receive-counted ()
-                (receive-and-discard-results ,channel ,count)))
+                (receive-results ,channel ,count nil)))
          (declare (inline submit-counted receive-counted)
                   (dynamic-extent #'submit-counted #'receive-counted))
          ,@body))))
@@ -59,9 +91,7 @@
                 (inc-counter ,counter)
                 (apply #'submit-task ,channel args))
               (receive-dynamic-counted ()
-                (loop (if (plusp (dec-counter ,counter))
-                          (receive-result ,channel)
-                          (return)))))
+                (receive-results/dynamic ,channel ,counter)))
          ,@body))))
 
 (defun indexing-wrapper (array index function args)
@@ -74,7 +104,7 @@
                 (submit-task
                  ,channel #'indexing-wrapper ,array index function args))
               (receive-indexed ()
-                (receive-and-discard-results ,channel ,count)
+                (receive-results ,channel ,count nil)
                 ,array))
          (declare (inline submit-indexed receive-indexed))
          (declare (dynamic-extent #'submit-indexed #'receive-indexed))
@@ -91,7 +121,7 @@
                                                      (apply fn args))))
                 (incf ,count)))
          (macrolet ((receive-cancelables (result &body body)
-                      `(do-fast-receives (,result ,',channel ,',count)
-                         ,@body)))
+                      `(receive-results
+                        ,',channel ,',count (lambda (,result) ,@body))))
            (unwind-protect (progn ,@body)
              (setf ,canceledp t)))))))

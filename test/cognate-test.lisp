@@ -1010,3 +1010,30 @@
               (pmap 'vector 'identity (vector))))
   (is (equalp #(1 2 3)
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
+
+(lp-test cognate-steal-test
+  (let1 channel (make-channel)
+    (submit-task channel
+                 (lambda ()
+                   (pmap 'vector 'identity '(1 2 3 4 5))))
+    (is (equalp #(1 2 3 4 5) (receive-result channel))))
+  (let1 channel (make-channel)
+    (submit-task channel
+                 (lambda ()
+                   (pmap-reduce 'identity '+ '(1 2 3 4 5))))
+    (is (eql 15 (receive-result channel))))
+  (let1 channel (make-channel)
+    (submit-task channel
+                 (lambda ()
+                   (por nil nil 5)))
+    (is (eql 5 (receive-result channel))))
+  (is (not (null (pand 9 (por nil 3)))))
+  (is (= 3 (por nil nil (por nil 3) (por nil nil 3))))
+  (let1 channel (make-channel)
+    (submit-task channel
+                 (lambda ()
+                   (let* ((a (make-random-vector 1000))
+                          (b (copy-seq a)))
+                     (list (sort a #'<)
+                           (psort b #'<)))))
+    (is (apply #'equalp (receive-result channel)))))
