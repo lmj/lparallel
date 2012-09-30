@@ -454,15 +454,21 @@
       (let1 execp nil
         (submit-task channel (lambda () (setf execp t)))
         (sleep 0.1)
-        (is (eq t (lparallel.kernel::steal-work)))
+        (is (eq t (lparallel.kernel::steal-work
+                   *kernel*
+                   lparallel.kernel::*worker*)))
         (is (eq t execp))
-        (is (eq nil (lparallel.kernel::steal-work))))))
+        (is (eq nil (lparallel.kernel::steal-work
+                     *kernel*
+                     lparallel.kernel::*worker*))))))
   (with-new-kernel (2)
     (let1 channel (make-channel)
       (submit-task channel (lambda () (sleep 0.2)))
       (submit-task channel (lambda () (sleep 0.2)))
       (sleep 0.1)
-      (is (eq nil (lparallel.kernel::steal-work))))))
+      (is (eq nil (lparallel.kernel::steal-work
+                   *kernel*
+                   lparallel.kernel::*worker*))))))
 
 (lp-base-test kernel-store-value-test
   (unwind-protect

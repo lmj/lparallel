@@ -38,6 +38,7 @@
             lparallel.kernel::optimizer-flag
             lparallel.kernel::with-optimizer-slots
             lparallel.kernel::*optimizer*
+            lparallel.kernel::*worker*
             lparallel.kernel::steal-work
             lparallel.promise::%future
             lparallel.promise::fulfilledp/promise)
@@ -217,10 +218,11 @@
 
 (defun/type force/fast (future) (%future) t
   (declare #.*normal-optimize*)
-  (loop
-     (when (fulfilledp/promise future)
-       (return (force future)))
-     (steal-work)))
+  (let1 kernel *kernel*
+    (loop
+       (when (fulfilledp/promise future)
+         (return (force future)))
+       (steal-work kernel *worker*))))
 
 (defmacro %%plet/fast (predicate future-count bindings body)
   (with-gensyms (all-created-p)

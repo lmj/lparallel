@@ -48,13 +48,12 @@
   (declare #.*normal-optimize*)
   (call-with-task-handler (task-fn task)))
 
-(defun/type steal-work () () boolean
+(defun/type steal-work (kernel worker) (kernel (or worker null)) boolean
   (declare #.*normal-optimize*)
-  (when-let (task (steal-task (scheduler *kernel*)))
-    (let1 worker *worker*
-      (if worker
-          (exec-task/worker task worker)
-          (exec-task/non-worker task)))
+  (when-let (task (steal-task (scheduler kernel)))
+    (if worker
+        (exec-task/worker task worker)
+        (exec-task/non-worker task))
     t))
 
 (defun/type handshake/to-worker (worker) (worker) t
