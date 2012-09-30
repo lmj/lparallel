@@ -213,7 +213,9 @@ condition is not met."
 
 (defun pmapcar (function &rest sequences)
   "Parallel version of `mapcar'. Keyword arguments `parts' and `size'
-are also accepted (see `pmap')."
+are also accepted (see `pmap').
+
+Unlike `mapcar', `pmapcar' also accepts vectors."
   (pmap/unparsed 'list function sequences))
 
 (defun pmaplist-into (result-list function &rest lists)
