@@ -272,6 +272,7 @@
            #:pcount
            #:pcount-if
            #:pcount-if-not
+           #:pdotimes
            #:pevery
            #:pfind
            #:pfind-if

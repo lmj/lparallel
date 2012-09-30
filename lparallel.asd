@@ -100,6 +100,7 @@ See http://lparallel.org for documentation and examples.
                                            (:file "plet")
                                            (:file "pmap")
                                     #-abcl (:file "pmap-open-coded")
+                                           (:file "pdotimes")
                                            (:file "pqualifier")
                                            (:file "preduce")
                                            (:file "premove")
