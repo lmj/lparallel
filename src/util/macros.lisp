@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.util)
 
+(deftype index () `(integer 0 ,array-dimension-limit))
+
 (defmacro let1 (var value &body body)
   "Make a single `let' binding, heroically saving three columns."
   `(let ((,var ,value))

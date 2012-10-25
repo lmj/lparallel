@@ -59,6 +59,7 @@
   (:export #:interact
            #:ensure-function
            #:to-boolean)
+  (:export #:index)
   (:export #:*normal-optimize*
            #:*full-optimize*))
 
