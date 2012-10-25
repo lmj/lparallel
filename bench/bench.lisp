@@ -108,7 +108,7 @@ descriptive string."))
 
 (defun print-chunk (chunk)
   (format t "~&")
-  (mapcar 'princ chunk)
+  (mapc 'princ chunk)
   (format t "~%"))
 
 (defun ping (x)
