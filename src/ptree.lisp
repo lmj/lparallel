@@ -115,16 +115,14 @@
 (defun/type compute-node (node) (node) t
   (declare #.*normal-optimize*)
   (with-node-slots (function children result) node
-    (typecase function
-      (function
-       (unwind-protect/ext
-        :main  (setf result (with-task-context
-                              (apply (locally (declare #.*full-optimize*)
-                                       (the function function))
-                                     (mapcar #'result children))))
-        :abort (setf result (wrap-error 'task-killed-error))))
-      (otherwise
-       (check-node node)))))
+    (unwind-protect/ext
+     :main  (setf result (with-task-context
+                           (let1 function function
+                             (typecase function
+                               (function (apply (the function function)
+                                                (mapcar #'result children)))
+                               (otherwise (check-node node))))))
+     :abort (setf result (wrap-error 'task-killed-error)))))
 
 (defun/type/inline freep (node) (node) t
   (declare #.*full-optimize*)

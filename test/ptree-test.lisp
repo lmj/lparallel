@@ -89,6 +89,26 @@
     (signals ptree-undefined-function-error
       (call-ptree 'g tree))))
 
+(lp-test ptree-unknown-node-test
+  (let1 signaledp nil
+    (handler-case
+        (task-handler-bind ((error #'invoke-transfer-error))
+          (ptree ((x () 3)
+                  (y () 4)
+                  (z (x h) (* x h)))
+            (list x y z)))
+      (error (err)
+        (setf signaledp t)
+        (is (eq 'ptree-undefined-function-error (type-of err)))
+        (let ((id (lparallel.ptree::ptree-error-id err))
+              (refs (lparallel.ptree::ptree-error-refs err)))
+          (is (equal 'h id))
+          (is (equal '(z)
+                     ;; avoid sbcl warning
+                     (locally (declare (notinline sort))
+                       (sort (copy-list refs) #'string<)))))))
+    (is (not (null signaledp)))))
+
 (lp-test missing-ptree-function-test
   (let1 tree (make-ptree)
     (ptree-fn 'area   '(width height) (lambda (w h) (* w h))       tree)
