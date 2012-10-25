@@ -47,7 +47,7 @@
   (define-counter-fn inc-counter sb-ext:atomic-incf)
   (define-counter-fn dec-counter sb-ext:atomic-decf))
   
-#+(or clozure lispworks)
+#+(or ccl lispworks)
 (progn
   (defun make-counter (&optional (value 0))
     (cons value nil))
@@ -61,14 +61,14 @@
   ;;; Strangely, Clozure does advertise these atomic operations but does
   ;;; not export the symbols.
 
-  (define-counter-fn inc-counter #+clozure   ccl::atomic-incf
+  (define-counter-fn inc-counter #+ccl       ccl::atomic-incf
                                  #+lispworks system:atomic-incf
                                  1-)
-  (define-counter-fn dec-counter #+clozure   ccl::atomic-decf
+  (define-counter-fn dec-counter #+ccl       ccl::atomic-decf
                                  #+lispworks system:atomic-decf
                                  1+))
 
-#-(or sbcl clozure lispworks)
+#-(or sbcl ccl lispworks)
 (progn
   (defslots counter ()
     ((value :reader counter-value)
