@@ -30,19 +30,22 @@
 
 (in-package #:lparallel.kernel)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; util
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; util
 
-(defmacro inc-mod (place n)
-  `(setf ,place (the fixnum (mod (the fixnum (1+ (the fixnum ,place)))
-                                 (the fixnum ,n)))))
+(defmacro define-mod-inc-dec (name op op-result-type)
+  `(defmacro ,name (k n)
+     `(the index (mod (the ,',op-result-type (,',op (the index ,k)))
+                      (the index ,n)))))
 
-(defun/type/inline random-fixnum (n) (fixnum) fixnum
-  (declare #.*full-optimize*)
-  (random (the fixnum n)))
+(define-mod-inc-dec mod-inc 1+ index)
+(define-mod-inc-dec mod-dec 1- fixnum)
+
+(defmacro define-mod-incf-decf (name op)
+  `(defmacro ,name (place n)
+     `(the index (setf ,place (,',op ,place ,n)))))
+
+(define-mod-incf-decf mod-incf mod-inc)
+(define-mod-incf-decf mod-decf mod-dec)
 
 (defmacro with-pop-success (var queue &body body)
   (with-gensyms (presentp)
@@ -50,21 +53,41 @@
        (when ,presentp
          ,@body))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; scheduler
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro repeat/fixnum (count &body body)
+  (with-gensyms (left)
+    `(let1 ,left (the fixnum ,count)
+       (declare (type fixnum ,left))
+       (loop
+          (when (zerop ,left)
+            (return))
+          (decf ,left)
+          ,@body))))
+
+(defmacro do-indexes ((var size-form start from-start-p) &body body)
+  (with-gensyms (size)
+    `(let ((,var (the index ,start))
+           (,size (the index ,size-form)))
+       (declare (type index ,var ,size))
+       (repeat/fixnum ,size
+         ,(let1 next `(mod-incf ,var ,size)
+            (if from-start-p
+                `(progn ,@body ,next)
+                `(progn ,next ,@body)))))))
+
+;;;; scheduler
 
 (defun/type make-scheduler (workers spin-count)
     (simple-vector (integer 0)) scheduler
   (make-scheduler-instance :workers workers :spin-count spin-count))
 
-(defun/type/inline push-to-random-worker (task workers) (task simple-vector) t
+(defun/type/inline push-to-random-worker (task scheduler) (task scheduler) t
+  ;; Decrease random-index without caring about simultaneous changes.
+  ;; The actual value of random-index does not matter as long as it
+  ;; remains somewhat well-distributed.
   (declare #.*normal-optimize*)
-  (push-spin-queue
-   task
-   (tasks (svref workers (random-fixnum (length workers))))))
+  (with-scheduler-slots (workers random-index) scheduler
+    (push-spin-queue
+     task (tasks (svref workers (mod-decf random-index (length workers)))))))
 
 (defun/type maybe-wake-a-worker (scheduler) (scheduler) t
   (declare #.*normal-optimize*)
@@ -76,27 +99,22 @@
 (defun/type schedule-task (scheduler task priority) (scheduler
                                                      (or task null) t) t
   (declare #.*normal-optimize*)
-  (with-scheduler-slots (workers low-priority-tasks) scheduler
-    (ccase priority
-      (:low     (push-spin-queue task low-priority-tasks))
-      (:default (push-to-random-worker task workers))))
+  (ccase priority
+    (:low     (with-scheduler-slots (low-priority-tasks) scheduler
+                (push-spin-queue task low-priority-tasks)))
+    (:default (push-to-random-worker task scheduler)))
   (maybe-wake-a-worker scheduler))
 
-(defmacro/once do-workers ((worker-var &once worker-index scheduler) &body body)
-  "Loop through all workers, starting on the right of worker-index."
-  (with-gensyms (workers worker-count victim)
-    `(locally (declare #.*full-optimize*)
-       (with-scheduler-slots ((,workers workers)) ,scheduler
-         (let ((,worker-count (the fixnum
-                                (length (the simple-vector ,workers))))
-               (,victim       (the fixnum ,worker-index)))
-           (declare (fixnum ,worker-count ,victim))
-           (repeat (the fixnum ,worker-count)
-             (inc-mod ,victim ,worker-count)
-             (let1 ,worker-var (svref (the simple-vector ,workers)
-                                      ,victim)
-               (declare (type worker ,worker-var))
-               ,@body)))))))
+(defmacro do-workers ((worker-var workers start-index from-start-p)
+                      &body body)
+  (with-gensyms (worker-index)
+    `(do-indexes (,worker-index
+                  (length (the simple-vector ,workers))
+                  ,start-index
+                  ,from-start-p)
+       (let1 ,worker-var (svref (the simple-vector ,workers) ,worker-index)
+         (declare (type worker ,worker-var))
+         ,@body))))
 
 (defun/type next-task (scheduler worker) (scheduler worker) (or task null)
   (declare #.*normal-optimize*)
@@ -106,8 +124,9 @@
                (return-from next-task task)))
            (find-a-task ()
              (try-pop (tasks worker))
-             (do-workers (worker (worker-index worker) scheduler)
-               (try-pop (tasks worker))))
+             (with-scheduler-slots (workers) scheduler
+               (do-workers (worker workers (worker-index worker) nil)
+                 (try-pop (tasks worker)))))
            (maybe-sleep ()
              (with-scheduler-slots (wait-cvar wait-lock wait-count
                                     notify-count low-priority-tasks) scheduler
@@ -125,14 +144,16 @@
     (with-scheduler-slots (spin-count) scheduler
       (loop
          (find-a-task)
-         (repeat spin-count
+         (repeat/fixnum spin-count
            (find-a-task))
          (maybe-sleep)))))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
   (declare #.*full-optimize*)
-  (with-scheduler-slots (workers low-priority-tasks) scheduler
-    (do-workers (worker (random-fixnum (length workers)) scheduler)
+  (with-scheduler-slots (workers random-index low-priority-tasks) scheduler
+    ;; Start with the worker that has the most recently submitted task
+    ;; (approximately) and advance rightward.
+    (do-workers (worker workers random-index t)
       (with-pop-success task (tasks worker)
         (if task
             (return-from steal-task task)

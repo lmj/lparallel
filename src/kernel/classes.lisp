@@ -49,7 +49,7 @@
 (defslots worker (worker-notifications)
   ((thread            :reader thread)
    (running-category  :reader running-category :initform nil)
-   (index             :reader worker-index     :type fixnum)
+   (index             :reader worker-index     :type index)
    #+lparallel.with-stealing-scheduler
    (tasks             :reader tasks            :type spin-queue))
   (:documentation
@@ -65,8 +65,9 @@
    (wait-cvar          :initform (make-condition-variable))
    (wait-lock          :initform (make-lock))
    (wait-count         :initform (make-counter)    :type counter)
-   (notify-count       :initform 0)
-   (spin-count                                     :type fixnum)
+   (notify-count       :initform 0                 :type (integer 0))
+   (spin-count                                     :type index)
+   (random-index       :initform 0                 :type index)
    (low-priority-tasks :initform (make-spin-queue) :type spin-queue))
   (:documentation
    "A scheduler is responsible for storing tasks and finding the next
@@ -78,6 +79,8 @@
    coordinate waking/sleeping of workers.
 
    `spin-count' -- see `make-kernel'.
+
+   `random-index' -- some random index to the vector of workers.
 
    `low-priority-tasks' -- tasks submitted when `*task-priority*' is `:low'."))
 

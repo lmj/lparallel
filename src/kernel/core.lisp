@@ -191,7 +191,7 @@ sleeping.
 
 A kernel will not be garbage collected until `end-kernel' is called."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
-  (check-type spin-count (integer 0 #.most-positive-fixnum))
+  (check-type spin-count index)
   (let* ((workers (make-array worker-count))
          (kernel  (make-kernel-instance
                    :scheduler (make-scheduler workers spin-count)
@@ -226,7 +226,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
     (with-worker-info-slots (bindings) worker-info
       (copy-alist bindings))))
 
-(defun/type/inline %kernel-worker-count (kernel) (kernel) fixnum
+(defun/type/inline %kernel-worker-count (kernel) (kernel) index
   (length (workers kernel)))
 
 (defun kernel-worker-count ()
