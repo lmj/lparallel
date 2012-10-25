@@ -30,6 +30,28 @@
 
 (in-package #:lparallel.cognate)
 
+(defun %pdotimes (size parts fn)
+  (check-type size fixnum)
+  (when (plusp size)
+    (let ((parts (get-parts-hint parts))
+          (fn (ensure-function fn)))
+      (with-parts size parts
+        (with-submit-counted
+          (while (next-part)
+            (submit-counted
+             (let ((part-offset (part-offset))
+                   (part-size (part-size)))
+               (declare #.*normal-optimize*)
+               (declare (type fixnum part-offset part-size))
+               (lambda ()
+                 (let ((index part-offset)
+                       (end (+ part-offset part-size)))
+                   (declare (type fixnum index end))
+                   (while (< index end)
+                     (funcall fn index)
+                     (incf index)))))))
+          (receive-counted))))))
+
 (defmacro/once pdotimes ((var &once count &optional result parts)
                          &body body)
   "Parallel version of `dotimes'.
@@ -39,21 +61,11 @@ parts. Default is (kernel-worker-count).
 
 Unlike `dotimes', `pdotimes' does not define an implicit block named
 nil."
-  `(progn
-     (pdotimes-impl ,count (get-parts-hint ,parts) (lambda (,var) ,@body))
-     (let1 ,var ,count
-       (declare (ignorable ,var))
-       ,result)))
-
-(defun pdotimes-impl (size parts fn)
-  (with-parts size parts
-    (with-submit-counted
-      (while (next-part)
-        (submit-counted
-         (let ((part-offset (part-offset))
-               (part-size (part-size)))
-           (lambda ()
-             (loop
-                :for index :from part-offset :below (+ part-offset part-size)
-                :do (funcall fn index))))))
-      (receive-counted))))
+  (with-parsed-body (nil declares body)
+    `(progn
+       (%pdotimes ,count ,parts (lambda (,var)
+                                  ,@declares
+                                  (tagbody ,@body)))
+       (let1 ,var (max ,count 0)
+         (declare (ignorable ,var))
+         ,result))))
