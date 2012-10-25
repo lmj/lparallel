@@ -296,17 +296,14 @@ in (values result t). Otherwise (values nil nil) is returned."
         (values (unwrap-result result) t)
         (values nil nil))))
 
-(defmacro/once do-fast-receives ((result &once channel &once count) &body body)
-  "Receive `count' number of results, where `body' is cheap.
+(defmacro/once do-fast-receives ((result &once channel count) &body body)
+  "Receive `count' number of results from `channel', executing `body'
+each time with the result bound to `result'.
 
-`body' will execute with each result while the channel lock is held.
-`body' should be a trivial operation such as an `aref' call."
-  (with-gensyms (queue)
-    `(let1 ,queue (channel-queue ,channel)
-       (with-locked-queue ,queue
-         (repeat ,count
-           (let1 ,result (unwrap-result (pop-queue/no-lock ,queue))
-             ,@body))))))
+`body' should be a trivial operation such as an aref call."
+  `(repeat ,count
+     (let1 ,result (receive-result ,channel)
+       ,@body)))
 
 #-abcl
 (defun kill-tasks (task-category &key dry-run)
