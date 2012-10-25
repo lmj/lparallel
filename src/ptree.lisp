@@ -39,11 +39,7 @@
             lparallel.kernel::wrap-error
             lparallel.kernel::unwrap-result)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; errors
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; errors
 
 (define-condition ptree-error (error)
   ((id :initarg :id :reader ptree-error-id)))
@@ -79,11 +75,7 @@
   (:documentation
    "Lambda list keywords found in function definition."))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; node
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; node
 
 (defconstant +no-result+ 'no-result)
 
@@ -212,11 +204,7 @@
              (when-let (found (find-node child))
                (return found)))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; ptree
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; ptree
 
 (defslots %ptree ()
   ((nodes   :initform (make-hash-table :test #'eq) :type hash-table

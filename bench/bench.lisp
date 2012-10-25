@@ -30,11 +30,7 @@
 
 (in-package #:lparallel-bench)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; helpers
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helpers
 
 (defmacro collecting1 (&body body)
   (with-gensyms (result value)
@@ -66,11 +62,7 @@
 (defun flatten (list)
   (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; wall time
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; wall time
 
 #+sbcl
 (progn
@@ -99,11 +91,7 @@
 (defun wall-time (fn args)
   (second (multiple-value-list (with-wall-time (apply fn args)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; bench
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; bench
 
 (defslots bench-spec ()
   ((args-fn :reader args-fn)

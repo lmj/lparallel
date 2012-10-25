@@ -30,11 +30,7 @@
 
 (in-package #:lparallel-bench)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; util
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; util
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun home-symbols (pkg)
@@ -59,11 +55,7 @@
   `(handler-bind ((warning #'muffle-warning))
      ,@body))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; profile
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; profile
 
 (defmacro profile-fns (syms)
   ;; for small lambda-parameters-limit
@@ -91,11 +83,7 @@
   (apply #'execute args)
   (sb-profile:report))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; stat-profile
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; stat-profile
 
 (defun stat-profile (&rest args)
   (sb-sprof:with-profiling (:max-samples 100000

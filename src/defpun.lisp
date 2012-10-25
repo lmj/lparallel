@@ -43,11 +43,7 @@
             lparallel.promise::%future
             lparallel.promise::fulfilledp/promise)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; util
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; util
 
 (defmacro with-lock-predicate/wait*
     (&key lock predicate1 predicate2 succeed/lock succeed/no-lock fail)
@@ -66,11 +62,7 @@
 (defun/type/inline negate (x) (fixnum) fixnum
   (- 0 x))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; future-let
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; future-let
 
 (defun pairp (form)
   (and (consp form) (eql (length form) 2)))
@@ -101,11 +93,7 @@
            ,@(unsplice pre-body)
            ,@body)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; function registration
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; function registration
 
 ;;; defpun relies upon the inlined optimizer-flag call in order to
 ;;; achieve speedup, which means that *kernel* must exist before the
@@ -170,11 +158,7 @@
           :for name :in names
           :collect `(register-fn-name ',name))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; defpun
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; defpun
 
 (setf *optimizer* 'defpun)
 
