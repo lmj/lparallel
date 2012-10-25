@@ -169,3 +169,26 @@
 
 (lp-test declaim-defpun-test
   (is (= 81 (func2 3))))
+
+;;; lambda list keywords
+
+(defpun foo-append (&key left right)
+  (if (null left)
+      right
+      (plet ((x (first left))
+             (y (foo-append :left (rest left) :right right)))
+        (cons x y))))
+
+(lp-test defpun-lambda-list-keywords-test
+  (is (equal '(1 2 3 4 5 6 7)
+             (foo-append :left '(1 2 3) :right '(4 5 6 7))))
+  (is (equal '(1 2 3)
+             (foo-append :left '(1 2 3) :right nil)))
+  (is (equal '(1 2 3)
+             (foo-append :left '(1 2 3))))
+  (is (equal '(4 5 6 7)
+             (foo-append :right '(4 5 6 7))))
+  (is (equal nil
+             (foo-append :right nil)))
+  (is (equal nil
+             (foo-append))))

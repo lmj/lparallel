@@ -61,6 +61,21 @@
 (defun/type/inline negate (x) (fixnum) fixnum
   (- 0 x))
 
+(defun has-lambda-list-keyword-p (list)
+  (some (lambda (elem) (find elem lambda-list-keywords)) list))
+
+(defmacro defun/wrapper (wrapper-name impl-name params &body body)
+  (with-gensyms (args)
+    (multiple-value-bind (wrapper-params call-impl)
+        (if (has-lambda-list-keyword-p params)
+            (values `(&rest ,args)
+                    `(apply (function ,impl-name) ,args))
+            (values params
+                    `(,impl-name ,@params)))
+      `(defun ,wrapper-name ,wrapper-params
+         (macrolet ((call-impl () ',call-impl))
+           ,@body)))))
+
 ;;;; future-let
 
 (defun pairp (form)
@@ -260,11 +275,10 @@
                          `(plet-if/fast ,predicate ,bindings ,@body))
                        ,@(registered-macrolets))
               ,@body))
-          (defun ,name (&rest args)
+          (defun/wrapper ,name ,(unchecked-name name) ,params
             ,@(unsplice docstring)
-            (declare (dynamic-extent args))
             (check-kernel)
-            (apply #',(unchecked-name name) args))
+            (call-impl))
           (eval-when (:compile-toplevel :load-toplevel :execute)
             (register-fn ',name))))))
 
