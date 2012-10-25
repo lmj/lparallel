@@ -87,6 +87,7 @@
 
 (defun stat-profile (&rest args)
   (sb-sprof:with-profiling (:max-samples 100000
+                            :sample-interval (/ sb-sprof:*sample-interval* 2)
                             :report :graph
                             :loop nil
                             :threads :all
