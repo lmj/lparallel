@@ -407,11 +407,12 @@ each worker."
   (print-unreadable-object (kernel stream :type t :identity t)
     (format stream "~{~s~^ ~}" (kernel-info kernel))))
 
-#+(or sbcl allegro)
-(progn 
-  (defun track-exit () (setf *lisp-exiting-p* t))
-  #+sbcl    (pushnew 'track-exit sb-ext:*exit-hooks*)
-  #+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal))
+(defun track-exit ()
+  (setf *lisp-exiting-p* t))
+
+#+sbcl    (pushnew 'track-exit sb-ext:*exit-hooks*)
+#+ccl     (pushnew 'track-exit ccl:*lisp-cleanup-functions*)
+#+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal)
 
 #-abcl
 (alias-function emergency-kill-tasks kill-tasks :deprecate t)
