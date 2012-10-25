@@ -67,20 +67,16 @@
   (:documentation
    "(private) Thread utilities.")
   (:use #:cl
-        #:lparallel.util
-        #:bordeaux-threads)
+        #:lparallel.util)
   (:export #:with-thread
            #:with-lock-predicate/wait
            #:with-lock-predicate/no-wait
            #:define-locking-fn
            #:define-simple-locking-fn
            #:condition-notify-and-yield)
-  ;; exported from bordeaux-threads
   (:export #:make-lock
            #:make-condition-variable
            #:with-lock-held
-           #:acquire-lock
-           #:release-lock
            #:condition-wait))
 
 (defpackage #:lparallel.raw-queue

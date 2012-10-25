@@ -30,6 +30,19 @@
 
 (in-package #:lparallel.thread-util)
 
+(import-now bordeaux-threads:*default-special-bindings*
+            bordeaux-threads:make-thread
+            bordeaux-threads:condition-notify
+            bordeaux-threads:acquire-lock
+            bordeaux-threads:release-lock
+            #+allegro bordeaux-threads:thread-yield)
+
+(alias-macro with-lock-held bordeaux-threads:with-lock-held)
+(alias-function condition-wait bordeaux-threads:condition-wait)
+(alias-function make-lock bordeaux-threads:make-lock)
+(alias-function make-condition-variable
+                bordeaux-threads:make-condition-variable)
+
 #+clisp
 (defmacro with-abort-restart (&body body)
   `(restart-case 
