@@ -148,11 +148,11 @@
 (lp-base-test redefined-defpun-test
   (with-new-kernel (2)
     (setf *memo* 'foo)
-    (eval '(handler-bind ((warning #'muffle-warning))
-            (defpun foo (x) (* x x))))
+    (handler-bind ((warning #'muffle-warning))
+      (eval '(defpun foo (x) (* x x))))
     (is (= 9 (funcall *memo* 3)))
-    (eval '(handler-bind ((warning #'muffle-warning))
-            (defun foo (x) (* x x x))))
+    (handler-bind ((warning #'muffle-warning))
+      (eval '(defun foo (x) (* x x x))))
     (is (= 27 (funcall *memo* 3)))))
 
 ;;; forward ref
