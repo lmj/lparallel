@@ -35,7 +35,10 @@
   "Parallel version of `dotimes'.
 
 The `parts' option divides the integer range into `parts' number of
-parts. Default is (kernel-worker-count)."
+parts. Default is (kernel-worker-count).
+
+Unlike `dotimes', `pdotimes' does not define an implicit block named
+nil."
   `(progn
      (pdotimes-impl ,count (get-parts-hint ,parts) (lambda (,var) ,@body))
      (let1 ,var ,count
