@@ -212,22 +212,14 @@
            (y (force x)))
       (is (eql 11 (force y))))))
 
-(lp-test fulfill-delay-restart-test
+(lp-test future-store-value-test
   (task-handler-bind ((error (lambda (e)
                                (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
                                 (declare (ignore e))
                                 (invoke-restart 'store-value 3 4))))
       (let ((x (future (error 'foo-error))))
-        (is (equal '(3 4) (multiple-value-list (force x))))))))
-
-(lp-test fulfill-future-restart-test
-  (task-handler-bind ((error (lambda (e)
-                               (invoke-restart 'transfer-error e))))
-    (handler-bind ((foo-error (lambda (e)
-                                (declare (ignore e))
-                                (invoke-restart 'store-value 3 4))))
-      (let ((x (future (error 'foo-error))))
+        (sleep 0.1)
         (is (equal '(3 4) (multiple-value-list (force x))))))))
 
 (lp-base-test abort-future-test
