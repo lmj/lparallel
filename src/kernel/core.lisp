@@ -149,10 +149,6 @@
           (setf thread worker-thread))
         worker))))
 
-(defgeneric make-optimizer-data (specializer)
-  (:method ((specializer (eql nil)))
-    (declare (ignore specializer))))
-
 (defun start-workers (kernel workers)
   (dotimes (index (length workers))
     (setf (aref workers index)
@@ -201,7 +197,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
                                  :bindings bindings
                                  :context context
                                  :name name)
-                   :optimizer-data (make-optimizer-data *optimizer*))))
+                   :optimizer-data (funcall *make-optimizer-data*))))
     (start-workers kernel workers)
     kernel))
 

@@ -53,9 +53,8 @@
 (defvar *kernel* nil
   "The current kernel, or nil.")
 
-(defvar *optimizer* nil
-  "Determines which kernel optimizer plugin is active. This is
-  an eql specializer for the `make-optimizer-data' generic function")
+(defvar *make-optimizer-data* (lambda ())
+  "A function that creates the optimizer-data instance.")
 
 ;;; On a Core-i7 3.4GHz, a single spin takes about 2.5 microseconds.
 (defvar *kernel-spin-count* 2000

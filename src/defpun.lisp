@@ -33,11 +33,10 @@
 (import-now lparallel.util::symbolicate/package
             lparallel.kernel::kernel
             lparallel.kernel::%kernel-worker-count
-            lparallel.kernel::make-optimizer-data
             lparallel.kernel::optimizer-data
             lparallel.kernel::optimizer-flag
             lparallel.kernel::with-optimizer-slots
-            lparallel.kernel::*optimizer*
+            lparallel.kernel::*make-optimizer-data*
             lparallel.kernel::*worker*
             lparallel.kernel::steal-work
             lparallel.promise::%future
@@ -160,15 +159,11 @@
 
 ;;;; defpun
 
-(setf *optimizer* 'defpun)
-
 (defslots task-counter ()
   ((count              :initform 0 :type fixnum)
    (lock  :reader lock :initform (make-lock))))
 
-(defmethod make-optimizer-data ((specializer (eql 'defpun)))
-  (declare (ignore specializer))
-  (make-task-counter-instance))
+(setf *make-optimizer-data* 'make-task-counter-instance)
 
 (defmacro accept-task-p ()
   ;; needs fast inline for small functions
