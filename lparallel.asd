@@ -35,7 +35,7 @@
     (pushnew :lparallel.with-stealing-scheduler *features*)))
 
 (defsystem :lparallel
-  :version "1.7.0"
+  :version "1.7.1"
   :description "Parallelism for Common Lisp"
   :long-description
 "

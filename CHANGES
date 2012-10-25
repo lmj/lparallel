@@ -2,6 +2,15 @@
 lparallel Changes
 =================
 
+= 1.7.1
+
+* exiting CCL while a kernel exists no longer generates warnings
+* preserved lambda list info for a function defined with defpun when
+  no lambda list keywords are present
+* nested chain calls no longer cause multiple values to be discarded
+* error for undefined ptree node now signals in the proper context
+* reduced overhead for promises and futures; other optimizations
+
 = 1.7.0
 
 * added pdotimes
