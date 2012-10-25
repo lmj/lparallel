@@ -44,19 +44,18 @@ will still be signaled with `error'."
                 (symbol (make-condition condition))
                 (condition condition))))
 
-(defgeneric unwrap-result (result)
-  (:documentation
-   "In `receive-result', this is called on the stored task result.
-   The user receives the return value of this function."))
-
-(defmethod unwrap-result (result)
-  "Most objects unwrap to themselves."
-  result)
-
-(defmethod unwrap-result ((result wrapped-error))
-  "A `wrapped-error' signals an error upon being unwrapped."
-  (with-wrapped-error-slots (condition) result
-    (error condition)))
+(defun unwrap-result (result)
+  "In `receive-result', this is called on the stored task result. The
+user receives the return value of this function."
+  (declare #.*normal-optimize*)
+  (typecase result
+    (wrapped-error
+     ;; A `wrapped-error' signals an error upon being unwrapped.
+     (with-wrapped-error-slots (condition) result
+       (error condition)))
+    (otherwise
+     ;; Most objects unwrap to themselves.
+     result)))
 
 (defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but handles conditions signaled inside tasks
