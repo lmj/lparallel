@@ -83,6 +83,25 @@
   (let1 f (delay (chain (delay (chain (delay 3)))))
     (is (= 3 (force f)))))
 
+(lp-test nested-chain-test
+  (is (equal '(3 4 5)
+             (multiple-value-list
+              (force (chain (speculate (chain (speculate (values 3 4 5)))))))))
+  (is (equal '(3 4 5)
+             (multiple-value-list
+              (force (chain (future (chain (future (values 3 4 5)))))))))
+  (is (equal '(3 4 5)
+             (multiple-value-list
+              (force (chain (delay (chain (delay (values 3 4 5)))))))))
+  (let1 f (future (values 3 4 5))
+    (sleep 0.1)
+    (is (equal '(3 4 5)
+               (multiple-value-list
+                (force (chain (delay (chain f)))))))
+    (is (equal '(3 4 5)
+               (multiple-value-list
+                (force (chain (future (chain f)))))))))
+
 (lp-base-test speculations-test
   (setf *memo* (make-queue))
   (with-new-kernel (2)
@@ -221,6 +240,33 @@
       (let ((x (future (error 'foo-error))))
         (sleep 0.1)
         (is (equal '(3 4) (multiple-value-list (force x))))))))
+
+(lp-base-test multi-future-store-value-test
+  ;; verify STORE-VALUE is thread-safe
+  (loop
+     :for n :from 1 :to 64
+     :do (with-new-kernel (n)
+           (let* ((channel (make-channel))
+                  (counter (lparallel.counter:make-counter))
+                  (future  (task-handler-bind
+                               ((foo-error #'invoke-transfer-error))
+                             (future (error 'foo-error)))))
+             (sleep 0.1)
+             (repeat n
+               (submit-task
+                channel
+                (lambda ()
+                  (handler-bind
+                      ((foo-error (lambda (e)
+                                    (declare (ignore e))
+                                    (invoke-restart
+                                     'store-value
+                                     (lparallel.counter:inc-counter counter)))))
+                    (force future)))))
+             (let1 results (loop
+                              :repeat n
+                              :collect (receive-result channel))
+               (is (every #'= results (rest results))))))))
 
 (lp-base-test abort-future-test
   (handler-bind ((warning (lambda (w)

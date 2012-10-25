@@ -28,17 +28,6 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-;;; 
-;;; inheritance:
-;;; 
-;;;               promise-base
-;;;                 /     \
-;;;             promise   plan
-;;;                       /  \
-;;;    speculation = future  delay
-;;; 
-;;; Class names are prefixed with % to avoid being exported.
-
 (in-package #:lparallel.promise)
 
 (import-now lparallel.kernel::unwrap-result
@@ -47,48 +36,19 @@
             lparallel.kernel::task
             lparallel.kernel::call-with-task-handler
             lparallel.kernel::submit-raw-task
-            lparallel.kernel::wrap-error)
+            lparallel.kernel::wrap-error
+            lparallel.kernel::wrapped-error)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; generics
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; classes
 
-(defgeneric force (object)
-  (:documentation
-   "If `object' is a promise and the promise is fulfilled, return the
-   fulfilled value (possibly multiple values). If the promise is
-   unfulfilled then the call blocks until the promise is fulfilled.
-
-   If `object' is a chain, call `force' on the chained object.
-
-   If `object' is not a promise and not a chain, return the identical
-   object passed."))
-
-(defmethod force (object)
-  "A non-promise/non-chain forces to itself."
-  object)
-
-(defgeneric fulfilledp (object)
-  (:documentation
-   "If `object' is a promise, return a boolean indicating whether the
-   promise is fulfilled.
-
-   If `object' is a chain, call `fulfilledp' on the chained object.
-
-   If `object' is not a promise and not a chain, return true."))
-
-(defmethod fulfilledp (object)
-  "A non-promise/non-chain is always fulfilled."
-  (declare (ignore object))
-  t)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; promise-base
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;;               promise-base
+;;;                 /     \
+;;;             %promise  plan
+;;;                       /  \
+;;;    speculation = %future  %delay
+;;; 
+;;; some class names are prefixed with % to avoid being exported
 
 (defconstant +no-result+ 'no-result)
 
@@ -96,14 +56,33 @@
   ((result :reader result :initform +no-result+)
    (lock                  :initform (make-lock))))
 
-;;; for work-stealing loop
-(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
-  (declare #.*full-optimize*)
-  (not (eq (result promise) +no-result+)))
+(defslots %promise (promise-base)
+  ((cvar       :initform nil)
+   (availablep :initform t :type boolean)))
 
-(defmethod fulfilledp ((promise promise-base))
-  (declare #.*normal-optimize*)
-  (fulfilledp/promise promise))
+;;; A plan does not need an availablep flag because any failure to
+;;; acquire the lock implies the plan is unavailable.
+(defslots plan (promise-base)
+  ((fn :reader plan-fn :type (or null function))))
+
+(defslots %future (plan)
+  ((canceledp :initform nil :type boolean)))
+
+(defslots %delay (plan) ())
+
+(defslots %chain ()
+  ((object :reader chain-object)))
+
+;;;; generics
+
+(defgeneric %fulfill (promise client-fn)
+  (:method (object client-fn)
+    (declare (ignore object client-fn))
+    nil))
+
+(defgeneric %force (promise))
+
+;;;; macros
 
 (defmacro with-lock-operation (operation promise &body body)
   (with-gensyms (lock result)
@@ -119,10 +98,35 @@
   `(with-lock-operation with-lock-predicate/wait ,promise
      ,@body))
 
-(defgeneric fulfill-hook (promise client-fn)
-  (:method (object client-fn)
-    (declare (ignore object client-fn))
-    nil))
+;;;; chain
+
+(defun chain (object)
+  "Create a chain. A chain links objects together by relaying `force'
+and `fulfilledp' calls."
+  (make-%chain-instance :object object))
+
+(defmethod %fulfill ((chain %chain) client-fn)
+  (%fulfill (chain-object chain) client-fn))
+
+;;;; promise-base
+
+;;; for work-stealing loop
+(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
+  (declare #.*full-optimize*)
+  (not (eq (result promise) +no-result+)))
+
+(defun fulfilledp (object)
+   "If `object' is a promise, return a boolean indicating whether the
+promise is fulfilled.
+
+If `object' is a chain, call `fulfilledp' on the chained object.
+
+If `object' is not a promise and not a chain, return true."
+  (declare #.*normal-optimize*)
+  (typecase object
+    (promise-base (not (eq (result object) +no-result+)))
+    (%chain       (fulfilledp (chain-object object)))
+    (otherwise    t)))
 
 (defmacro fulfill (promise &body body)
   "Fulfill a promise.
@@ -137,67 +141,83 @@ false.
 
 If a non-promise is passed then false is returned immediately, with
 `body' being ignored."
-  `(fulfill-hook ,promise (lambda () ,@body)))
+  `(%fulfill ,promise (lambda () ,@body)))
 
-(defgeneric force-hook (promise))
+(defun maybe-replace-error (promise)
+  ;; It is not possible to return from `force' while the promise
+  ;; contains an error. Therefore we do not violate the one-value-only
+  ;; contraint by replacing a wrapped error with value(s).
+  ;;
+  ;; If a successful store-value invocation happens in the meantime
+  ;; then we won't signal an error.
+  (with-promise-base-slots (result lock) promise
+    (with-lock-predicate/wait lock (typep (first result) 'wrapped-error)
+      (restart-case (unwrap-result (first result))
+        (store-value (&rest values)
+          :report "Set promise value(s)."
+          :interactive (lambda () (interact "Promise value(s): "))
+          (setf result values))))))
 
-(defmethod force ((promise promise-base))
+(defun force (object)
+  "If `object' is a promise and the promise is fulfilled, return the
+fulfilled value (possibly multiple values). If the promise is
+unfulfilled then the call blocks until the promise is fulfilled.
+
+If `object' is a chain, call `force' on the chained object.
+
+If `object' is not a promise and not a chain, return the identical
+object passed."
   (declare #.*normal-optimize*)
-  (force-hook promise)
-  (with-promise-base-slots (result) promise
-    (restart-case (apply #'values (unwrap-result (first result)) (rest result))
-      (store-value (&rest values)
-        :report "Set promise value(s)."
-        :interactive (lambda () (interact "Set promise value(s): "))
-        (values-list (setf result values))))))
+  (typecase object
+    (promise-base
+     (with-unfulfilled/wait object
+       (%force object))
+     ;; result must now be a list
+     (with-promise-base-slots (result) object
+       (typecase (first result)
+         (wrapped-error
+          (maybe-replace-error object)
+          ;; result must now be a non-error
+          (force object))
+         (%chain
+          (force (chain-object (first result))))
+         (otherwise
+          (values-list result)))))
+    (%chain
+     (force (chain-object object)))
+    (otherwise
+     object)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; promise
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defslots %promise (promise-base)
-  ((cvar       :initform nil)
-   (availablep :initform t :type boolean)))
+;;;; promise
 
 (defun promise ()
   "Create a promise. A promise is a receptacle for a result which is
 unknown at the time it is created."
   (make-%promise-instance))
 
-(defmethod fulfill-hook ((promise %promise) client-fn)
+(defmethod %fulfill ((promise %promise) client-fn)
   (with-%promise-slots (result lock cvar availablep) promise
-    ;; spin until a promise claims it
-    (loop
-       :do (with-unfulfilled/no-wait promise
-             (setf availablep nil)
-             (setf result (multiple-value-list (funcall client-fn)))
-             (when cvar (condition-notify-and-yield cvar))
-             (return t))
-       :while availablep)))
+    ;; spin until it is claimed
+    (while availablep
+      (with-unfulfilled/no-wait promise
+        ;; client-fn could be expensive; set availablep in the meantime
+        (unwind-protect/ext
+         :prepare (setf availablep nil)
+         :main    (setf result (multiple-value-list (funcall client-fn)))
+         :abort   (setf availablep t))
+        (when cvar
+          (condition-notify-and-yield cvar))
+        (return t)))))
 
-(defmethod force-hook ((promise %promise))
-  (with-unfulfilled/wait promise
-    (with-%promise-slots (result lock cvar forcedp) promise
-      (unless cvar
-        (setf cvar (make-condition-variable)))
-      (loop
-         :do (condition-wait cvar lock)
-         :while (eq result +no-result+))
-      (condition-notify-and-yield cvar))))
+(defmethod %force ((promise %promise))
+  (with-%promise-slots (result lock cvar) promise
+    (unless cvar
+      (setf cvar (make-condition-variable)))
+    (while (eq result +no-result+)
+      (condition-wait cvar lock))
+    (condition-notify-and-yield cvar)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; plan
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; A plan does not need an availablep flag because any failure to
-;;; acquire the lock implies the plan is unavailable.
-
-(defslots plan (promise-base)
-  ((fn :reader plan-fn :type (or null function))))
+;;;; plan
 
 (defun/type/inline fulfill-plan/values (plan values) (plan list) t
   (with-plan-slots (result fn) plan
@@ -211,40 +231,26 @@ unknown at the time it is created."
 (defun/type fulfill-plan/error (plan err) (plan (or symbol error)) t
   (fulfill-plan/values plan (list (wrap-error err))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; delay
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defslots %delay (plan) ())
+;;;; delay
 
 (defmacro delay (&body body)
   "Create a delay. A delay is a promise which is fulfilled when
 `force' is called upon it."
   `(make-%delay-instance :fn (lambda () ,@body)))
 
-(defmethod fulfill-hook ((delay %delay) client-fn)
+(defmethod %fulfill ((delay %delay) client-fn)
   (with-unfulfilled/no-wait delay
     (fulfill-plan/values delay (multiple-value-list (funcall client-fn)))
     t))
 
-(defmethod force-hook ((delay %delay))
+(defmethod %force ((delay %delay))
   ;; do not use task handler
-  (with-unfulfilled/wait delay
-    (fulfill-plan/values
-     delay (multiple-value-list (funcall (plan-fn delay))))))
+  (fulfill-plan/values
+   delay (multiple-value-list (funcall (plan-fn delay)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; future
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; future
 
-(defslots %future (plan)
-  ((canceledp :initform nil :type boolean)))
-
-(defmethod fulfill-hook ((future %future) client-fn)
+(defmethod %fulfill ((future %future) client-fn)
   (with-unfulfilled/no-wait future
     ;; If we are here then we've stolen the task from the kernel.
     (with-%future-slots (canceledp) future
@@ -252,12 +258,11 @@ unknown at the time it is created."
       (fulfill-plan/values future (multiple-value-list (funcall client-fn))))
     t))
 
-(defmethod force-hook ((future %future))
-  (with-unfulfilled/wait future
-    ;; If we are here then we've stolen the task from the kernel.
-    (with-%future-slots (canceledp) future
-      (setf canceledp t)
-      (fulfill-plan/call future))))
+(defmethod %force ((future %future))
+  ;; If we are here then we've stolen the task from the kernel.
+  (with-%future-slots (canceledp) future
+    (setf canceledp t)
+    (fulfill-plan/call future)))
 
 (defmacro with-unfulfilled-future/no-wait (future &body body)
   (with-gensyms (lock canceledp result)
@@ -292,43 +297,9 @@ If `force' is called on an unfulfilled future then the future is
 fulfilled by the caller of `force'."
   `(make-future (make-task-fn ,@body)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; speculate
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; speculate
 
 (defmacro speculate (&body body)
   "Create a speculation. A speculation is a low-priority future."
   `(let1 *task-priority* :low
      (future ,@body)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; chain
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defslots %chain ()
-  ((object :reader chain-object)))
-
-(defun chain (object)
-  "Create a chain. A chain links objects together by relaying `force'
-and `fulfilledp' calls."
-  (make-%chain-instance :object object))
-
-(defmethod force ((chain %chain))
-  (force (chain-object chain)))
-
-(defmethod fulfilledp ((chain %chain))
-  (fulfilledp (chain-object chain)))
-
-(defmethod fulfill-hook ((chain %chain) client-fn)
-  (fulfill-hook (chain-object chain) client-fn))
-
-(defun force/no-restart (promise)
-  (force-hook promise)
-  (values-list (result promise)))
-
-(defmethod unwrap-result ((chain %chain))
-  (unwrap-result (force/no-restart (chain-object chain))))
