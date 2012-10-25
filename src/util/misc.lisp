@@ -30,7 +30,97 @@
 
 (in-package #:lparallel.util)
 
-(deftype index () `(integer 0 ,array-dimension-limit))
+(defmacro with-gensyms (names &body body)
+  `(let ,(loop
+            :for name :in names
+            :collect `(,name (gensym ,(symbol-name name))))
+     ,@body))
+
+(defmacro once-only-1 (var &body body)
+  (let ((tmp (gensym (string '#:once-only))))
+    `(let ((,tmp (gensym ,(symbol-name var))))
+       `(let ((,,tmp ,,var))
+          ,(let ((,var ,tmp))
+             ,@body)))))
+
+(defmacro once-only (vars &body body)
+  (if vars
+      `(once-only-1 ,(car vars)
+         (once-only ,(cdr vars)
+           ,@body))
+      `(progn ,@body)))
+
+(defun mklist (x)
+  (if (listp x) x (list x)))
+
+(defun unsplice (form)
+  (if form (list form) nil))
+
+(defun conc-string-designators (&rest string-designators)
+  (apply #'concatenate 'string (mapcar #'string string-designators)))
+
+(defun symbolicate (&rest string-designators)
+  "Concatenate `string-designators' then intern the result."
+  (intern (apply #'conc-string-designators string-designators)))
+
+(defun symbolicate/package (package &rest string-designators)
+  "Concatenate `string-designators' then intern the result into `package'."
+  (intern (apply #'conc-string-designators string-designators) package))
+
+(defun symbolicate/no-intern (&rest string-designators)
+  "Concatenate `string-designators' then make-symbol the result."
+  (make-symbol (apply #'conc-string-designators string-designators)))
+
+(defun has-docstring-p (body)
+  (and (stringp (car body)) (cdr body)))
+
+(defun has-declare-p (body)
+  (and (consp (car body)) (eq (caar body) 'declare)))
+
+(defun parse-body (body &key documentation whole)
+  (loop
+     :for docstring-next-p := (and documentation (has-docstring-p body))
+     :for declare-next-p   := (has-declare-p body)
+     :while (or docstring-next-p declare-next-p)
+     :when docstring-next-p :collect (pop body) :into docstrings
+     :when declare-next-p   :collect (pop body) :into declares
+     :finally (progn
+                (unless (<= (length docstrings) 1)
+                  (error "Too many documentation strings in ~S."
+                         (or whole body)))
+                (return (values body declares (first docstrings))))))
+
+(defmacro with-parsed-body ((docstring declares body) &body own-body)
+  "Pop docstring and declarations off `body' and assign them to the
+variables `docstring' and `declares' respectively. If `docstring' is
+nil then no docstring is parsed."
+  (if docstring
+      `(multiple-value-bind
+             (,body ,declares ,docstring) (parse-body ,body :documentation t)
+         ,@own-body)
+      `(multiple-value-bind
+             (,body ,declares) (parse-body ,body)
+         ,@own-body)))
+
+(defmacro import-now (&rest symbols)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (import ',symbols)))
+
+(declaim (inline to-boolean))
+(defun to-boolean (x)
+  (if x t nil))
+
+(declaim (inline ensure-function))
+(defun ensure-function (fn)
+  (if (functionp fn)
+      fn
+      (fdefinition fn)))
+
+(defun interact (&rest prompt)
+  "Read from user and eval."
+  (apply #'format *query-io* prompt)
+  (finish-output *query-io*)
+  (multiple-value-list (eval (read *query-io*))))
 
 (defmacro let1 (var value &body body)
   "Make a single `let' binding, heroically saving three columns."
@@ -66,9 +156,7 @@
           nil)))
 
 (defmacro rebind (vars &body body)
-  `(let ,(loop
-            :for var :in vars
-            :collect `(,var ,var))
+  `(let ,(mapcar #'list vars vars)
      ,@body))
 
 (defmacro unwind-protect/ext (&key prepare main cleanup abort)
@@ -108,8 +196,6 @@
                     main))
             `(progn ,cleanup nil)))))
 
-;;;; alias
-
 (defun doc-deprecate (deprecated preferred doc-type)
   (setf (documentation deprecated doc-type)
         (format nil "Deprecated. Use `~a' instead."
@@ -121,23 +207,21 @@
      (setf (symbol-function ',alias) #',orig)
      (define-compiler-macro ,alias (&rest args)
        `(,',orig ,@args))
-     ,@(when deprecate `((doc-deprecate ',alias ',orig 'function)))
+     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'function)))
      ',alias))
 
 (defmacro alias-macro (alias orig &key deprecate)
   (check-type deprecate boolean)
   `(progn
      (setf (macro-function ',alias) (macro-function ',orig))
-     ,@(when deprecate `((doc-deprecate ',alias ',orig 'function)))
+     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'function)))
      ',alias))
 
 (defmacro alias-special (alias orig &key deprecate)
   (check-type deprecate boolean)
   `(progn
      (define-symbol-macro ,alias ,orig)
-     ,@(when deprecate `((doc-deprecate ',alias ',orig 'variable)))
+     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'variable)))
      ',alias))
 
-(defmacro import-now (&rest symbols)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (import ',symbols)))
+(deftype index () `(integer 0 ,array-dimension-limit))
