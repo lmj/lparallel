@@ -153,6 +153,15 @@
   (:method ((specializer (eql nil)))
     (declare (ignore specializer))))
 
+(defun start-workers (kernel workers)
+  (dotimes (index (length workers))
+    (setf (aref workers index)
+          (make-worker kernel
+                       index
+                       #+lparallel.with-stealing-scheduler (make-spin-queue)
+                       #-lparallel.with-stealing-scheduler nil)))
+  (map nil #'handshake/to-worker workers))
+
 (defun make-kernel (worker-count
                     &key
                     (name "lparallel")
@@ -193,10 +202,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
                                  :context context
                                  :name name)
                    :optimizer-data (make-optimizer-data *optimizer*))))
-    (dotimes (index worker-count)
-      (setf (aref workers index) (make-worker kernel index (make-spin-queue))))
-    (dosequence (worker workers)
-      (handshake/to-worker worker))
+    (start-workers kernel workers)
     kernel))
 
 (defun check-kernel ()
@@ -234,10 +240,13 @@ value of `*kernel*' is stored for use in `submit-task'.
 
 As an optimization, an internal size may be given with
 `initial-capacity'. This does not limit the internal size."
+  #-lparallel.with-vector-queue
+  (declare (ignore initial-capacity))
   (check-kernel)
   (make-channel-instance
    :kernel *kernel*
-   :queue (make-queue (or initial-capacity (%kernel-worker-count *kernel*)))))
+   :queue (make-queue #+lparallel.with-vector-queue
+                      (or initial-capacity (%kernel-worker-count *kernel*)))))
 
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
@@ -261,7 +270,7 @@ As an optimization, an internal size may be given with
          ;; the task handler handles everything; unwind means thread kill
          :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
-(defun/type submit-raw-task (task kernel) (task kernel) t
+(defun/type/inline submit-raw-task (task kernel) (task kernel) t
   (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun/type submit-task (channel function &rest args)
@@ -348,8 +357,7 @@ return value is the number of tasks that would have been killed if
   (with-kernel-slots (scheduler workers) kernel
     (repeat (length workers)
       (schedule-task scheduler nil :low))
-    (dosequence (worker workers)
-      (wait-for-worker worker))))
+    (map nil #'wait-for-worker workers)))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.

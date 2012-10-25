@@ -68,7 +68,7 @@ that were created in `body'."
                        (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
                               clause))
                  :collect `(cons ',name ,fn))
-    `(let1 *client-handlers* (nconc (list ,@forms) *client-handlers*)
+    `(let1 *client-handlers* (list* ,@forms *client-handlers*)
        ,@body)))
 
 (defun invoke-transfer-error (error)

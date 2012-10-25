@@ -268,6 +268,7 @@ unknown at the time it is created."
          ,@body))))
 
 (defun/type make-future-task (future) (%future) task
+  (declare #.*normal-optimize*)
   (make-task
     (lambda ()
       (with-unfulfilled-future/no-wait future
