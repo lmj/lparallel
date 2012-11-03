@@ -228,6 +228,12 @@
       (is (eql 1 (count :foo (task-categories-running))))))
   (with-new-kernel (2)
     (let1 channel (make-channel)
+      (let1 *task-category* 999
+        (submit-task channel (lambda () (sleep 0.4))))
+      (sleep 0.2)
+      (is (eql 1 (count 999 (task-categories-running))))))
+  (with-new-kernel (2)
+    (let1 channel (make-channel)
       (let1 *task-category* :foo
         (submit-task channel (lambda () (sleep 0.4)))
         (submit-task channel (lambda () (sleep 0.4))))

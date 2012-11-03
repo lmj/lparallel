@@ -314,15 +314,13 @@ each time with the result bound to `result'.
   "This is an expensive function which should only be used in
 exceptional circumstances.
 
-A task category is any object suitable for `eq' comparison. When a
-task is submitted, it is assigned the category of `*task-category*'
-which has a default value of `:default'.
+Every task has an associated task category. When a task is submitted,
+it is assigned the category of `*task-category*' which has a default
+value of `:default'.
 
-`kill-tasks' rudely interrupts running tasks whose category is `eq' to
-`task-category'. The corresponding worker threads are killed and
-replaced.
-
-Pending tasks are not affected.
+`kill-tasks' interrupts running tasks whose category is `eql' to
+ `task-category'. The corresponding worker threads are killed and
+ replaced. Pending tasks are not affected.
 
 If you don't know what to pass for `task-category' then you should
 probably pass `:default', though this may kill more tasks than you
@@ -344,8 +342,8 @@ return value is the number of tasks that would have been killed if
         (let1 victims (map 'vector 
                            #'thread 
                            (remove-if-not (lambda (worker)
-                                            (eq (running-category worker)
-                                                task-category))
+                                            (eql (running-category worker)
+                                                 task-category))
                                           workers))
           (unless dry-run
             (map nil #'destroy-thread victims))
