@@ -35,7 +35,7 @@
    (lock :reader lock :initform (make-lock))
    (cvar              :initform nil))
   (:documentation
-   "A FIFO queue."))
+   "A blocking FIFO queue for thread communication."))
 
 ;;; Queues were originally vector-based, hence the `initial-capacity'.
 ;;; Keep the parameter in order to leave the option open.
@@ -86,58 +86,52 @@
   (queue-empty-p raw-queue-empty-p (queue) boolean)
   (peek-queue    peek-raw-queue    (queue) (values t boolean)))
 
-(defmacro fn-doc (fn doc)
-  `(setf (documentation ',fn 'function) ,doc))
+;;;; doc
 
-(defmacro fn-docs (&rest specs)
-  (let1 no-lock-ctl "Like `~a' but does not acquire the lock. ~
-                     Use inside~%`with-locked-queue'."
-    `(progn ,@(loop
-                 :for (fn doc) :in specs
-                 :for down-fn := (string-downcase (string fn))
-                 :for no-lock-doc := (format nil no-lock-ctl down-fn)
-                 :for no-lock := (symbolicate fn '#:/no-lock)
-                 :collect `(progn
-                             (fn-doc ,fn ,doc)
-                             (when (fboundp ',no-lock)
-                               (fn-doc ,no-lock ,no-lock-doc)))))))
-
-(fn-docs
- (make-queue
-  "Create a queue. 
+(setf (documentation 'make-queue 'function)
+"Create a queue. 
 
 As an optimization, an internal size may be given with
 `initial-capacity'. This does not affect `queue-count' and does not
 limit the queue size.")
 
- (peek-queue
-  "If `queue' is non-empty, return (values element t) where `element'
-is the frontmost element of `queue'.
+(setf (documentation 'peek-queue 'function)
+"If `queue' is non-empty, return (values element t) where `element' is
+the frontmost element of `queue'.
 
 If `queue' is empty, return (values nil nil).")
 
- (push-queue
-  "Push `object' onto the back of `queue'.")
+(setf (documentation 'push-queue 'function)
+"Push `object' onto the back of `queue'.")
 
- (pop-queue
-  "Remove the frontmost element from `queue' and return it.
+(setf (documentation 'pop-queue 'function)
+ "Remove the frontmost element from `queue' and return it.
 
 If `queue' is empty, block until an element is available.")
 
- (try-pop-queue
-  "Non-blocking version of `pop-queue'.
+(setf (documentation 'try-pop-queue 'function)
+"Non-blocking version of `pop-queue'.
 
 If `queue' is non-empty, remove the frontmost element from `queue' and
 return (values element t) where `element' is the element removed.
 
 If `queue' is empty, return (values nil nil).")
 
- (queue-count
-  "Return the number of elements in `queue'.")
+(setf (documentation 'queue-count 'function)
+"Return the number of elements in `queue'.")
 
- (queue-empty-p
-  "Return true if `queue' is empty, otherwise return false.")
+(setf (documentation 'queue-empty-p 'function)
+"Return true if `queue' is empty, otherwise return false.")
 
- (with-locked-queue
-  "Execute `body' with the queue lock held. Use the `/no-lock'
-functions inside `body'."))
+(setf (documentation 'with-locked-queue 'function)
+"Execute `body' with the queue lock held. Use the `/no-lock' functions
+inside `body'.")
+
+(do-external-symbols (sym *package*)
+  (let1 name (string-downcase (string sym))
+    (when (search "/no-lock" name)
+      (setf (documentation sym 'function)
+            (format nil
+                    "Like `~a' but does not acquire the lock. ~
+                     Use inside~%`with-locked-queue'."
+                    (subseq name 0 (position #\/ name :from-end t)))))))
