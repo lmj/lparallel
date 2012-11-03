@@ -82,7 +82,3 @@
 (defvar *lisp-exiting-p* nil
   "True if the Lisp process is exiting; for skipping auto-replacement
   of killed workers during exit.")
-
-;;; deprecated
-(alias-special *kernel-task-category* *task-category* :deprecate t)
-(alias-special *kernel-task-priority* *task-priority* :deprecate t)

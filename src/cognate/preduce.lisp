@@ -169,5 +169,3 @@ Returns the partial results as a vector."
          (subsize sequence (length sequence) start end)
          :partial t
          args))
-
-(alias-function preduce/partial preduce-partial :deprecate t)

@@ -194,32 +194,16 @@ nil then no docstring is parsed."
               (abort nil)
               (t nil)))))
 
-(defun doc-deprecate (deprecated preferred doc-type)
-  (setf (documentation deprecated doc-type)
-        (format nil "Deprecated. Use `~a' instead."
-                (string-downcase (string preferred)))))
-
-(defmacro alias-function (alias orig &key deprecate)
-  (check-type deprecate boolean)
+(defmacro alias-function (alias orig)
   `(progn
      (setf (symbol-function ',alias) #',orig)
      (define-compiler-macro ,alias (&rest args)
        `(,',orig ,@args))
-     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'function)))
      ',alias))
 
-(defmacro alias-macro (alias orig &key deprecate)
-  (check-type deprecate boolean)
+(defmacro alias-macro (alias orig)
   `(progn
      (setf (macro-function ',alias) (macro-function ',orig))
-     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'function)))
-     ',alias))
-
-(defmacro alias-special (alias orig &key deprecate)
-  (check-type deprecate boolean)
-  `(progn
-     (define-symbol-macro ,alias ,orig)
-     ,@(unsplice (and deprecate `(doc-deprecate ',alias ',orig 'variable)))
      ',alias))
 
 (deftype index () `(integer 0 ,array-dimension-limit))
