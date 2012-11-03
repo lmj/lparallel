@@ -42,8 +42,6 @@
         #:lparallel.defpun
         #:lparallel.promise
         #:lparallel.ptree)
-  (:import-from #:bordeaux-threads
-                #:current-thread)
   (:import-from #:eos
                 #:def-suite
                 #:in-suite

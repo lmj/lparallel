@@ -71,6 +71,6 @@
                    (unwind-protect (sleep 999999)
                      (setf cleanedp t)))))
     (sleep 0.2)
-    (bordeaux-threads:destroy-thread thread)
+    (destroy-thread thread)
     (sleep 0.2)
     (is (eq t cleanedp))))

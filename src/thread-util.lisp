@@ -42,6 +42,10 @@
 (alias-function make-lock bordeaux-threads:make-lock)
 (alias-function make-condition-variable
                 bordeaux-threads:make-condition-variable)
+(alias-function current-thread bordeaux-threads:current-thread)
+(alias-function destroy-thread bordeaux-threads:destroy-thread)
+#+lparallel.with-green-threads
+(alias-function thread-yield bordeaux-threads:thread-yield)
 
 #+clisp
 (defmacro with-abort-restart (&body body)

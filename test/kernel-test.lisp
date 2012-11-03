@@ -312,14 +312,14 @@
     (with-new-kernel (2 :bindings (list (cons '*error-output*
                                               (make-broadcast-stream))))
       (is (all-workers-alive-p))
-      (bordeaux-threads:destroy-thread 
+      (destroy-thread 
        (lparallel.kernel::thread
         (aref (lparallel.kernel::workers *kernel*) 0)))
       (is (all-workers-alive-p))
-      (bordeaux-threads:destroy-thread 
+      (destroy-thread 
        (lparallel.kernel::thread
         (aref (lparallel.kernel::workers *kernel*) 0)))
-      (bordeaux-threads:destroy-thread 
+      (destroy-thread 
        (lparallel.kernel::thread
         (aref (lparallel.kernel::workers *kernel*) 1)))
       (is (all-workers-alive-p)))))
@@ -412,7 +412,7 @@
            (timeout (submit-timeout channel 999 'timeout)))
       (sleep 0.2)
       (lparallel.kernel::with-timeout-slots (lparallel.kernel::thread) timeout
-        (bordeaux-threads:destroy-thread lparallel.kernel::thread))
+        (destroy-thread lparallel.kernel::thread))
       (signals task-killed-error
         (receive-result channel)))))
 

@@ -30,9 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(import-now bordeaux-threads:destroy-thread
-            bordeaux-threads:current-thread)
-
 #-lparallel.without-task-categories
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler
@@ -101,7 +98,7 @@
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
   ;; 
-  ;; All but ABCL execute unwind-protect for bordeaux-threads:destroy-thread.
+  ;; All but ABCL execute unwind-protect for destroy-thread.
   ;; 
   ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.

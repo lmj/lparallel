@@ -77,7 +77,11 @@
   (:export #:make-lock
            #:make-condition-variable
            #:with-lock-held
-           #:condition-wait))
+           #:condition-wait
+           #:destroy-thread
+           #:current-thread)
+  #+lparallel.with-green-threads
+  (:export #:thread-yield))
 
 (defpackage #:lparallel.raw-queue
   (:documentation
