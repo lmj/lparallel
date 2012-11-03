@@ -205,10 +205,10 @@
 ;;;; ptree
 
 (defslots %ptree ()
-  ((nodes   :initform (make-hash-table :test #'eq) :type hash-table
+  ((nodes   :initform (make-hash-table :test #'eql) :type hash-table
             :reader nodes)
-   (queue   :initform (make-queue)                 :type queue)
-   (pending :initform 0                            :type integer)))
+   (queue   :initform (make-queue)                  :type queue)
+   (pending :initform 0                             :type integer)))
 
 (defun make-ptree ()
   "Create a ptree instance."
@@ -263,7 +263,7 @@ resume from its latest pre-error state."
 
 (defun ptree-fn (id args function ptree)
   "Define a ptree node with identifier `id', which is some unique
-object suitable for `eq' comparison such as symbol.
+object suitable for `eql' comparison such as symbol.
 
 The ids of its child nodes are elements of the list `args'.
 
