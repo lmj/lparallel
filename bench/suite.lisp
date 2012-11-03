@@ -53,7 +53,7 @@
      ,(+ 10 *rehearsals*))
 
     (bench-psort
-     (sort psort)
+     (sort psort*)
      (10 50 100 500 1000 5000 10000 50000 100000 200000)
      ,*trials*
      ,*rehearsals*)
@@ -70,7 +70,7 @@
      ,*trials*
      ,*rehearsals*)))
 
-(defparameter *one-worker-less* '(bench-pfib bench-pmatrix-mul))
+(defparameter *one-worker-less* '(bench-pfib bench-pmatrix-mul bench-psort))
 
 (defparameter *spin-count* 20000)
 

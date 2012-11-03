@@ -308,7 +308,8 @@
            #:premove-if
            #:premove-if-not
            #:psome
-           #:psort))
+           #:psort
+           #:psort*))
 
 (macrolet ((define-merged-package (name doc &rest packages)
              `(defpackage ,name

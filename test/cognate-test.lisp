@@ -471,84 +471,88 @@
     (sleep 0.4)
     (is (null (pand (progn (sleep 0.2) 3) nil 4)))))
 
-(lp-test psort-test
-  ;; abcl workarounds for worse-case sort bug
-  (dolist (granularity '(nil 1 5 100))
-    (dolist (size '(1 5 10 100 10000))
-      (let1 source (make-random-vector size)
-        (let ((a (copy-seq source))
-              (b (copy-seq source)))
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a #'<)
-                      (psort b #'< :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a #'>)
-                      (psort b #'> :granularity granularity)))))
-      (let1 source (make-random-vector size)
-        (let ((a (copy-seq source))
-              (b (copy-seq source)))
-          (is (equalp ( sort a '< :key '-)
-                      (psort b '< :key '- :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a '< :key #'-)
-                      (psort b '< :key #'- :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a #'> :key '-)
-                      (psort b #'> :key '- :granularity granularity)))
-          #-abcl
-          (is (equalp ( sort a #'> :key #'-)
-                      (psort b #'> :key #'- :granularity granularity))))))
-    (let1 source (vector 5 1 9 3 6 0 1 9)
-      (let ((a (copy-seq source))
-            (b (copy-seq source)))
-        (is (equalp ( sort a #'<)
-                    (psort b #'< :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'<)
-                    (psort b #'< :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'>)
-                    (psort b #'> :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'>)
-                    (psort b #'> :granularity granularity)))))
-    (let1 source (vector 5 1 9 3 6 0 1 9)
-      (let ((a (copy-seq source))
-            (b (copy-seq source)))
-        (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                    (psort b #'< :key (lambda (x) (* -1 x))
-                           :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                    (psort b #'< :key (lambda (x) (* -1 x))
-                           :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                    (psort b #'> :key (lambda (x) (* -1 x))
-                           :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                    (psort b #'> :key (lambda (x) (* -1 x))
-                           :granularity granularity)))))
-    (let1 source (make-array 50 :initial-element 5)
-      (let ((a (copy-seq source))
-            (b (copy-seq source)))
-        (is (equalp ( sort a #'<)
-                    (psort b #'< :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'<)
-                    (psort b #'< :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'>)
-                    (psort b #'> :granularity granularity)))
-        #-abcl
-        (is (equalp ( sort a #'>)
-                    (psort b #'> :granularity granularity)))))))
+(defmacro define-psort-test (name psort)
+  `(lp-test ,name
+     ;; abcl workarounds for worse-case sort bug
+     (dolist (granularity '(nil 1 5 100))
+       (dolist (size '(1 5 10 100 10000))
+         (let1 source (make-random-vector size)
+           (let ((a (copy-seq source))
+                 (b (copy-seq source)))
+             (is (equalp (  sort a #'<)
+                         (,psort b #'< :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a #'<)
+                         (,psort b #'< :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a #'>)
+                         (,psort b #'> :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a #'>)
+                         (,psort b #'> :granularity granularity)))))
+         (let1 source (make-random-vector size)
+           (let ((a (copy-seq source))
+                 (b (copy-seq source)))
+             (is (equalp (  sort a '< :key '-)
+                         (,psort b '< :key '- :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a '< :key #'-)
+                         (,psort b '< :key #'- :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a #'> :key '-)
+                         (,psort b #'> :key '- :granularity granularity)))
+             #-abcl
+             (is (equalp (  sort a #'> :key #'-)
+                         (,psort b #'> :key #'- :granularity granularity))))))
+       (let1 source (vector 5 1 9 3 6 0 1 9)
+         (let ((a (copy-seq source))
+               (b (copy-seq source)))
+           (is (equalp (  sort a #'<)
+                       (,psort b #'< :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'<)
+                       (,psort b #'< :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'>)
+                       (,psort b #'> :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'>)
+                       (,psort b #'> :granularity granularity)))))
+       (let1 source (vector 5 1 9 3 6 0 1 9)
+         (let ((a (copy-seq source))
+               (b (copy-seq source)))
+           (is (equalp (  sort a #'< :key (lambda (x) (* -1 x)))
+                       (,psort b #'< :key (lambda (x) (* -1 x))
+                               :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'< :key (lambda (x) (* -1 x)))
+                       (,psort b #'< :key (lambda (x) (* -1 x))
+                               :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'> :key (lambda (x) (* -1 x)))
+                       (,psort b #'> :key (lambda (x) (* -1 x))
+                               :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'> :key (lambda (x) (* -1 x)))
+                       (,psort b #'> :key (lambda (x) (* -1 x))
+                               :granularity granularity)))))
+       (let1 source (make-array 50 :initial-element 5)
+         (let ((a (copy-seq source))
+               (b (copy-seq source)))
+           (is (equalp (  sort a #'<)
+                       (,psort b #'< :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'<)
+                       (,psort b #'< :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'>)
+                       (,psort b #'> :granularity granularity)))
+           #-abcl
+           (is (equalp (  sort a #'>)
+                       (,psort b #'> :granularity granularity))))))))
+
+(define-psort-test psort-test psort)
+(define-psort-test psort*-test psort*)
 
 (lp-test premove-if-test
   (loop
