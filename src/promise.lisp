@@ -128,25 +128,28 @@ If `object' is not a promise and not a chain, return true."
     (%chain       (fulfilledp (chain-object object)))
     (otherwise    t)))
 
-(defmacro fulfill (promise &body body)
-  "Fulfill a promise.
+(defmacro fulfill (object &body body)
+  "Attempt to give `object' a value.
 
-If the promise is not yet fulfilled and if it is not currently being
-fulfilled, then the implicit progn `body' will be executed and the
-promise will store the result. In this case `fulfill' returns true.
+If `object' is a promise which is not fulfilled and not currently
+being fulfilled, then the implicit progn `body' will be executed and
+the promise will store the result. In this case `fulfill' returns
+true.
 
-If the promise is already fulfilled, or if it actively being
-fulfilled, then `body' will not be executed and `fulfill' returns
-false.
+If `object' is a promise that is either already fulfilled or actively
+being fulfilled, then `body' will not be executed and `fulfill'
+returns false.
 
-If a non-promise is passed then false is returned immediately, with
-`body' being ignored."
-  `(%fulfill ,promise (lambda () ,@body)))
+If `object' is a chain, call `fullfill' on the chained object.
+
+If `object' is not a promise and not a chain then false is returned
+immediately, with `body' being ignored."
+  `(%fulfill ,object (lambda () ,@body)))
 
 (defun maybe-replace-error (promise)
   ;; It is not possible to return from `force' while the promise
   ;; contains an error. Therefore we do not violate the one-value-only
-  ;; contraint by replacing a wrapped error with value(s).
+  ;; constraint by replacing a wrapped error with value(s).
   ;;
   ;; If a successful store-value invocation happens in the meantime
   ;; then we won't signal an error.
@@ -166,7 +169,10 @@ unfulfilled then the call blocks until the promise is fulfilled.
 If `object' is a chain, call `force' on the chained object.
 
 If `object' is not a promise and not a chain, return the identical
-object passed."
+object passed.
+
+Note if `force' is called on an unfulfilled future then the future is
+fulfilled by the caller of `force'."
   (declare #.*normal-optimize*)
   (typecase object
     (promise-base
@@ -294,10 +300,7 @@ unknown at the time it is created."
 
 (defmacro future (&body body)
   "Create a future. A future is a promise which is fulfilled in
-parallel by the implicit progn `body'.
-
-If `force' is called on an unfulfilled future then the future is
-fulfilled by the caller of `force'."
+parallel by the implicit progn `body'."
   `(make-future (make-task-fn ,@body)))
 
 ;;;; speculate

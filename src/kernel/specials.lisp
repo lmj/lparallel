@@ -61,8 +61,8 @@
   "Default value of the `spin-count' argument to `make-kernel'.")
 
 (defvar *debug-tasks-p* t
-  "If true, the debugger is invoked when an error goes unhandled
-  inside a task, i.e. when the handlers established by
+  "If true (the default), the debugger is invoked when an error goes
+  unhandled inside a task, i.e. when the handlers established by
   `task-handler-bind' (if any) do not handle it.
 
   If false, unhandled errors from tasks are automatically transferred
@@ -70,8 +70,6 @@
   `transfer-error' restart. This is for convenience -- sometimes you
   wish to avoid N debugger popups arising from N errors in N worker
   threads.
-
-  The default value of `*debug-tasks-p*' is true. 
 
   For local control over debugger invocation, bind a task handler:
 

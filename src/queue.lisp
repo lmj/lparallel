@@ -72,9 +72,8 @@
   (pop-raw-queue (impl queue)))
 
 (defmacro define-simple-queue-fn (name raw arg-types return-type)
-  (with-gensyms (queue)
-    `(define-simple-locking-fn ,name (,queue) ,arg-types ,return-type lock
-       (,raw (impl ,queue)))))
+  `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock
+     (,raw (impl queue))))
 
 (defmacro define-simple-queue-fns (&rest defs)
   `(progn ,@(loop

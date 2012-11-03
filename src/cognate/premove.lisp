@@ -61,8 +61,8 @@
 (defun premove-if-not (test sequence
                        &rest args
                        &key from-end (start 0) end key parts)
-  "Parallel version of `remove-if-not'. Note the `count' and option is
-not supported.
+  "Parallel version of `remove-if-not'. Note the `count' option is not
+supported.
 
 The `parts' option divides `sequence' into `parts' number of parts.
 Default is (kernel-worker-count)."
@@ -75,7 +75,7 @@ Default is (kernel-worker-count)."
 (defun premove-if (test sequence
                    &rest args
                    &key from-end (start 0) end key parts)
-  "Parallel version of `remove-if'. Note the `count' and option is not
+  "Parallel version of `remove-if'. Note the `count' option is not
 supported.
 
 The `parts' option divides `sequence' into `parts' number of parts.
@@ -89,7 +89,7 @@ Default is (kernel-worker-count)."
 (defun premove (item sequence
                 &rest args
                 &key test test-not from-end (start 0) end key parts)
-  "Parallel version of `remove'. Note the `count' and option is not
+  "Parallel version of `remove'. Note the `count' option is not
 supported.
 
 The `parts' option divides `sequence' into `parts' number of parts.
