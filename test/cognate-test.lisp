@@ -403,16 +403,23 @@
                     (pmapl #'cdr :parts parts a))))))
 
 (defmacro define-plet-test (test-name fn-name defun)
+  ;; use assert since this may execute in another thread
   `(progn
      (,defun ,fn-name ()
        (plet ((a 3)
               (b 4))
-         (is (= 7 (+ a b))))
-       (signals client-error
-         (task-handler-bind ((error (lambda (e)
-                                      (invoke-restart 'transfer-error e))))
-           (plet ((a (error 'client-error)))
-             a)))
+         (assert (= 7 (+ a b))))
+       (let1 handledp nil
+         (block done
+           (handler-bind ((client-error (lambda (e)
+                                          (declare (ignore e))
+                                          (setf handledp t)
+                                          (return-from done))))
+             (task-handler-bind ((error (lambda (e)
+                                          (invoke-restart 'transfer-error e))))
+               (plet ((a (error 'client-error)))
+                 a))))
+         (assert handledp))
        (task-handler-bind ((error (lambda (e)
                                     (invoke-restart 'transfer-error e))))
          (handler-bind ((error (lambda (e)
@@ -421,9 +428,10 @@
            (setf *memo* (lambda () (error "foo")))
            (plet ((a 3)
                   (b (funcall *memo*)))
-             (is (= 7 (+ a b)))))))
+             (assert (= 7 (+ a b)))))))
      (lp-test ,test-name
-       (,fn-name))))
+       (,fn-name)
+       (is (= 1 1)))))
 
 (define-plet-test plet-test plet-test-fn defun)
 

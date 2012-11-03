@@ -173,7 +173,7 @@
             (b (fib-let (- n 2))))
         (+ a b))))
 
-(defpun fib-plet (n)
+(defpun* fib-plet (n)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (if (< n 2)
       n
@@ -181,7 +181,7 @@
              (b (fib-plet (- n 2))))
         (+ a b))))
 
-(defpun fib-plet-if (n)
+(defpun* fib-plet-if (n)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (if (< n 2)
       n
@@ -249,7 +249,7 @@
        (compute-rows-between 0 (1- n)))))
 
 (define-mm matrix-mul defun let)
-(define-mm pmatrix-mul defpun plet)
+(define-mm pmatrix-mul defpun* plet)
 
 (defun run-mm (fn n)
   (funcall fn

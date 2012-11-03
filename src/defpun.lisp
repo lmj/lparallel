@@ -58,9 +58,6 @@
         ,fail-tag
           (return-from ,top ,fail)))))
 
-(defun/type/inline negate (x) (fixnum) fixnum
-  (- 0 x))
-
 (defun has-lambda-list-keyword-p (list)
   (some (lambda (elem) (find elem lambda-list-keywords)) list))
 
@@ -186,82 +183,111 @@
   `(locally (declare #.*full-optimize*)
      (the boolean (optimizer-flag (the kernel *kernel*)))))
 
-(defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
-  (declare #.*full-optimize*)
-  (with-optimizer-slots (optimizer-data optimizer-flag) kernel
-    (with-task-counter-slots (count) optimizer-data
-      (incf count delta)
-      ;; `<=' returns generalized boolean
-      (setf optimizer-flag (to-boolean
-                            (<= count
-                                (the fixnum
-                                  (1+ (%kernel-worker-count kernel)))))))))
+(defmacro define-update-task-count/no-lock (name op)
+  `(defun/type ,name (kernel delta) (kernel fixnum) t
+     (declare #.*full-optimize*)
+     (with-optimizer-slots (optimizer-data optimizer-flag) kernel
+       (with-task-counter-slots (count) optimizer-data
+         (incf count delta)
+         ;; `<=' returns generalized boolean
+         (setf optimizer-flag
+               (to-boolean (<= count (the fixnum (,op kernel)))))))))
 
-(defun/type update-task-count (kernel delta) (kernel fixnum) t
-  (declare #.*normal-optimize*)
-  (with-lock-held ((lock (optimizer-data kernel)))
-    (update-task-count/no-lock kernel delta)))
+(macrolet ((n-workers   (k) `(%kernel-worker-count ,k))
+           (n-1-workers (k) `(1+ (%kernel-worker-count ,k))))
+  (define-update-task-count/no-lock update-task-count/no-lock    n-workers)
+  (define-update-task-count/no-lock update-task-count/no-lock/-1 n-1-workers))
 
-(defmacro future/fast (&body body)
-  (with-gensyms (kernel)
-    `(let1 ,kernel (the kernel *kernel*)
-       (declare (type kernel ,kernel))
-       (future
-         (unwind-protect
-              (progn ,@body)
-           (update-task-count ,kernel -1))))))
+(defmacro define-update-task-count (name op)
+  `(defun/type ,name (kernel delta) (kernel fixnum) t
+     (declare #.*full-optimize*)
+     (with-lock-held ((lock (optimizer-data kernel)))
+       (,op kernel delta))))
+
+(define-update-task-count update-task-count    update-task-count/no-lock)
+(define-update-task-count update-task-count/-1 update-task-count/no-lock/-1)
+
+(defmacro define-future/fast (name update-task-count)
+  `(defmacro ,name (&body body)
+     (with-gensyms (kernel)
+       `(let1 ,kernel (the kernel *kernel*)
+          (declare (type kernel ,kernel))
+          (future
+            (unwind-protect
+                 (progn ,@body)
+              (,',update-task-count ,kernel -1)))))))
+
+(define-future/fast future/fast    update-task-count)
+(define-future/fast future/fast/-1 update-task-count/-1)
 
 (defun/type force/fast (future) (%future) t
-  (declare #.*normal-optimize*)
-  (let1 kernel *kernel*
+  (declare #.*full-optimize*)
+  (let ((kernel *kernel*)
+        (worker *worker*))
     (loop
        (when (fulfilledp/promise future)
          (return (force future)))
-       (steal-work kernel *worker*))))
+       (steal-work kernel worker))))
 
-(defmacro %%plet/fast (predicate future-count bindings body)
-  (with-gensyms (all-created-p)
-    `(with-lock-predicate/wait*
-         :lock            (lock (optimizer-data *kernel*))
-         :predicate1      ,predicate
-         :predicate2      (accept-task-p)
-         :succeed/lock    (update-task-count/no-lock *kernel* ,future-count)
-         :succeed/no-lock (let1 ,all-created-p nil
-                            (unwind-protect
-                                 (future-let :future future/fast
-                                             :force force/fast
-                                             :bindings ,bindings
-                                             :pre-body (setf ,all-created-p t)
-                                             :body ,body)
-                              ;; In the rare event of future
-                              ;; creation failure, roll back the
-                              ;; optimizer count.
-                              ;; 
-                              ;; It's OK if some futures were
-                              ;; created; defpun will just
-                              ;; temporarily become more accepting
-                              ;; of tasks.
-                              (when (not ,all-created-p)
-                                (update-task-count *kernel*
-                                                   (negate ,future-count)))))
-         :fail            (let ,bindings ,@body))))
+(defmacro %%plet/fast (future/fast update-task-count/no-lock
+                       predicate future-count bindings body)
+  `(with-lock-predicate/wait*
+       :lock            (lock (optimizer-data *kernel*))
+       :predicate1      ,predicate
+       :predicate2      (accept-task-p)
+       :succeed/lock    (,update-task-count/no-lock *kernel* ,future-count)
+       :succeed/no-lock (future-let :future ,future/fast
+                                    :force force/fast
+                                    :bindings ,bindings
+                                    :body ,body)
+       :fail            (let ,bindings ,@body)))
 
-(defmacro %plet/fast (predicate bindings body)
+(defmacro %plet/fast (future/fast update-task-count/no-lock
+                      predicate bindings body)
   (with-parsed-let-args (pairs non-pairs syms) bindings
     (declare (ignore non-pairs syms))
     (if pairs
-        `(%%plet/fast ,predicate ,(length pairs) ,bindings ,body)
+        `(%%plet/fast ,future/fast ,update-task-count/no-lock
+                      ,predicate ,(length pairs) ,bindings ,body)
         `(let ,bindings ,@body))))
 
-(defmacro plet/fast (bindings &body body)
-  `(%plet/fast (accept-task-p) ,bindings ,body))
+(defmacro define-plet/fast (name
+                            future/fast
+                            update-task-count/no-lock)
+  `(defmacro ,name (bindings &body body)
+     `(%plet/fast ,',future/fast
+                  ,',update-task-count/no-lock
+                  (accept-task-p)
+                  ,bindings
+                  ,body)))
 
-(defmacro plet-if/fast (predicate bindings &body body)
-  `(%plet/fast (and (accept-task-p) ,predicate)
-               ,bindings
-               ,body))
+(define-plet/fast plet/fast
+                  future/fast
+                  update-task-count/no-lock)
 
-(defmacro define-defpun (defpun defun doc &rest types)
+(define-plet/fast plet/fast/-1
+                  future/fast/-1
+                  update-task-count/no-lock/-1)
+
+(defmacro define-plet-if/fast (name
+                               future/fast
+                               update-task-count/no-lock)
+  `(defmacro ,name (predicate bindings &body body)
+     `(%plet/fast ,',future/fast
+                  ,',update-task-count/no-lock
+                  (and (accept-task-p) ,predicate)
+                  ,bindings ,body)))
+
+(define-plet-if/fast plet-if/fast
+                     future/fast
+                     update-task-count/no-lock)
+
+(define-plet-if/fast plet-if/fast/-1
+                     future/fast/-1
+                     update-task-count/no-lock/-1)
+
+(defmacro define-defpun (defpun doc defun plet/fast plet-if/fast call-impl
+                         &rest types)
   `(defmacro ,defpun (name params ,@types &body body)
      ,doc
      (with-parsed-body (docstring declares body)
@@ -271,19 +297,30 @@
           (,',defun ,(unchecked-name name) ,params ,,@types
             ,@declares
             (macrolet ((plet (bindings &body body)
-                         `(plet/fast ,bindings ,@body))
+                         `(,',',plet/fast ,bindings ,@body))
                        (plet-if (predicate bindings &body body)
-                         `(plet-if/fast ,predicate ,bindings ,@body))
+                         `(,',',plet-if/fast ,predicate ,bindings ,@body))
                        ,@(registered-macrolets))
               ,@body))
           (defun/wrapper ,name ,(unchecked-name name) ,params
             ,@(unsplice docstring)
             (check-kernel)
-            (call-impl))
+            (,',call-impl))
           (eval-when (:compile-toplevel :load-toplevel :execute)
-            (register-fn ',name))))))
+            (register-fn ',name))
+          ',name))))
 
-(define-defpun defpun defun
+(defmacro call-impl-in-worker ()
+  (with-gensyms (worker channel)
+    `(let1 ,worker *worker*
+       (if ,worker
+           (call-impl)
+           (let1 ,channel (make-channel)
+             (submit-task ,channel (lambda ()
+                                     (multiple-value-list (call-impl))))
+             (values-list (receive-result ,channel)))))))
+
+(define-defpun defpun
   "`defpun' defines a function which is specially geared for
 fine-grained parallelism. If you have many small tasks which bog down
 the system, `defpun' may help.
@@ -305,9 +342,13 @@ func2 reference each other--then use `declaim-defpun' to specify
 intent:
 
     (declaim-defpun func1 func2)
-")
+"
+  defun
+  plet/fast
+  plet-if/fast
+  call-impl-in-worker)
 
-(define-defpun defpun/type defun/type
+(define-defpun defpun/type
   "Typed version of `defpun'. 
 
 `arg-types' is an unevaluated list of argument types.
@@ -318,4 +359,30 @@ indicating multiple values as in (values fixnum float).
 \(As a technical point, if `return-type' contains no lambda list
 keywords then the return type given to ftype will be additionally
 constrained to match the number of return values specified.)"
-  arg-types return-type)
+  defun/type
+  plet/fast
+  plet-if/fast
+  call-impl-in-worker
+  arg-types
+  return-type)
+
+(define-defpun defpun*
+  "Like `defpun' except that it defines a function which is optimized
+for N-1 worker threads where N is the number of cores.
+
+A function defined with `defpun*' differs from its unstarred
+counterpart in two ways: it has less overhead, and the thread which
+calls it participates in the computation."
+  defun
+  plet/fast/-1
+  plet-if/fast/-1
+  call-impl)
+
+(define-defpun defpun/type*
+  "Typed version of `defpun*'. Also see `defpun/type'."
+  defun/type
+  plet/fast/-1
+  plet-if/fast/-1
+  call-impl
+  arg-types
+  return-type)

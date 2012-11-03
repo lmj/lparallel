@@ -306,7 +306,9 @@
         #:lparallel.promise
         #:lparallel.cognate)
   (:export #:defpun
+           #:defpun*
            #:defpun/type
+           #:defpun/type*
            #:declaim-defpun
            #:plet
            #:plet-if))
