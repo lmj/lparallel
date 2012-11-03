@@ -51,7 +51,7 @@
         ;; inner plet was parallelized
         (assert (eq :inner (pop-queue queue)))))
 
-#+(or (not allegro) os-threads)
+#-lparallel.with-green-threads
 (lp-base-test defpun-accept-test
   (with-new-kernel (3)
     (sleep 0.1)
@@ -79,7 +79,7 @@
     ;; inner plet was not parallelized
     (assert (eq :outer (pop-queue queue)))))
   
-#+(or (not allegro) os-threads)
+#-lparallel.with-green-threads
 (lp-base-test defpun-reject-test
   (with-new-kernel (2)
     (sleep 0.1)
@@ -109,7 +109,7 @@
 
 (lp-test defpun-fib-test
   (loop
-     :for n :from 1 :to #-allegro 15 #+allegro 3
+     :for n :from 1 :to 15
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))
 
 ;;; typed
@@ -137,7 +137,7 @@
 
 (lp-test defpun/type-fib-test
   (loop
-     :for n :from 1 :to #-allegro 15 #+allegro 3
+     :for n :from 1 :to 15
      :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
 
 ;;; redefinitions
@@ -210,7 +210,7 @@
         ;; inner plet was parallelized
         (is (eq :inner (pop-queue queue)))))
 
-#+(or (not allegro) os-threads)
+#-lparallel.with-green-threads
 (lp-base-test defpun*-accept-test
   (with-new-kernel (3)
     (sleep 0.1)
@@ -236,7 +236,7 @@
     ;; inner plet was not parallelized
     (is (eq :outer (pop-queue queue)))))
   
-#+(or (not allegro) os-threads)
+#-lparallel.with-green-threads
 (lp-base-test defpun*-reject-test
   (with-new-kernel (2)
     (sleep 0.1)
@@ -274,7 +274,7 @@
 
 (lp-test defpun*-fib-test
   (loop
-     :for n :from 1 :to #-allegro 15 #+allegro 3
+     :for n :from 1 :to 15
      :do (is (= (fib*-let n) (fib*-plet n) (fib*-plet-if n)))))
 
 ;;; typed
@@ -302,7 +302,7 @@
 
 (lp-test defpun/type*-fib-test
   (loop
-     :for n :from 1 :to #-allegro 15 #+allegro 3
+     :for n :from 1 :to 15
      :do (is (= (fib*-let/type n) (fib*-plet/type n) (fib*-plet-if/type n)))))
 
 ;;; redefinitions

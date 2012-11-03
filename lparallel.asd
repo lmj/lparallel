@@ -32,7 +32,11 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (when (and (find :sbcl *features*)
              (not (find :lparallel.without-stealing-scheduler *features*)))
-    (pushnew :lparallel.with-stealing-scheduler *features*)))
+    (pushnew :lparallel.with-stealing-scheduler *features*))
+
+  (when (and (find :allegro *features*)
+             (not (find :os-threads *features*)))
+    (pushnew :lparallel.with-green-threads *features*)))
 
 (defsystem :lparallel
   :version "1.7.1"

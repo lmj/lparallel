@@ -227,6 +227,7 @@
     (loop
        (when (fulfilledp/promise future)
          (return (force future)))
+       #+lparallel.with-green-threads (thread-yield)
        (steal-work kernel worker))))
 
 (defmacro %%plet/fast (future/fast update-task-count/no-lock

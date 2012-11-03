@@ -34,8 +34,7 @@
             bordeaux-threads:make-thread
             bordeaux-threads:condition-notify
             bordeaux-threads:acquire-lock
-            bordeaux-threads:release-lock
-            #+allegro bordeaux-threads:thread-yield)
+            bordeaux-threads:release-lock)
 
 (alias-macro with-lock-held bordeaux-threads:with-lock-held)
 (alias-function condition-wait bordeaux-threads:condition-wait)
@@ -114,10 +113,10 @@
      (declare #.*normal-optimize*)
      ,@body))
 
-#+allegro
+#+lparallel.with-green-threads
 (defun condition-notify-and-yield (cvar)
   (condition-notify cvar)
   (thread-yield))
 
-#-allegro
+#-lparallel.with-green-threads
 (alias-function condition-notify-and-yield condition-notify)
