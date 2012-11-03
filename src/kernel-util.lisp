@@ -58,15 +58,6 @@
             (do-fast-receives (result channel count)
               (declare (ignore result)))))))
 
-(defun receive-results/dynamic (channel counter)
-  (declare #.*normal-optimize*)
-  (let1 worker *worker*
-    (if worker
-        (while (plusp (dec-counter counter))
-          (steal-until-receive-result channel worker nil))
-        (while (plusp (dec-counter counter))
-          (receive-result channel)))))
-
 (defmacro with-submit-counted (&body body)
   (with-gensyms (count channel)
     `(let ((,count   0)
@@ -79,18 +70,6 @@
               (receive-counted ()
                 (receive-results ,channel ,count nil)))
          (declare (inline submit-counted receive-counted))
-         ,@body))))
-
-(defmacro with-submit-dynamic-counted (&body body)
-  (with-gensyms (counter channel)
-    `(let ((,counter (make-counter))
-           (,channel (make-channel)))
-       (flet ((submit-dynamic-counted (&rest args)
-                (declare (dynamic-extent args))
-                (inc-counter ,counter)
-                (apply #'submit-task ,channel args))
-              (receive-dynamic-counted ()
-                (receive-results/dynamic ,channel ,counter)))
          ,@body))))
 
 (defun indexing-wrapper (array index function args)

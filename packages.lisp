@@ -208,9 +208,6 @@
   (:export #:with-submit-counted
            #:submit-counted
            #:receive-counted)
-  (:export #:with-submit-dynamic-counted
-           #:submit-dynamic-counted
-           #:receive-dynamic-counted)
   (:export #:with-submit-indexed
            #:submit-indexed
            #:receive-indexed)
