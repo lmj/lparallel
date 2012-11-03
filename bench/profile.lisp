@@ -58,7 +58,6 @@
 ;;;; profile
 
 (defmacro profile-fns (syms)
-  ;; for small lambda-parameters-limit
   `(progn
      ,@(loop
           :for sym :in syms
@@ -70,11 +69,7 @@
                     (or (match-package-p "lparallel" pkg)
                         (match-package-p "bordeaux-threads" pkg)
                         #+(and sbcl lparallel.with-stealing-scheduler)
-                        (match-package-p "sb-concurrency" pkg)))))
-  (profile-fns (random rem mod map reduce))
-  #+(or)
-  ;; causes recursion problem in profiler
-  (profile-fns (sort)))
+                        (match-package-p "sb-concurrency" pkg))))))
 
 (defun profile (&rest args)
   (without-warnings
