@@ -174,9 +174,10 @@
 
 ;;;; defpun
 
-(defslots task-counter ()
-  ((count              :initform 0 :type fixnum)
-   (lock  :reader lock :initform (make-lock))))
+(locally (declare #.*full-optimize*)
+  (defslots task-counter ()
+    ((count              :initform 0 :type fixnum)
+     (lock  :reader lock :initform (make-lock)))))
 
 (setf *make-optimizer-data* 'make-task-counter-instance)
 

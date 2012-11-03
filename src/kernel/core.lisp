@@ -33,9 +33,10 @@
 (import-now bordeaux-threads:destroy-thread
             bordeaux-threads:current-thread)
 
+#-lparallel.without-task-categories
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-worker-slots (running-category) worker
     (let1 prev-category running-category
       (unwind-protect/ext
@@ -43,38 +44,44 @@
        :main    (funcall (task-fn task))
        :cleanup (setf running-category prev-category)))))
 
-(defun/type exec-task/non-worker (task) (task) t
+#+lparallel.without-task-categories
+(defun/type/inline exec-task/worker (task worker) (task worker) t
+  (declare #.*full-optimize*)
+  (declare (ignore worker))
+  (funcall (task-fn task)))
+
+(defun/type/inline exec-task/non-worker (task) (task) t
   ;; not inside call-with-task-handler
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (call-with-task-handler (task-fn task)))
 
 (defun/type steal-work (kernel worker) (kernel (or worker null)) boolean
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (when-let (task (steal-task (scheduler kernel)))
     (if worker
         (exec-task/worker task worker)
         (exec-task/non-worker task))
     t))
 
-(defun/type handshake/to-worker (worker) (worker) t
+(defun handshake/to-worker (worker)
   (with-worker-slots (handshake/from-worker handshake/to-worker) worker
     (push-queue 'proceed handshake/to-worker)
     (assert (eq 'ok (pop-queue handshake/from-worker)))))
 
-(defun/type handshake/from-worker (worker) (worker) t
+(defun handshake/from-worker (worker)
   (with-worker-slots (handshake/from-worker handshake/to-worker) worker
     (assert (eq 'proceed (pop-queue handshake/to-worker)))
     (push-queue 'ok handshake/from-worker)))
 
-(defun/type notify-exit (worker) (worker) t
+(defun notify-exit (worker)
   (with-worker-slots (exit-notification) worker
     (push-queue 'exit exit-notification)))
 
-(defun/type wait-for-worker (worker) (worker) t
+(defun wait-for-worker (worker)
   (with-worker-slots (exit-notification) worker
     (assert (eq 'exit (pop-queue exit-notification)))))
 
-(defun/type replace-worker (kernel worker) (kernel worker) t
+(defun replace-worker (kernel worker)
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
       (let1 index (position worker workers :test #'eq)
@@ -89,7 +96,7 @@
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct."))))))
 
-(defun/type worker-loop (kernel worker) (kernel worker) t
+(defun worker-loop (kernel worker)
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
@@ -106,8 +113,7 @@
        :abort (unless *lisp-exiting-p*
                 (replace-worker kernel worker)))))
 
-(defun/type call-with-worker-context (fn worker-context kernel)
-    (function function kernel) t
+(defun call-with-worker-context (fn worker-context kernel)
   (funcall worker-context
            (lambda ()
              (let1 *worker* (find (current-thread) (workers kernel)
@@ -115,7 +121,7 @@
                (assert *worker*)
                (%call-with-task-handler fn)))))
 
-(defun/type enter-worker-loop (kernel worker) (kernel worker) t
+(defun enter-worker-loop (kernel worker)
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (context) worker-info
       (call-with-worker-context
@@ -223,6 +229,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
       (copy-alist bindings))))
 
 (defun/type/inline %kernel-worker-count (kernel) (kernel) index
+  (declare #.*full-optimize*)
   (length (workers kernel)))
 
 (defun kernel-worker-count ()
@@ -254,9 +261,11 @@ As an optimization, an internal size may be given with
          (lambda () ,@body))))
 
 (defun/type/inline make-task (fn) (function) task
+  (declare #.*normal-optimize*)
   (make-task-instance :category *task-category* :fn fn))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
+  (declare #.*full-optimize*)
   (let1 queue (channel-queue channel)
     (make-task
       (make-task-fn
@@ -267,22 +276,24 @@ As an optimization, an internal size may be given with
          :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
 (defun/type/inline submit-raw-task (task kernel) (task kernel) t
+  (declare #.*full-optimize*)
   (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun/type submit-task (channel function &rest args)
     (channel (or symbol function) &rest t) t
+  (declare #.*normal-optimize*)
   "Submit a task through `channel' to the kernel stored in `channel'."
   (submit-raw-task (make-channeled-task channel
                                         (ensure-function function)
                                         args)
                    (channel-kernel channel)))
 
-(defun/type receive-result (channel) (channel) t
+(defun receive-result (channel)
   "Remove a result from `channel'. If nothing is available the call
 will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))
 
-(defun/type try-receive-result (channel) (channel) (values t boolean)
+(defun try-receive-result (channel)
   "Non-blocking version of `receive-result'.
 
 If a result is available then it is returned as the primary value

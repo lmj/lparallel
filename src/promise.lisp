@@ -219,16 +219,16 @@ unknown at the time it is created."
 
 ;;;; plan
 
-(defun/type/inline fulfill-plan/values (plan values) (plan list) t
+(defun/inline fulfill-plan/values (plan values)
   (with-plan-slots (result fn) plan
     (setf result values
           fn nil)))
 
-(defun/type/inline fulfill-plan/call (plan) (plan) t
+(defun/inline fulfill-plan/call (plan)
   (fulfill-plan/values
    plan (multiple-value-list (call-with-task-handler (plan-fn plan)))))
 
-(defun/type fulfill-plan/error (plan err) (plan (or symbol error)) t
+(defun fulfill-plan/error (plan err)
   (fulfill-plan/values plan (list (wrap-error err))))
 
 ;;;; delay
@@ -273,7 +273,7 @@ unknown at the time it is created."
          ,@body))))
 
 (defun/type make-future-task (future) (%future) task
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (make-task
     (lambda ()
       (with-unfulfilled-future/no-wait future
@@ -282,12 +282,15 @@ unknown at the time it is created."
          ;; the task handler handles everything; unwind means thread kill
          :abort (fulfill-plan/error future 'task-killed-error))))))
 
-(defun make-future (fn)
+(defun/type make-future (fn) (function) %future
   (declare #.*normal-optimize*)
-  (check-kernel)
-  (let1 future (make-%future-instance :fn fn)
-    (submit-raw-task (make-future-task future) *kernel*)
-    future))
+  (let1 kernel *kernel*
+    (unless kernel
+      (check-kernel)
+      (setf kernel *kernel*))
+    (let1 future (make-%future-instance :fn fn)
+      (submit-raw-task (make-future-task future) kernel)
+      future)))
 
 (defmacro future (&body body)
   "Create a future. A future is a promise which is fulfilled in

@@ -30,8 +30,7 @@
 
 (in-package #:lparallel.cognate)
 
-(defun/type find-num-parts (size parts-hint)
-    (t fixnum) (values fixnum fixnum fixnum)
+(defun find-num-parts (size parts-hint)
   (multiple-value-bind (quo rem) (floor size parts-hint)
     (values (if (zerop quo) rem parts-hint) quo rem)))
 

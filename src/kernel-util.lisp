@@ -78,8 +78,7 @@
                 (incf ,count))
               (receive-counted ()
                 (receive-results ,channel ,count nil)))
-         (declare (inline submit-counted receive-counted)
-                  (dynamic-extent #'submit-counted #'receive-counted))
+         (declare (inline submit-counted receive-counted))
          ,@body))))
 
 (defmacro with-submit-dynamic-counted (&body body)
@@ -107,7 +106,6 @@
                 (receive-results ,channel ,count nil)
                 ,array))
          (declare (inline submit-indexed receive-indexed))
-         (declare (dynamic-extent #'submit-indexed #'receive-indexed))
          ,@body))))
 
 (defmacro with-submit-cancelable (&body body)
@@ -116,9 +114,11 @@
            (,count     0)
            (,channel   (make-channel)))
        (flet ((submit-cancelable (fn &rest args)
-                (submit-task ,channel (lambda () (if ,canceledp
-                                                     'task-canceled
-                                                     (apply fn args))))
+                (submit-task ,channel
+                             (lambda ()
+                               (if ,canceledp
+                                   'task-canceled
+                                   (apply fn args))))
                 (incf ,count)))
          (macrolet ((receive-cancelables (result &body body)
                       `(receive-results

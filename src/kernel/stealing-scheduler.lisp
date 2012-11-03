@@ -76,21 +76,20 @@
 
 ;;;; scheduler
 
-(defun/type make-scheduler (workers spin-count)
-    (simple-vector (integer 0)) scheduler
+(defun make-scheduler (workers spin-count)
   (make-scheduler-instance :workers workers :spin-count spin-count))
 
 (defun/type/inline push-to-random-worker (task scheduler) (task scheduler) t
   ;; Decrease random-index without caring about simultaneous changes.
   ;; The actual value of random-index does not matter as long as it
   ;; remains somewhat well-distributed.
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-scheduler-slots (workers random-index) scheduler
     (push-spin-queue
      task (tasks (svref workers (mod-decf random-index (length workers)))))))
 
 (defun/type maybe-wake-a-worker (scheduler) (scheduler) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-scheduler-slots (wait-lock wait-cvar wait-count notify-count) scheduler
     (with-lock-predicate/wait wait-lock (plusp (counter-value wait-count))
       (incf notify-count)
@@ -98,7 +97,7 @@
 
 (defun/type schedule-task (scheduler task priority) (scheduler
                                                      (or task null) t) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (ccase priority
     (:low     (with-scheduler-slots (low-priority-tasks) scheduler
                 (push-spin-queue task low-priority-tasks)))
@@ -117,7 +116,7 @@
          ,@body))))
 
 (defun/type next-task (scheduler worker) (scheduler worker) (or task null)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (labels ((try-pop (queue)
              (declare (type spin-queue queue))
              (with-pop-success task queue
