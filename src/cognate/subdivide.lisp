@@ -56,17 +56,15 @@
                     (ignorable #'part-size #'part-offset #'num-parts))
            ,@body)))))
 
-(defun/inline make-displaced-array (array part-offset part-size)
-  (make-array part-size
-              :displaced-to array
-              :displaced-index-offset part-offset
-              :element-type (array-element-type array)))
-
 (defun subdivide-array (array size parts-hint)
   (with-parts size parts-hint
-    (build-vector (num-parts)
-      (next-part)
-      (make-displaced-array array (part-offset) (part-size)))))
+    (map-into (make-array (num-parts))
+              (lambda ()
+                (next-part)
+                (make-array (part-size)
+                            :displaced-to array
+                            :displaced-index-offset (part-offset)
+                            :element-type (array-element-type array))))))
 
 (defun subdivide-list (list size parts-hint)
   (with-parts size parts-hint

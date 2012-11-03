@@ -36,13 +36,6 @@
 (defun find-min-length (seqs)
   (reduce #'min seqs :key #'length))
 
-(defmacro/once build-vector (&once n &body body)
-  "Execute `body' `n' times, collecting the results into a vector."
-  (with-gensyms (result index)
-    `(let1 ,result (make-array ,n)
-       (dotimes (,index ,n ,result)
-         (setf (aref ,result ,index) (progn ,@body))))))
-
 (defun item-predicate (item test test-not)
   (when (and test test-not)
     (error "Both :TEST and :TEST-NOT options given."))
