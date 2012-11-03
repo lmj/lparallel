@@ -472,96 +472,83 @@
     (is (null (pand (progn (sleep 0.2) 3) nil 4)))))
 
 (lp-test psort-test
-  ;; psort requires the CL implementation to sort vectors in place.
-  (dolist (size '(0 1 2 3 4 8 16 100))
-    (let1 v (make-random-seq 'vector size)
-      (is (eq v (sort v #'<)))))
-
   ;; abcl workarounds for worse-case sort bug
-  (let1 source (make-random-vector 10000)
-    (let ((a (copy-seq source))
-          (b (copy-seq source)))
-      (is (equalp ( sort a #'<)
-                  (psort b #'<)))
-      #-abcl
-      (is (equalp ( sort a #'<)
-                  (psort b #'<)))
-      #-abcl
-      (is (equalp ( sort a #'>)
-                  (psort b #'>)))
-      #-abcl
-      (is (equalp ( sort a #'>)
-                  (psort b #'>))))
-    (let ((a (copy-seq source))
-          (b (copy-seq source)))
-      (is (equalp ( sort a #'<)
-                  (psort b
-                         #'<
-                         :min-part-size 100
-                         :max-part-size 1000)))
-      #-abcl
-      (is (equalp ( sort a #'<)
-                  (psort b
-                         #'<
-                         :min-part-size 100
-                         :max-part-size 1000)))
-      #-abcl
-      (is (equalp ( sort a #'>)
-                  (psort b
-                         #'>
-                         :min-part-size 100
-                         :max-part-size 1000)))
-      #-abcl
-      (is (equalp ( sort a #'>)
-                  (psort b
-                         #'>
-                         :min-part-size 100
-                         :max-part-size 1000)))))
-  (let1 source (vector 5 1 9 3 6 0 1 9)
-    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+  (dolist (granularity '(nil 1 5 100))
+    (dolist (size '(1 5 10 100 10000))
+      (let1 source (make-random-vector size)
+        (let ((a (copy-seq source))
+              (b (copy-seq source)))
+          (is (equalp ( sort a #'<)
+                      (psort b #'< :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a #'<)
+                      (psort b #'< :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a #'>)
+                      (psort b #'> :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a #'>)
+                      (psort b #'> :granularity granularity)))))
+      (let1 source (make-random-vector size)
+        (let ((a (copy-seq source))
+              (b (copy-seq source)))
+          (is (equalp ( sort a '< :key '-)
+                      (psort b '< :key '- :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a '< :key #'-)
+                      (psort b '< :key #'- :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a #'> :key '-)
+                      (psort b #'> :key '- :granularity granularity)))
+          #-abcl
+          (is (equalp ( sort a #'> :key #'-)
+                      (psort b #'> :key #'- :granularity granularity))))))
+    (let1 source (vector 5 1 9 3 6 0 1 9)
       (let ((a (copy-seq source))
             (b (copy-seq source)))
         (is (equalp ( sort a #'<)
-                    (psort b #'< :parts i)))
+                    (psort b #'< :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'<)
-                    (psort b #'< :parts i)))
+                    (psort b #'< :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'>)
-                    (psort b #'> :parts i)))
+                    (psort b #'> :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'>)
-                    (psort b #'> :parts i))))))
-  (let1 source (vector 5 1 9 3 6 0 1 9)
-    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+                    (psort b #'> :granularity granularity)))))
+    (let1 source (vector 5 1 9 3 6 0 1 9)
       (let ((a (copy-seq source))
             (b (copy-seq source)))
         (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                    (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
+                    (psort b #'< :key (lambda (x) (* -1 x))
+                           :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'< :key (lambda (x) (* -1 x)))
-                    (psort b #'< :key (lambda (x) (* -1 x)) :parts i)))
+                    (psort b #'< :key (lambda (x) (* -1 x))
+                           :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                    (psort b #'> :key (lambda (x) (* -1 x)) :parts i)))
+                    (psort b #'> :key (lambda (x) (* -1 x))
+                           :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'> :key (lambda (x) (* -1 x)))
-                    (psort b #'> :key (lambda (x) (* -1 x)) :parts i))))))
-  (let1 source (make-array 50 :initial-element 5)
-    (dolist (i (loop :for i :from 1 :upto 8 :collect i))
+                    (psort b #'> :key (lambda (x) (* -1 x))
+                           :granularity granularity)))))
+    (let1 source (make-array 50 :initial-element 5)
       (let ((a (copy-seq source))
             (b (copy-seq source)))
         (is (equalp ( sort a #'<)
-                    (psort b #'< :parts i)))
+                    (psort b #'< :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'<)
-                    (psort b #'< :parts i)))
+                    (psort b #'< :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'>)
-                    (psort b #'> :parts i)))
+                    (psort b #'> :granularity granularity)))
         #-abcl
         (is (equalp ( sort a #'>)
-                    (psort b #'> :parts i)))))))
+                    (psort b #'> :granularity granularity)))))))
 
 (lp-test premove-if-test
   (loop

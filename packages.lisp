@@ -255,6 +255,21 @@
            #:fulfilledp
            #:chain))
 
+(defpackage #:lparallel.defpun
+  (:documentation "Fine-grained parallelism.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.kernel
+        #:lparallel.thread-util
+        #:lparallel.promise)
+  (:export #:defpun
+           #:defpun*
+           #:defpun/type
+           #:defpun/type*
+           #:declaim-defpun
+           #:plet
+           #:plet-if))
+
 (defpackage #:lparallel.cognate
   (:documentation
    "Parallelized versions of some Common Lisp functions.")
@@ -262,7 +277,8 @@
         #:lparallel.util
         #:lparallel.kernel
         #:lparallel.kernel-util
-        #:lparallel.promise)
+        #:lparallel.promise
+        #:lparallel.defpun)
   #+sbcl (:shadow #:map-into) ; sbcl bug fix
   (:export #:pand
            #:pcount
@@ -296,22 +312,6 @@
            #:premove-if-not
            #:psome
            #:psort))
-
-(defpackage #:lparallel.defpun
-  (:documentation "Fine-grained parallelism.")
-  (:use #:cl
-        #:lparallel.util
-        #:lparallel.kernel
-        #:lparallel.thread-util
-        #:lparallel.promise
-        #:lparallel.cognate)
-  (:export #:defpun
-           #:defpun*
-           #:defpun/type
-           #:defpun/type*
-           #:declaim-defpun
-           #:plet
-           #:plet-if))
 
 (macrolet ((define-merged-package (name doc &rest packages)
              `(defpackage ,name

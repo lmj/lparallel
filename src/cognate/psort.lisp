@@ -30,139 +30,121 @@
 
 (in-package #:lparallel.cognate)
 
-;;; 
-;;; Assuming that `sort' returns the passed vector is technically
-;;; nonconforming since the hyperspec says:
-;;;
-;;; "If sequence is a vector, the result might or might not be simple,
-;;; and might or might not be identical to sequence."
-;;; 
-;;; However I know of no implementation that returns a new vector. The
-;;; benefits of calling the built-in `sort' outweigh the (probably
-;;; remote) possibility of future incompatibility with some CL
-;;; implementation.
-;;; 
-
-(defmacro define-dispatch-quicksort (name has-key-p)
-  (let* ((key      (when has-key-p (with-gensyms (key) key)))
-         (key-args (when has-key-p `(:key ,key))))
-    `(defun/type ,name (quicksort vec lo hi compare min max submit
-                        ,@(unsplice key))
-         (function vector fixnum fixnum function fixnum fixnum function
-          ,@(unsplice (when key 'function)))
-         t
-       (declare #.*full-optimize*)
-       (when (> hi lo)
-         (let1 size (the fixnum (1+ (the fixnum (- hi lo))))
-           (declare (type fixnum size))
-           (macrolet ((subvec () `(make-displaced-array vec lo size)))
-             (cond ((< size min)
-                    ;; too small -- compute now
-                    (sort (subvec) compare ,@key-args))
-                   ((<= size max)
-                    ;; goldilocks zone -- call built-in sort
-                    (funcall submit 'sort (subvec) compare ,@key-args))
-                   (t
-                    ;; too big -- recurse
-                    (funcall submit quicksort vec lo hi compare min max submit 
-                     ,@(unsplice key))))))))))
-
-(define-dispatch-quicksort dispatch-quicksort/key t)
-(define-dispatch-quicksort dispatch-quicksort/no-key nil)
-
 (defun/type/inline midpoint (a b) (fixnum fixnum) fixnum
   (+ a (the fixnum (ash (the fixnum (- b a)) -1))))
 
 ;;; 
 ;;; Adapted from Roger Corman's usenet post. Free license.
 ;;; 
-(defmacro define-quicksort-fn (name key key-type call-key)
-  (let1 dispatch (if key 'dispatch-quicksort/key 'dispatch-quicksort/no-key)
-    `(defun/type ,name (vec lo hi compare min max submit
-                        ,@(unsplice key))
-         (vector fixnum fixnum function fixnum fixnum function
-          ,@(unsplice key-type))
-         null
-       (declare #.*full-optimize*)
-       ;; cannot use svref due to displaced array -- silence notes
-       #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-       (when (> hi lo)
-         (let* ((mid (the fixnum (midpoint lo hi)))
-                (i lo)
-                (j (the fixnum (1+ hi)))
-                (p (,call-key (aref vec mid))))
-           (declare (type fixnum mid i j))
-           (rotatef (aref vec mid)
-                    (aref vec lo))
-           (loop
-              (loop
-                 :do (incf i)
-                 :until (or (> i hi)
-                            (funcall compare p (,call-key (aref vec i)))))
-              (loop
-                 :do (decf j)
-                 :until (or (<= j lo)
-                            (funcall compare (,call-key (aref vec j)) p)))
-              (when (< j i)
-                (return))
-              (rotatef (aref vec i)
-                       (aref vec j)))
-           (rotatef (aref vec lo)
-                    (aref vec j))
-           (,dispatch #',name vec lo (the fixnum (1- j)) 
-                      compare min max submit ,@(unsplice key))
-           (,dispatch #',name vec i  hi
-                      compare min max submit ,@(unsplice key))))
-       nil)))
+(defmacro define-quicksort-fn (name call-key key key-type gran gran-type)
+  `(defpun/type ,name (vec lo hi compare ,@(unsplice gran) ,@(unsplice key))
+       (vector fixnum fixnum function
+        ,@(unsplice gran-type) ,@(unsplice key-type))
+       null
+     (declare #.*full-optimize*)
+     #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+     (when (> hi lo)
+       (let* ((mid (the fixnum (midpoint lo hi)))
+              (i lo)
+              (j (the fixnum (1+ hi)))
+              (p (,call-key (aref vec mid))))
+         (declare (type fixnum mid i j))
+         (rotatef (aref vec mid)
+                  (aref vec lo))
+         (loop
+            (loop
+               :do (incf i)
+               :until (or (> i hi)
+                          (funcall compare p (,call-key (aref vec i)))))
+            (loop
+               :do (decf j)
+               :until (or (<= j lo)
+                          (funcall compare (,call-key (aref vec j)) p)))
+            (when (< j i)
+              (return))
+            (rotatef (aref vec i)
+                     (aref vec j)))
+         (rotatef (aref vec lo)
+                  (aref vec j))
+         ,(let ((left  `(,name vec lo (the fixnum (1- j))
+                               compare ,@(unsplice gran) ,@(unsplice key)))
+                (right `(,name vec i hi
+                               compare ,@(unsplice gran) ,@(unsplice key))))
+            (if gran
+                `(let1 left-size (the fixnum (- j lo))
+                   (declare (type fixnum left-size))
+                   (if (> left-size ,gran)
+                       (plet ((result ,left))
+                         ,right
+                         result)
+                       (let1 right-size (the fixnum (1+ (the fixnum (- hi i))))
+                         (declare (type fixnum right-size))
+                         (if (> right-size ,gran)
+                             (plet ((result ,right))
+                               ,left
+                               result)
+                             (cond ((< left-size right-size)
+                                    ,left
+                                    ,right)
+                                   (t
+                                    ,right
+                                    ,left))))))
+                `(plet ((result ,left))
+                   ,right
+                   result)))))
+     nil))
 
-(defmacro define-quicksort/no-key ()
-  (with-gensyms (call-key)
-    `(macrolet ((,call-key (x) x))
-       (define-quicksort-fn quicksort/no-key nil nil ,call-key))))
+(defmacro define-quicksort-fns ()
+  (with-gensyms (iden call-key key gran)
+    `(macrolet ((,iden (x) x)
+                (,call-key (x) `(funcall ,',key ,x)))
+       (define-quicksort-fn quicksort/no-key/no-gran
+           ,iden nil nil nil nil)
+       (define-quicksort-fn quicksort/no-key/gran
+           ,iden nil nil ,gran fixnum)
+       (define-quicksort-fn quicksort/key/no-gran
+           ,call-key ,key function nil nil)
+       (define-quicksort-fn quicksort/key/gran
+           ,call-key ,key function ,gran fixnum))))
 
-(defmacro define-quicksort/key ()
-  (with-gensyms (call-key key)
-    `(macrolet ((,call-key (x) `(funcall ,',key ,x)))
-       (define-quicksort-fn quicksort/key ,key function ,call-key))))
+(define-quicksort-fns)
 
-(define-quicksort/key)
-(define-quicksort/no-key)
+;;; reduce some clutter
+(setf lparallel.defpun::*registered-fns*
+      (set-difference lparallel.defpun::*registered-fns*
+                      '(quicksort/no-key/no-gran
+                        quicksort/no-key/gran
+                        quicksort/key/no-gran
+                        quicksort/key/gran)))
 
-(defun call-quicksort (vec lo hi compare min max submit key)
+(defun call-quicksort (vec lo hi compare granularity key)
   (if key
-      (quicksort/key    vec lo hi compare min max submit (ensure-function key))
-      (quicksort/no-key vec lo hi compare min max submit)))
+      (if granularity
+          (quicksort/key/gran       vec lo hi compare granularity key)
+          (quicksort/key/no-gran    vec lo hi compare             key))
+      (if granularity
+          (quicksort/no-key/gran    vec lo hi compare granularity)
+          (quicksort/no-key/no-gran vec lo hi compare))))
 
-(defun psort (sequence predicate &key key parts min-part-size max-part-size)
+(defun psort (sequence predicate &key key granularity &allow-other-keys)
   "Parallel version of `sort'.
 
-`sequence' is sorted recursively in parts in parallel. A part is
-sorted in parallel if its size is between `min-part-size' and
-`max-part-size' inclusive. Smaller parts are sorted immediately;
-larger parts are recursed upon.
-
-`min-part-size' defaults to 3. 
-
-`max-part-size' defaults to (/ (length sequence) parts). 
-
-`parts' defaults to (kernel-worker-count).
+If `granularity' is provided then parallel tasks are created only for
+segments larger than `granularity'. This may or may not result in
+better performance.
 
 At present `psort' is only parallelized for vectors; other types are
 given to `cl:sort'."
   (typecase sequence
     (vector
-     (check-type parts         (or null fixnum))
-     (check-type min-part-size (or null fixnum))
-     (check-type max-part-size (or null fixnum))
-     (let* ((predicate  (ensure-function predicate))
-            (parts-hint (get-parts-hint parts))
-            (min        (or min-part-size 3))
-            (max        (or max-part-size (floor (length sequence) parts-hint)))
-            (last       (1- (length sequence))))
-       (with-submit-dynamic-counted
-         (call-quicksort
-          sequence 0 last predicate min max #'submit-dynamic-counted key)
-         (receive-dynamic-counted))
-       sequence))
+     (when granularity
+       (check-type granularity fixnum))
+     (call-quicksort sequence
+                     0
+                     (1- (length sequence))
+                     (ensure-function predicate)
+                     granularity
+                     (and key (ensure-function key)))
+            sequence)
     (otherwise
      (sort sequence predicate :key key))))
