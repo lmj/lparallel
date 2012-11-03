@@ -167,34 +167,32 @@ nil then no docstring is parsed."
 `cleanup' : cleanup form
 `abort'   : executed if `main' does not finish
 "
-  (with-gensyms (finishedp cleanup-fn)
+  (with-gensyms (finishedp)
     `(progn
        ,@(unsplice prepare)
-       ,(if main
-            (if abort
-                `(let1 ,finishedp nil
-                   (declare (boolean ,finishedp)
-                            (dynamic-extent ,finishedp))
-                   (unwind-protect
-                        (prog1               ; m-v-prog1 in real life
-                            ,main
-                          (setf ,finishedp t))
-                     ,(if cleanup
-                          `(flet ((,cleanup-fn () ,cleanup))
-                             (declare (dynamic-extent #',cleanup-fn))
-                             (if ,finishedp
-                                 (,cleanup-fn)
-                                 (unwind-protect
-                                      ,abort
-                                   (,cleanup-fn))))
-                          `(unless ,finishedp
-                             ,abort))))
-                (if cleanup
-                    `(unwind-protect
-                          ,main
-                       ,cleanup)
-                    main))
-            `(progn ,cleanup nil)))))
+       ,(cond ((and main cleanup abort)
+               `(let1 ,finishedp nil
+                  (declare (type boolean ,finishedp))
+                  (unwind-protect
+                       (prog1 ,main  ; m-v-prog1 in real life
+                         (setf ,finishedp t))
+                    (if ,finishedp
+                        ,cleanup
+                        (unwind-protect ,abort ,cleanup)))))
+              ((and main cleanup)
+               `(unwind-protect ,main ,cleanup))
+              ((and main abort)
+               `(let1 ,finishedp nil
+                  (declare (type boolean ,finishedp))
+                  (unwind-protect
+                       (prog1 ,main
+                         (setf ,finishedp t))
+                    (when (not ,finishedp)
+                      ,abort))))
+              (main main)
+              (cleanup `(progn ,cleanup nil))
+              (abort nil)
+              (t nil)))))
 
 (defun doc-deprecate (deprecated preferred doc-type)
   (setf (documentation deprecated doc-type)
