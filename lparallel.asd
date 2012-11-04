@@ -95,7 +95,6 @@ See http://lparallel.org for documentation and examples.
                              (:module "cognate"
                               :serial t
                               :components ((:file "util")
-                                    #+sbcl (:file "map-into") ; SBCL bug fix
                                            (:file "option")
                                            (:file "subdivide")
                                            (:file "pandor")
