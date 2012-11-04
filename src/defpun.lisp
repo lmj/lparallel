@@ -78,9 +78,8 @@
 (defun pairp (form)
   (and (consp form) (eql (length form) 2)))
 
-(defmacro/once with-parsed-let-args ((pairs non-pairs syms)
-                                     &once bindings
-                                     &body body)
+(defmacro with-parsed-let-args ((pairs non-pairs syms) bindings &body body)
+  (check-type bindings symbol)
   `(let* ((,pairs     (remove-if-not #'pairp ,bindings))
           (,non-pairs (remove-if     #'pairp ,bindings))
           (,syms      (loop
