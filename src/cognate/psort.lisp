@@ -186,5 +186,8 @@ given to `cl:sort'.")
 
 (setf (documentation 'psort* 'function)
 "Like `psort' but optimized for N-1 worker threads where N is the
-number of cores. The caller of `psort*' participates in the
-computation, in contradistinction to `psort'.")
+number of cores.
+
+The caller of `psort*' always participates in the computation. In
+contrast, the caller of `psort' participates only when the caller is
+in a worker thread.")
