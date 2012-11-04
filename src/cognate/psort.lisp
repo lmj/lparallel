@@ -117,17 +117,17 @@
 
 (define-quicksort-fns)
 
-;;; reduce some clutter
-(setf lparallel.defpun::*registered-fns*
-      (set-difference lparallel.defpun::*registered-fns*
-                      '(quicksort/no-key/no-gran
-                        quicksort/no-key/no-gran*
-                        quicksort/no-key/gran
-                        quicksort/no-key/gran*
-                        quicksort/key/no-gran
-                        quicksort/key/no-gran*
-                        quicksort/key/gran
-                        quicksort/key/gran*)))
+;;; reduce some clutter in defpun expansions; it's safe to remove
+;;; these because users should not call them directly
+(lparallel.defpun::delete-registered-names
+ '(quicksort/no-key/no-gran
+   quicksort/no-key/no-gran*
+   quicksort/no-key/gran
+   quicksort/no-key/gran*
+   quicksort/key/no-gran
+   quicksort/key/no-gran*
+   quicksort/key/gran
+   quicksort/key/gran*))
 
 (defmacro define-call-quicksort (name
                                  quicksort/key/gran

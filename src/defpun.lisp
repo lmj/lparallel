@@ -111,15 +111,21 @@
 ;;; due to inlining and optimizations. Inserting `check-kernel' into
 ;;; the body of defpun functions negates the speedup for small
 ;;; functions.
-
+;;;
 ;;; Thus for user-friendliness we define checked and unchecked
 ;;; functions for each defpun form. The user calls the checked
 ;;; version; defpun calls the unchecked one via a macrolet.
-
+;;;
 ;;; The macrolets also have the happy side-effect of preventing
 ;;; reference to the checked (slower) function via #'.
+;;;
+;;; We store references to the checked and unchecked functions in
+;;; order to detect redefinitions with defun or otherwise.
 
-(defvar *registered-fns* nil)
+(defconstant +checked-key+ 'checked-key)
+(defconstant +unchecked-key+ 'unchecked-key)
+
+(defvar *registered-names* nil)
 
 (defun unchecked-name (name)
   ;; We could intern this into a private package and maintain an alist
@@ -127,38 +133,37 @@
   ;; over-engineered. Anonymous packages don't exist anyway.
   (symbolicate/package (symbol-package name) '#:%%.defpun. name) )
 
-(defun defpun-loaded-p (name)
-  (ignore-errors
-    (and (symbol-function name)
-         (symbol-function (unchecked-name name)))))
-
-(defun register-fn-name (name)
-  (pushnew name *registered-fns*))
+(defun register-name (name)
+  (pushnew name *registered-names*))
 
 (defun register-fn (name)
-  (register-fn-name name)
-  (when (defpun-loaded-p name)
-    (setf (get name 'checked-fn) (symbol-function name))
-    (setf (get name 'unchecked-fn) (symbol-function (unchecked-name name)))))
+  (setf (get name +checked-key+) (symbol-function name))
+  (setf (get name +unchecked-key+) (symbol-function (unchecked-name name))))
+
+(defun registered-fn-p (name)
+  (get name +checked-key+))
 
 (defun valid-registered-fn-p (name)
-  ;; not uninterned and not replaced with regular defun
-  (and (symbol-package name)
-       (if (get name 'checked-fn)
-           (and (eq (symbol-function name)
-                    (get name 'checked-fn))
-                (eq (symbol-function (unchecked-name name))
-                    (get name 'unchecked-fn)))
-           ;; seen but not compiled yet
-           t)))
+  (and (fboundp name)
+       (eq (symbol-function name)
+           (get name +checked-key+))
+       (fboundp (unchecked-name name))
+       (eq (symbol-function (unchecked-name name))
+           (get name +unchecked-key+))))
 
-(defun validate-registered-fns ()
-  (setf *registered-fns* (delete-if-not #'valid-registered-fn-p
-                                        *registered-fns*)))
+;;; a name may be registered without having a corresponding function
+(defun valid-registered-name-p (name)
+  (and (symbol-package name)
+       (or (not (registered-fn-p name))
+           (valid-registered-fn-p name))))
+
+(defun delete-stale-registrations ()
+  (setf *registered-names*
+        (remove-if-not #'valid-registered-name-p *registered-names*)))
 
 (defun registered-macrolets ()
   (loop
-     :for name :in *registered-fns*
+     :for name :in *registered-names*
      :collect `(,name (&rest args) `(,',(unchecked-name name) ,@args))))
 
 (defmacro declaim-defpun (&rest names)
@@ -166,7 +171,10 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@(loop
           :for name :in names
-          :collect `(register-fn-name ',name))))
+          :collect `(register-name ',name))))
+
+(defun delete-registered-names (names)
+  (setf *registered-names* (set-difference *registered-names* names)))
 
 ;;;; defpun
 
@@ -291,8 +299,10 @@
   `(defmacro ,defpun (name params ,@types &body body)
      ,doc
      (with-parsed-body (docstring declares body)
-       (validate-registered-fns)
-       (register-fn-name name)
+       ;; these two calls may affect the registered macrolets in the
+       ;; return form below
+       (delete-stale-registrations)
+       (register-name name)
        `(progn
           (,',defun ,(unchecked-name name) ,params ,,@types
             ,@declares
@@ -306,7 +316,7 @@
             ,@(unsplice docstring)
             (check-kernel)
             (,',call-impl))
-          (eval-when (:compile-toplevel :load-toplevel :execute)
+          (eval-when (:load-toplevel :execute)
             (register-fn ',name))
           ',name))))
 
