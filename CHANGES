@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.0.1
+
+* improved pmap-into performance on sbcl
+
 = 2.0.0
 
 * keyword arguments to psort besides :key have been replaced with a
