@@ -382,9 +382,11 @@ for N-1 worker threads where N is the number of cores.
 
 A function defined with `defpun*' differs from its unstarred
 counterpart in two ways: it has less overhead, and the thread which
-calls it participates in the computation."
-  defun
-  plet/fast/-1
+calls it always participates in the computation.
+
+In contrast, the caller of a function defined by `defpun' participates
+in the computation only when the caller is in a worker thread."
+  defun plet/fast/-1
   plet-if/fast/-1
   call-impl)
 
