@@ -66,7 +66,7 @@
            (flet ((,body-fn () ,@body))
              (with-new-kernel (,n :spin-count 0)
                (,body-fn))
-             (with-new-kernel (,n :spin-count 2000)
+             (with-new-kernel (,n :spin-count (random 5000))
                (,body-fn))))))))
 
 (define-condition client-error (error) ())
