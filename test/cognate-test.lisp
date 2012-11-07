@@ -60,59 +60,6 @@
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equalp #(15) a))))
 
-#+sbcl
-(lp-base-test map-into-test
-  (let1 a (list nil nil nil)
-    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
-    (is (equal '(15 17 19) a)))
-  (let1 a (list nil)
-    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
-    (is (equal '(15) a)))
-  (let1 a (vector nil nil nil)
-    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
-    (is (equalp #(15 17 19) a)))
-  (let1 a (vector nil)
-    (lparallel.cognate::map-into a '+ '(5 6 7) '(10 11 12))
-    (is (equalp #(15) a)))
-  (let1 a (vector 9 9 9)
-    (lparallel.cognate::map-into a 'identity #(3 4 5))
-    (is (equalp #(3 4 5) a)))
-  (let1 a (make-array 5 :fill-pointer 5 :initial-contents '(1 2 3 4 5))
-    (map-into a 'identity #(9 9))
-    (is (= 2 (length a)))
-    (is (equalp #(9 9) a))))
-
-#+sbcl
-(progn
-  (defclass my-seq (sequence) ())
-  (defmethod sb-sequence:length ((s my-seq))
-    2)
-  (defmethod sb-sequence:elt ((s my-seq) index)
-    (case index
-      (0 77)
-      (1 99)))
-  (defmethod sb-sequence:iterator-step ((s my-seq) iterator from-end)
-    (if from-end
-        (1- iterator)
-        (1+ iterator)))
-  (defmethod sb-sequence:iterator-endp ((s my-seq) iterator limit from-end)
-    (= iterator limit))
-  (defmethod sb-sequence:iterator-element ((s my-seq) iterator)
-    (case iterator
-      (0 77)
-      (1 99)))
-  (defmethod (setf sb-sequence:iterator-element) (o (s my-seq) iterator)
-    (declare (ignore o s iterator)))
-  (defmethod sb-sequence:iterator-index ((s my-seq) iterator)
-    iterator)
-  (defmethod sb-sequence:iterator-copy ((s my-seq) iterator)
-    iterator)
-  (lp-base-test generic-map-into-test
-    (is (equalp '(77 99)
-                (map 'list 'identity
-                     (lparallel.cognate::map-into
-                      (make-instance 'my-seq) 'identity #(0 0)))))))
-
 (lp-test degenerate-pmaps-test
   (is (eq (map  nil #'identity '(0 1 2 3))
           (pmap nil #'identity '(0 1 2 3))))
