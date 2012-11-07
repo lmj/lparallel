@@ -32,6 +32,10 @@
 
 ;;;; helpers
 
+(defun curry (fn &rest init-args)
+  (lambda (&rest args)
+    (multiple-value-call fn (values-list init-args) (values-list args))))
+
 (defmacro collecting1 (&body body)
   (with-gensyms (result value)
     `(let1 ,result nil

@@ -38,8 +38,7 @@
   :components ((:file "packages-test")
                (:module "test"
                 :serial t
-                :components ((:file "util")
-                             (:file "base")
+                :components ((:file "base")
                              (:file "thread-util-test")
                              (:file "queue-test")
                              (:file "kernel-test")

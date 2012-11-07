@@ -38,7 +38,6 @@
   :components ((:file "packages-bench")
                (:module "bench"
                 :serial t
-                :components ((:file "util")
-                             (:file "bench")
+                :components ((:file "bench")
                              (:file "suite")
                              #+sbcl (:file "profile"))))) 

@@ -101,6 +101,10 @@
      (destructuring-bind ,params (data ',name)
        ,@body)))
 
+(defun make-random-vector (size)
+  (map-into (make-array size :element-type 'single-float)
+            (lambda () (random 1.0f0))))
+
 (defbench bench-pmap (fns inputs trials rehearsals)
   (bench
    (length fns)

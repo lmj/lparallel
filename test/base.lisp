@@ -100,3 +100,17 @@
 
 (defparameter *nil* nil)
 (defun infinite-loop () (loop :until *nil*))
+
+(defmacro collect-n (n &body body)
+  "Execute `body' `n' times, collecting the results into a list."
+  `(loop :repeat ,n :collect (progn ,@body)))
+
+(defun curry (fn &rest init-args)
+  (lambda (&rest args)
+    (multiple-value-call fn (values-list init-args) (values-list args))))
+
+(defun make-random-list (size)
+  (collect-n size (random 1.0)))
+
+(defun make-random-vector (size)
+  (map-into (make-array size) (lambda () (random 1.0))))
