@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.0.2
+
+* handle *read-default-float-format* in tests and benchmarks
+
 = 2.0.1
 
 * improved pmap-into performance on sbcl
