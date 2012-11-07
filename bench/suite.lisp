@@ -290,6 +290,8 @@
   (with-temp-kernel (worker-count :spin-count *spin-count*)
     (funcall fn)))
 
+(defvar *last-random-state* nil)
+
 (defun execute (num-workers &rest fns)
   (format t "~%")
   (when (find :swank *features*)
@@ -297,6 +299,7 @@
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
   (let1 *random-state* (make-random-state t)
+    (setf *last-random-state* *random-state*)
     (dolist (spec (if fns (select-benches fns) *benches*))
       (let1 fn (first spec)
         (cond ((member fn *one-worker-less*)
