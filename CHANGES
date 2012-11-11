@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 2.1.0
+
+* added readers kernel-name and kernel-context
+* added restart kill-errors to workers -- removes debugger popups
+* attempting to submit a task to an ended kernel now signals an error
+* suicidal calls to kill-tasks inside a worker are now permitted
+
 = 2.0.2
 
 * handle *read-default-float-format* in tests and benchmarks

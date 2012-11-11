@@ -39,7 +39,7 @@
     (pushnew :lparallel.with-green-threads *features*)))
 
 (defsystem :lparallel
-  :version "2.0.2"
+  :version "2.1.0"
   :description "Parallelism for Common Lisp"
   :long-description
 "
