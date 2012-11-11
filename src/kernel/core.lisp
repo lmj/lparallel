@@ -1,21 +1,21 @@
 ;;; Copyright (c) 2011-2012, James M. Lawrence. All rights reserved.
-;;; 
+;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
 ;;; are met:
-;;; 
+;;;
 ;;;     * Redistributions of source code must retain the above copyright
 ;;;       notice, this list of conditions and the following disclaimer.
-;;; 
+;;;
 ;;;     * Redistributions in binary form must reproduce the above
 ;;;       copyright notice, this list of conditions and the following
 ;;;       disclaimer in the documentation and/or other materials provided
 ;;;       with the distribution.
-;;; 
+;;;
 ;;;     * Neither the name of the project nor the names of its
 ;;;       contributors may be used to endorse or promote products derived
 ;;;       from this software without specific prior written permission.
-;;; 
+;;;
 ;;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ;;; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 ;;; LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -98,9 +98,9 @@
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
-  ;; 
+  ;;
   ;; All but ABCL execute unwind-protect for destroy-thread.
-  ;; 
+  ;;
   ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
   (declare #.*normal-optimize*)
@@ -340,8 +340,8 @@ return value is the number of tasks that would have been killed if
       (error "task category cannot be NIL in KILL-TASKS"))
     (with-kernel-slots (workers workers-lock) *kernel*
       (with-lock-held (workers-lock)
-        (let ((victims (map 'vector 
-                            #'thread 
+        (let ((victims (map 'vector
+                            #'thread
                             (remove-if-not (lambda (worker)
                                              (eql (running-category worker)
                                                   task-category))
