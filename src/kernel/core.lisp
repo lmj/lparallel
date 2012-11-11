@@ -206,6 +206,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
                                  :bindings bindings
                                  :context context
                                  :name name)
+                   :alivep t
                    :optimizer-data (funcall *make-optimizer-data*))))
     (start-workers kernel workers)
     kernel))
@@ -280,6 +281,8 @@ As an optimization, an internal size may be given with
 
 (defun/type/inline submit-raw-task (task kernel) (task kernel) t
   (declare #.*full-optimize*)
+  (unless (alivep kernel)
+    (error "Attempted to submit a task to an ended kernel."))
   (schedule-task (scheduler kernel) task *task-priority*))
 
 (defun/type submit-task (channel function &rest args)
@@ -319,10 +322,11 @@ each time with the result bound to `result'.
   (let ((*task-priority* :low))
     (submit-task channel (lambda ())))
   (receive-result channel)
-  (with-kernel-slots (scheduler workers) kernel
+  (with-kernel-slots (scheduler workers alivep) kernel
     (repeat (length workers)
       (schedule-task scheduler nil :low))
-    (map nil #'wait-for-worker workers)))
+    (map nil #'wait-for-worker workers)
+    (setf alivep nil)))
 
 (defun end-kernel (&key wait)
   "Sets `*kernel*' to nil and ends all workers gracefully.
@@ -345,12 +349,12 @@ kernel typically exists for lifetime of the Lisp process. Having more
 than one kernel is fine -- simply use `let' to bind a kernel instance
 to `*kernel*' when you need it. Use `kill-tasks' to terminate
 deadlocked or infinite looping tasks."
-  (when *kernel*
-    (let ((kernel *kernel*)
-          (channel (make-channel)))
+  (let ((kernel *kernel*))
+    (when kernel
       (setf *kernel* nil)
-      (with-kernel-slots (workers) kernel
-        (let ((threads (map 'list #'thread workers)))
+      (when (alivep kernel)
+        (let ((channel (let ((*kernel* kernel)) (make-channel)))
+              (threads (map 'list #'thread (workers kernel))))
           (cond (wait
                  (shutdown channel kernel)
                  threads)
@@ -367,10 +371,11 @@ each worker."
       #()))
 
 (defun kernel-info (kernel)
-  (with-kernel-slots (worker-info) kernel
+  (with-kernel-slots (worker-info alivep) kernel
     (with-worker-info-slots (name) worker-info
       (nconc (list :name name
-                   :worker-count (%kernel-worker-count kernel))
+                   :worker-count (%kernel-worker-count kernel)
+                   :alive alivep)
              #+lparallel.with-stealing-scheduler
              (with-scheduler-slots (spin-count) (scheduler kernel)
                (list :spin-count spin-count))))))

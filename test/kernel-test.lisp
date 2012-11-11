@@ -515,3 +515,18 @@
                            (kill-tasks 'foo)))
     (signals task-killed-error
       (receive-result channel))))
+
+(lp-test submit-after-end-kernel-test
+  (let ((channel (make-channel)))
+    (end-kernel :wait t)
+    (signals error
+      (submit-task channel (lambda ())))))
+
+(lp-base-test double-end-kernel-test
+  (let* ((kernel (make-kernel 2))
+         (*kernel* kernel))
+    (end-kernel :wait t)
+    (let ((*kernel* kernel))
+      (end-kernel :wait t)))
+  ;; got here without an error
+  (is (= 1 1)))

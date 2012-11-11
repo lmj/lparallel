@@ -104,7 +104,8 @@
   ((scheduler       :reader scheduler :type scheduler)
    (workers         :reader workers   :type simple-vector)
    (workers-lock)
-   (worker-info                       :type worker-info))
+   (worker-info                       :type worker-info)
+   (alivep          :reader alivep    :type boolean))
   (:documentation
    "`scheduler' -- a scheduler instance.
 
