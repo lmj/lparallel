@@ -222,6 +222,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
       (store-value (value)
         :report "Assign a value to lparallel:*kernel*."
         :interactive (lambda () (interact "Value for lparallel:*kernel*: "))
+        (check-type value kernel)
         (setf *kernel* value))))
   nil)
 
