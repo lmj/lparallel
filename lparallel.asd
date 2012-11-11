@@ -86,6 +86,7 @@ See http://lparallel.org for documentation and examples.
                                            (:file "classes")
        #-lparallel.with-stealing-scheduler (:file "central-scheduler")
        #+lparallel.with-stealing-scheduler (:file "stealing-scheduler")
+                                    #-abcl (:file "kill")
                                            (:file "core")
                                            (:file "timeout")))
                              (:file "kernel-util")

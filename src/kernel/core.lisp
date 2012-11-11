@@ -111,13 +111,18 @@
        :abort (unless *lisp-exiting-p*
                 (replace-worker kernel worker)))))
 
+#+abcl
+(defmacro with-worker-restarts (&body body)
+  `(progn ,@body))
+
 (defun call-with-worker-context (fn worker-context kernel)
   (funcall worker-context
            (lambda ()
              (let ((*worker* (find (current-thread) (workers kernel)
                                    :key #'thread)))
                (assert *worker*)
-               (%call-with-task-handler fn)))))
+               (with-worker-restarts
+                 (%call-with-task-handler fn))))))
 
 (defun enter-worker-loop (kernel worker)
   (with-kernel-slots (worker-info) kernel
@@ -309,46 +314,6 @@ each time with the result bound to `result'.
   `(repeat ,count
      (let ((,result (receive-result ,channel)))
        ,@body)))
-
-#-abcl
-(defun kill-tasks (task-category &key dry-run)
-  "This is an expensive function which should only be used in
-exceptional circumstances.
-
-Every task has an associated task category. When a task is submitted,
-it is assigned the category of `*task-category*' which has a default
-value of `:default'.
-
-`kill-tasks' interrupts running tasks whose category is `eql' to
- `task-category'. The corresponding worker threads are killed and
- replaced. Pending tasks are not affected.
-
-If you don't know what to pass for `task-category' then you should
-probably pass `:default', though this may kill more tasks than you
-wish. Binding `*task-category*' around `submit-task' enables targeted
-task killing.
-
-If `dry-run' is nil, the function returns the number of tasks killed.
-
-If `dry-run' is non-nil then no tasks are killed. In this case the
-return value is the number of tasks that would have been killed if
-`dry-run' were nil.
-
-`kill-tasks' is not available in ABCL."
-  (when *kernel*
-    (when (null task-category)
-      (error "task category cannot be NIL in KILL-TASKS"))
-    (with-kernel-slots (workers workers-lock) *kernel*
-      (with-lock-held (workers-lock)
-        (let ((victims (map 'vector
-                            #'thread
-                            (remove-if-not (lambda (worker)
-                                             (eql (running-category worker)
-                                                  task-category))
-                                           workers))))
-          (unless dry-run
-            (map nil #'destroy-thread victims))
-          (length victims))))))
 
 (defun shutdown (channel kernel)
   (let ((*task-priority* :low))

@@ -80,3 +80,9 @@
 (defvar *lisp-exiting-p* nil
   "True if the Lisp process is exiting; for skipping auto-replacement
   of killed workers during exit.")
+
+(defvar *erroring-workers* nil
+  "Track debugger popups in order to kill them.")
+
+(defvar *erroring-workers-lock* (make-lock)
+  "Lock for *erroring-workers*.")

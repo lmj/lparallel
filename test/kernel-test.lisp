@@ -499,3 +499,19 @@
       (signals error
         (kill-tasks nil))
       (= 1 (kill-tasks :default)))))
+
+#-abcl
+(lp-test worker-suicide-test
+  (let ((channel (make-channel)))
+    (submit-task channel (lambda ()
+                           (setf *error-output* (make-broadcast-stream))
+                           (kill-tasks :default)))
+    (signals task-killed-error
+      (receive-result channel)))
+  (let ((channel (make-channel))
+        (*task-category* 'foo))
+    (submit-task channel (lambda ()
+                           (setf *error-output* (make-broadcast-stream))
+                           (kill-tasks 'foo)))
+    (signals task-killed-error
+      (receive-result channel))))

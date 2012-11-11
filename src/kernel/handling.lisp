@@ -89,16 +89,28 @@ control (or not)."
              (not *debug-tasks-p*))
     (invoke-transfer-error condition)))
 
+(defmacro with-tracked-error (condition &body body)
+  `(unwind-protect/ext
+    :prepare (when *worker*
+               (with-lock-held (*erroring-workers-lock*)
+                 (push *worker* *erroring-workers*)))
+    :main    (let ((*debugger-error* ,condition))
+               ,@body)
+    :cleanup (when *worker*
+               (with-lock-held (*erroring-workers-lock*)
+                 (setf *erroring-workers*
+                       (delete *worker* *erroring-workers*))))))
+
 (defun make-debugger-hook ()
   "Record `*debugger-error*' for the `transfer-error' restart."
   (if *debugger-hook*
       (let ((previous-hook *debugger-hook*))
         (lambda (condition self)
-          (let ((*debugger-error* condition))
+          (with-tracked-error condition
             (funcall previous-hook condition self))))
       (lambda (condition self)
         (declare (ignore self))
-        (let ((*debugger-error* condition))
+        (with-tracked-error condition
           (invoke-debugger condition)))))
 
 (defun transfer-error-report (stream)
