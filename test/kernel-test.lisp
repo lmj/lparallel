@@ -530,3 +530,20 @@
       (end-kernel :wait t)))
   ;; got here without an error
   (is (= 1 1)))
+
+(lp-base-test kernel-reader-test
+  (setf *memo* nil)
+  (let ((context (lambda (worker-loop)
+                   (let ((*memo* 3))
+                     (funcall worker-loop)))))
+    (with-new-kernel (2 :name "foo"
+                        :bindings `((*blah* . 99))
+                        :context context)
+      (let ((channel (make-channel)))
+        (submit-task channel (lambda ()
+                               (declare (special *blah*))
+                               (list *memo* *blah*)))
+        (is (equal '(3 99) (receive-result channel))))
+      (is (string-equal "foo" (kernel-name)))
+      (is (equal '((*blah* . 99)) (kernel-bindings)))
+      (is (eq context (kernel-context))))))

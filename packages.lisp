@@ -167,10 +167,12 @@
         #:lparallel.spin-queue
         #:lparallel.counter)
   (:export #:make-kernel
+           #:check-kernel
+           #:end-kernel
            #:kernel-worker-count
            #:kernel-bindings
-           #:check-kernel
-           #:end-kernel)
+           #:kernel-name
+           #:kernel-context)
   (:export #:make-channel
            #:submit-task
            #:submit-timeout

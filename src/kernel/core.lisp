@@ -226,12 +226,18 @@ A kernel will not be garbage collected until `end-kernel' is called."
         (setf *kernel* value))))
   nil)
 
-(defun kernel-bindings ()
-  "Return the bindings passed to `make-kernel'."
-  (check-kernel)
-  (with-kernel-slots (worker-info) *kernel*
-    (with-worker-info-slots (bindings) worker-info
-      (copy-alist bindings))))
+(defmacro define-worker-info-reader (name slot &optional (result slot))
+  `(defun ,name ()
+     ,(format nil "Return the ~a passed to `make-kernel'."
+              (string-downcase slot))
+     (check-kernel)
+     (with-kernel-slots (worker-info) *kernel*
+       (with-worker-info-slots (,slot) worker-info
+         ,result))))
+
+(define-worker-info-reader kernel-bindings bindings (copy-alist bindings))
+(define-worker-info-reader kernel-name name)
+(define-worker-info-reader kernel-context context)
 
 (defun/type/inline %kernel-worker-count (kernel) (kernel) index
   (declare #.*full-optimize*)
