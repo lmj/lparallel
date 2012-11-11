@@ -299,7 +299,7 @@
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
   (let1 *random-state* (make-random-state t)
-    (setf *last-random-state* *random-state*)
+    (setf *last-random-state* (make-random-state *random-state*))
     (dolist (spec (if fns (select-benches fns) *benches*))
       (let1 fn (first spec)
         (cond ((member fn *one-worker-less*)

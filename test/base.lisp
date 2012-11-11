@@ -61,7 +61,7 @@
   (with-gensyms (body-fn n)
     `(lp-base-test ,name
        (let1 *random-state* (make-random-state t)
-         (setf *last-random-state* *random-state*)
+         (setf *last-random-state* (make-random-state *random-state*))
          (dolist (,n '(1 2 4 8 16))
            (flet ((,body-fn () ,@body))
              (with-new-kernel (,n :spin-count 0)
