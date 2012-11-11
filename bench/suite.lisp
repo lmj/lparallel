@@ -101,6 +101,10 @@
      (destructuring-bind ,params (data ',name)
        ,@body)))
 
+(defmacro rebind (vars &body body)
+  `(let ,(mapcar #'list vars vars)
+     ,@body))
+
 (defun make-random-vector (size)
   (map-into (make-array size :element-type 'single-float)
             (lambda () (random 1.0f0))))
@@ -113,7 +117,7 @@
    (collecting1
      (dolist (fn fns)
        (dolist (size inputs)
-         (let1 source (make-random-vector size)
+         (let ((source (make-random-vector size)))
            (dolist (op '(sin))
              (rebind (fn size op)
                (collect-trials trials
@@ -135,7 +139,7 @@
    (collecting1
      (dolist (fn fns)
        (dolist (size inputs)
-         (let1 source (make-random-vector size)
+         (let ((source (make-random-vector size)))
            (dolist (op '(<))
              (rebind (fn size op)
                (collect-trials trials
@@ -156,7 +160,7 @@
    (collecting1
      (dolist (fn fns)
        (dolist (size inputs)
-         (let1 source (make-random-vector size)
+         (let ((source (make-random-vector size)))
            (dolist (op '(+))
              (rebind (fn size op)
                (collect-trials trials
@@ -237,7 +241,7 @@
           (compute-cols-between (row i j) ; DAC over columns
             (if (= i j)
                 (compute-entry row i)
-                (let1 mid (floor (+ i j) 2)
+                (let ((mid (floor (+ i j) 2)))
                   (,xlet ((half1 (compute-cols-between row i mid)))
                     (compute-cols-between row (+ mid 1) j)
                     half1))))
@@ -245,7 +249,7 @@
           (compute-rows-between (i j)   ; DAC over rows
             (if (= i j)
                 (compute-cols-between (* i n) 0 (- n 1))
-                (let1 mid (floor (+ i j) 2)
+                (let ((mid (floor (+ i j) 2)))
                   (,xlet ((half1 (compute-rows-between i mid)))
                     (compute-rows-between (+ mid 1) j)
                     half1)))))
@@ -298,10 +302,10 @@
     (format t "* Benchmarking with SLIME may produce inaccurate results!~%~%"))
   (format t "* Have you unthrottled your CPUs? See bench/README.~%~%")
   (format t "Running benchmarks with ~a workers.~%~%" num-workers)
-  (let1 *random-state* (make-random-state t)
+  (let ((*random-state* (make-random-state t)))
     (setf *last-random-state* (make-random-state *random-state*))
     (dolist (spec (if fns (select-benches fns) *benches*))
-      (let1 fn (first spec)
+      (let ((fn (first spec)))
         (cond ((member fn *one-worker-less*)
                (format t "Using ~a workers for ~a.~%~%" (- num-workers 1) fn)
                (call-with-temp-kernel (- num-workers 1) fn))

@@ -68,8 +68,9 @@ If `predicate' evaluates to false, the behavior is the same as `let'.
 (defmacro pfuncall (function &rest args)
   "Parallel version of `funcall'. Arguments in `args' may be executed
 in parallel, though not necessarily at the same time."
-  (let1 vars (loop
-                :for index :below (length args)
-                :collect (gensym (format nil "~a-~a-" '#:pfuncall-arg index)))
+  (let ((vars (loop
+                 :for index :below (length args)
+                 :collect (gensym (format nil "~a-~a-"
+                                          '#:pfuncall-arg index)))))
     `(toplevel-plet ,(mapcar #'list vars args)
        (funcall ,function ,@vars))))

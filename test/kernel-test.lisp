@@ -31,14 +31,14 @@
 (in-package #:lparallel-test)
 
 (lp-test kernel-test
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (mapcar (lambda (x) (submit-task channel (lambda () (* x x))))
             (list 5 6 7 8))
     (is (equal (list 25 36 49 64)
                (sort (collect-n 4 (receive-result channel)) '<)))))
 
 (lp-test no-kernel-test
-  (let1 *kernel* nil
+  (let ((*kernel* nil))
     (signals no-kernel-error
       (submit-task (make-channel) (lambda ())))))
 
@@ -50,7 +50,7 @@
              (is (= 1 1))))))
 
 (lp-test many-task-test
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (repeat 1000
       (submit-task channel (lambda ()))
       (is (null (receive-result channel))))
@@ -59,11 +59,11 @@
     (repeat 1000
       (is (null (receive-result channel))))
     (repeat 1000
-      (let1 *task-priority* :low
+      (let ((*task-priority* :low))
         (submit-task channel (lambda ())))
       (is (null (receive-result channel))))
     (repeat 1000
-      (let1 *task-priority* :low
+      (let ((*task-priority* :low))
         (submit-task channel (lambda ()))))
     (repeat 1000
       (is (null (receive-result channel))))))
@@ -89,11 +89,11 @@
                           (return-from top))))
           (receive-result channel))))
     (sleep 0.2)
-    (let1 thread (with-thread ()
-                   (let1 *standard-output* out
-                     (let1 *kernel* kernel
-                       (end-kernel :wait t)
-                       (push-queue t finished))))
+    (let ((thread (with-thread ()
+                    (let ((*standard-output* out))
+                      (let ((*kernel* kernel))
+                        (end-kernel :wait t)
+                        (push-queue t finished))))))
       (sleep 0.2)
       (is (null (peek-queue finished)))
       (is (eql 1 (kill-tasks :default)))
@@ -103,7 +103,7 @@
       (is (not (null thread))))))
 
 (lp-test channel-capacity-test
-  (let1 channel (make-channel 10)
+  (let ((channel (make-channel 10)))
     (submit-task channel (lambda () 3))
     (submit-task channel (lambda () 4))
     (is (equal '(3 4)
@@ -114,7 +114,7 @@
                        #'<))))))
 
 (lp-test try-receive-test
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (multiple-value-bind (a b) (try-receive-result channel)
       (is (null a))
       (is (null b)))
@@ -129,7 +129,7 @@
 
 (lp-test kernel-client-error-test
   (task-handler-bind ((client-error #'invoke-transfer-error))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (error 'client-error)))
       (signals client-error
         (receive-result channel))))
@@ -137,7 +137,7 @@
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'transfer-error (make-condition 'foo-error)))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (error 'client-error)))
       (signals foo-error
         (receive-result channel))))
@@ -145,7 +145,7 @@
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'transfer-error 'foo-error))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (error 'client-error)))
       (signals foo-error
         (receive-result channel)))))
@@ -155,7 +155,7 @@
       ((foo-error (lambda (e)
                     (declare (ignore e))
                     (invoke-restart 'eleven))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda ()
                              (restart-case (error 'foo-error)
                                (eleven () 11))))
@@ -164,7 +164,7 @@
       ((error (lambda (e)
                 (declare (ignore e))
                 (invoke-restart 'eleven))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda ()
                              (restart-case (error 'foo-error)
                                (eleven () 11))))
@@ -178,16 +178,16 @@
         ((error (lambda (e)
                   (declare (ignore e))
                   (error 'foo-error))))
-      (let1 channel (make-channel)
+      (let ((channel (make-channel)))
         (submit-task channel (lambda () (error 'client-error)))
         (signals foo-error
           (receive-result channel))))))
 
 (lp-base-test kernel-worker-context-test
   (with-new-kernel (2 :context (lambda (run)
-                                 (let1 *memo* 9
+                                 (let ((*memo* 9))
                                    (funcall run))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (setf *memo* 7)
       (submit-task channel (lambda () *memo*))
       (is (eql 9 (receive-result channel)))
@@ -198,16 +198,16 @@
        (progn
          (end-kernel)
          (setf *kernel* (make-kernel 4))
-         (let1 channel (make-channel)
+         (let ((channel (make-channel)))
            (setf *memo* :main)
            (submit-task channel (lambda () (setf *memo* :worker) *memo*))
            (is (eq :worker (receive-result channel)))
            (is (eq :worker *memo*))))
     (end-kernel))
   (with-new-kernel (4 :bindings (acons '*memo* :worker nil))
-    (let1 node (assoc '*memo* (kernel-bindings))
+    (let ((node (assoc '*memo* (kernel-bindings))))
       (is (eq (cdr node) :worker)))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (setf *memo* :main)
       (submit-task channel (lambda () *memo*))
       (is (eq :worker (receive-result channel)))
@@ -216,40 +216,40 @@
 (lp-base-test task-categories-test
   (with-new-kernel (2)
     (is (notany #'identity (task-categories-running)))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (sleep 0.4)))
       (sleep 0.2)
       (is (eql 1 (count :default (task-categories-running))))))
   (with-new-kernel (2)
-    (let1 channel (make-channel)
-      (let1 *task-category* :foo
+    (let ((channel (make-channel)))
+      (let ((*task-category* :foo))
         (submit-task channel (lambda () (sleep 0.4))))
       (sleep 0.2)
       (is (eql 1 (count :foo (task-categories-running))))))
   (with-new-kernel (2)
-    (let1 channel (make-channel)
-      (let1 *task-category* 999
+    (let ((channel (make-channel)))
+      (let ((*task-category* 999))
         (submit-task channel (lambda () (sleep 0.4))))
       (sleep 0.2)
       (is (eql 1 (count 999 (task-categories-running))))))
   (with-new-kernel (2)
-    (let1 channel (make-channel)
-      (let1 *task-category* :foo
+    (let ((channel (make-channel)))
+      (let ((*task-category* :foo))
         (submit-task channel (lambda () (sleep 0.4)))
         (submit-task channel (lambda () (sleep 0.4))))
       (sleep 0.2)
       (is (eql 2 (count :foo (task-categories-running)))))))
 
 (lp-base-test no-kernel-restart-test
-  (let1 *kernel* nil
+  (let ((*kernel* nil))
     (unwind-protect
-         (let1 flag nil
+         (let ((flag nil))
            (handler-bind
                ((no-kernel-error
                  (lambda (c)
                    (setf flag :called)
                    (invoke-restart (find-restart 'make-kernel c) 3))))
-             (let1 channel (make-channel)
+             (let ((channel (make-channel)))
                (submit-task channel (lambda (x) (* x x)) 3)
                (is (= 9 (receive-result channel))))
              (is (= 3 (kernel-worker-count)))
@@ -257,10 +257,10 @@
       (end-kernel))))
 
 (lp-base-test kernel-warnings-test
-  (let1 *error-output* (make-string-output-stream)
+  (let ((*error-output* (make-string-output-stream)))
     (with-new-kernel (3)
       (is (zerop (length (get-output-stream-string *error-output*))))
-      (let1 channel (make-channel)
+      (let ((channel (make-channel)))
         (submit-task channel (lambda () (warn "blah")))
         (receive-result channel))
       (is (search "blah" (get-output-stream-string *error-output*))))))
@@ -282,7 +282,7 @@
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-abort-thread))))
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda ()
                              (setf *error-output* (make-broadcast-stream))
                              (restart-case (error 'foo-error)
@@ -304,7 +304,7 @@
       (task-handler-bind ((foo-error (lambda (e)
                                        (declare (ignore e))
                                        (invoke-abort-thread))))
-        (let1 channel (make-channel)
+        (let ((channel (make-channel)))
           (submit-task channel (lambda ()
                                  (setf *error-output* (make-broadcast-stream))
                                  (error 'foo-error)))
@@ -333,11 +333,11 @@
 (define-condition foo-condition () ())
 
 (lp-test non-error-condition-test
-  (let1 result nil
+  (let ((result nil))
     (task-handler-bind ((foo-condition (lambda (c)
                                          (declare (ignore c))
                                          (setf result :called))))
-      (let1 channel (make-channel)
+      (let ((channel (make-channel)))
         (submit-task channel (lambda ()
                                (signal 'foo-condition)))
         (receive-result channel)))
@@ -347,8 +347,8 @@
 (lp-base-test custom-kill-task-test
   (with-thread-count-check
     (with-new-kernel (2)
-      (let1 channel (make-channel)
-        (let1 *task-category* 'blah
+      (let ((channel (make-channel)))
+        (let ((*task-category* 'blah))
           (submit-task channel (lambda ()
                                  (setf *error-output* (make-broadcast-stream))
                                  (infinite-loop)))
@@ -373,7 +373,7 @@
 (lp-base-test default-kill-task-test
   (with-thread-count-check
     (with-new-kernel (2)
-      (let1 channel (make-channel)
+      (let ((channel (make-channel)))
         (submit-task channel (lambda ()
                                (setf *error-output* (make-broadcast-stream))
                                (infinite-loop)))
@@ -396,7 +396,7 @@
 
 (lp-base-test submit-timeout-test
   (with-new-kernel (2)
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-timeout channel 0.1 'timeout)
       (submit-task channel (lambda () 3))
       (is (eql 3 (receive-result channel)))
@@ -425,7 +425,7 @@
 (define-condition foo-condition-2 (condition) ())
 
 (lp-test signaling-after-signal-test
-  (let1 q (make-queue)
+  (let ((q (make-queue)))
     (task-handler-bind ((foo-condition-2 (lambda (c)
                                            (declare (ignore c))
                                            (push-queue 'outer q))))
@@ -433,7 +433,7 @@
                                            (declare (ignore c))
                                            (push-queue 'inner q)
                                            (signal 'foo-condition-2))))
-        (let1 channel (make-channel)
+        (let ((channel (make-channel)))
           (submit-task channel (lambda () (signal 'foo-condition)))
           (receive-result channel))))
     (is (equal '(inner outer)
@@ -445,19 +445,19 @@
 
 (lp-base-test end-kernel-wait-test
   (with-thread-count-check
-    (let1 *kernel* (make-kernel 3)
+    (let ((*kernel* (make-kernel 3)))
       (unwind-protect
-           (let1 channel (make-channel)
+           (let ((channel (make-channel)))
              (submit-task channel (lambda () (sleep 1))))
         (is (eql 3 (length (end-kernel :wait t))))))))
 
 (lp-base-test steal-work-test
   (with-new-kernel (2)
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (sleep 0.4)))
       (submit-task channel (lambda () (sleep 0.4)))
       (sleep 0.1)
-      (let1 execp nil
+      (let ((execp nil))
         (submit-task channel (lambda () (setf execp t)))
         (sleep 0.1)
         (is (eq t (lparallel.kernel::steal-work
@@ -468,7 +468,7 @@
                      *kernel*
                      lparallel.kernel::*worker*))))))
   (with-new-kernel (2)
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda () (sleep 0.2)))
       (submit-task channel (lambda () (sleep 0.2)))
       (sleep 0.1)
@@ -483,7 +483,7 @@
                          (declare (ignore e))
                          (invoke-restart 'store-value
                                          (make-kernel 2)))))
-         (let1 channel (make-channel)
+         (let ((channel (make-channel)))
            (submit-task channel 'identity 3)
            (is (= 3 (receive-result channel)))))
     (end-kernel)))
@@ -491,7 +491,7 @@
 #-abcl
 (lp-base-test reject-kill-nil-test
   (with-new-kernel (2)
-    (let1 channel (make-channel)
+    (let ((channel (make-channel)))
       (submit-task channel (lambda ()
                              (setf *error-output* (make-broadcast-stream))
                              (sleep 999)))

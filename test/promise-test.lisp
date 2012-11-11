@@ -34,17 +34,17 @@
   (let ((a (future 3))
         (b (future 4)))
     (is (= 7 (+ (force a) (force b)))))
-  (let1 a (future 5)
+  (let ((a (future 5)))
     (sleep 0.2)
     (is (fulfilledp a))
     (is (= 5 (force a))))
-  (let1 a (future (sleep 0.4) 3)
+  (let ((a (future (sleep 0.4) 3)))
     (is (not (fulfilledp a)))
     (sleep 0.2)
     (is (eq nil (fulfill a 4)))
     (is (not (fulfilledp a)))
     (is (= 3 (force a))))
-  (let1 a (future 3)
+  (let ((a (future 3)))
     (sleep 0.2)
     (is (eq nil (fulfill a 9)))
     (is (= 3 (force a)))))
@@ -55,7 +55,7 @@
     (fulfill a 3)
     (fulfill b 4)
     (is (= 12 (* (force a) (force b)))))
-  (let1 a (promise)
+  (let ((a (promise)))
     (is (eq t (fulfill a 3)))
     (is (eq nil (fulfill a 4)))
     (is (= 3 (force a)))))
@@ -78,9 +78,9 @@
     (is (eql 3 (force a)))))
 
 (lp-test force-chain-test
-  (let1 f (delay (chain (delay 3)))
+  (let ((f (delay (chain (delay 3)))))
     (is (= 3 (force f))))
-  (let1 f (delay (chain (delay (chain (delay 3)))))
+  (let ((f (delay (chain (delay (chain (delay 3)))))))
     (is (= 3 (force f)))))
 
 (lp-test nested-chain-test
@@ -93,7 +93,7 @@
   (is (equal '(3 4 5)
              (multiple-value-list
               (force (chain (delay (chain (delay (values 3 4 5)))))))))
-  (let1 f (future (values 3 4 5))
+  (let ((f (future (values 3 4 5))))
     (sleep 0.1)
     (is (equal '(3 4 5)
                (multiple-value-list
@@ -129,20 +129,20 @@
 (defmacro define-force-test (defer)
   `(lp-test ,(intern (concatenate
                       'string (string defer) (string '#:-force-test)))
-     (let1 a (,defer (+ 3 4))
+     (let ((a (,defer (+ 3 4))))
        (is (= 7 (force a))))
      (setf *memo* 0)
-     (let1 a (,defer (progn (incf *memo*) 9))
+     (let ((a (,defer (progn (incf *memo*) 9))))
        (sleep 0.1)
        (is (= 9 (force a)))
        (is (= 1 *memo*))
        (is (= 9 (force a)))
        (is (= 1 *memo*)))
-     (let1 a (mapcar (lambda (x) (,defer (* x x))) '(3 4 5))
+     (let ((a (mapcar (lambda (x) (,defer (* x x))) '(3 4 5))))
        (is (equal '(9 16 25) (mapcar #'force a))))
      (task-handler-bind ((foo-error (lambda (e)
                                       (invoke-restart 'transfer-error e))))
-       (let1 a (,defer (error 'foo-error))
+       (let ((a (,defer (error 'foo-error))))
          (signals foo-error
            (force a))
          (signals foo-error
@@ -182,19 +182,19 @@
     (is (= 144 (fib 12)))))
 
 (lp-test multiple-value-test
-  (let1 x (promise)
+  (let ((x (promise)))
     (fulfill x (values 3 4 5))
     (multiple-value-bind (p q r) (force x)
       (is (= 3 p))
       (is (= 4 q))
       (is (= 5 r))))
-  (let1 x (future (values 3 4 5))
+  (let ((x (future (values 3 4 5))))
     (multiple-value-bind (p q r) (force x)
       (is (= 3 p))
       (is (not (null q)))
       (is (= 4 q))
       (is (= 5 r))))
-  (let1 x (delay (values 3 4 5))
+  (let ((x (delay (values 3 4 5))))
     (multiple-value-bind (p q r) (force x)
       (is (= 3 p))
       (is (not (null q)))
@@ -263,9 +263,9 @@
                                      'store-value
                                      (lparallel.counter:inc-counter counter)))))
                     (force future)))))
-             (let1 results (loop
-                              :repeat n
-                              :collect (receive-result channel))
+             (let ((results (loop
+                               :repeat n
+                               :collect (receive-result channel))))
                (is (every #'= results (rest results))))))))
 
 (lp-base-test abort-future-test
@@ -274,17 +274,17 @@
                               (invoke-restart r)))))
     (with-new-kernel (2)
       (sleep 0.2)
-      (let1 main-thread (current-thread)
+      (let ((main-thread (current-thread)))
         (task-handler-bind
             ((foo-error (lambda (e)
                           (declare (ignore e))
                           ;; don't kill main thread
                           (unless (eq (current-thread) main-thread)
                             (invoke-abort-thread)))))
-          (let1 future (future
-                         (unless (eq (current-thread) main-thread)
-                           (setf *error-output* (make-broadcast-stream)))
-                         (error 'foo-error))
+          (let ((future (future
+                          (unless (eq (current-thread) main-thread)
+                            (setf *error-output* (make-broadcast-stream)))
+                          (error 'foo-error))))
             (sleep 0.1)
             (signals task-killed-error
               (force future))))))))
@@ -297,7 +297,7 @@
            (filler2 (future (sleep 0.2))))
       (declare (ignore filler1 filler2))
       (sleep 0.1)
-      (let1 b (future (fulfill a 'foo))
+      (let ((b (future (fulfill a 'foo))))
         (declare (ignore b))
         (sleep 0.2)
         (is (fulfilledp a))))
@@ -306,7 +306,7 @@
            (filler2 (future (sleep 0.6))))
       (declare (ignore filler1 filler2))
       (sleep 0.1)
-      (let1 b (future (fulfill a 'foo))
+      (let ((b (future (fulfill a 'foo))))
         (sleep 0.2)
         (fulfill b 'nevermind)
         (sleep 0.2)
@@ -343,13 +343,13 @@
     (future (sleep 0.4))
     (future (sleep 0.4))
     (sleep 0.2)
-    (let1 f (task-handler-bind ((foo-error
-                                 (lambda (e)
-                                   (declare (ignore e))
-                                   (invoke-restart 'nine))))
-              (future
-                (restart-case (error 'foo-error)
-                  (nine () 9))))
+    (let ((f (task-handler-bind ((foo-error
+                                  (lambda (e)
+                                    (declare (ignore e))
+                                    (invoke-restart 'nine))))
+               (future
+                 (restart-case (error 'foo-error)
+                   (nine () 9))))))
       (is (eql 9 (force f))))))
 
 (lp-base-test non-promise-test
@@ -359,7 +359,7 @@
     (setf *memo* 11)
     (is (eql nil (fulfill obj (setf *memo* 22))))
     (is (eql 11 *memo*)))
-  (let1 obj (chain 3)
+  (let ((obj (chain 3)))
     (is (fulfilledp obj))
     (setf *memo* 11)
     (is (eql nil (fulfill obj (setf *memo* 22))))

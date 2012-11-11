@@ -66,6 +66,6 @@ nil."
        (%pdotimes ,count ,parts (lambda (,var)
                                   ,@declares
                                   (tagbody ,@body)))
-       (let1 ,var (max ,count 0)
+       (let ((,var (max ,count 0)))
          (declare (ignorable ,var))
          ,result))))

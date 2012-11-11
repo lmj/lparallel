@@ -44,7 +44,7 @@ evaluate to true, then the result of any form may be returned."
   (with-gensyms (done result next-result)
     `(block ,done
        (with-forms-submitted ,forms
-         (let1 ,result nil
+         (let ((,result nil))
            (receive-cancelables ,next-result
              (unless (setf ,result ,next-result)
                (return-from ,done nil)))

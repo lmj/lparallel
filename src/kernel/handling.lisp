@@ -60,14 +60,14 @@ user receives the return value of this function."
 (defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but handles conditions signaled inside tasks
 that were created in `body'."
-  (let1 forms (loop
-                 :for clause :in clauses
-                 :for (name fn more) := clause
-                 :do (unless (and (symbolp name) (not more))
-                       (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
-                              clause))
-                 :collect `(cons ',name ,fn))
-    `(let1 *client-handlers* (list* ,@forms *client-handlers*)
+  (let ((forms (loop
+                  :for clause :in clauses
+                  :for (name fn more) := clause
+                  :do (unless (and (symbolp name) (not more))
+                        (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
+                               clause))
+                  :collect `(cons ',name ,fn))))
+    `(let ((*client-handlers* (list* ,@forms *client-handlers*)))
        ,@body)))
 
 (defun invoke-transfer-error (error)
@@ -82,7 +82,7 @@ control (or not)."
   (loop
      :for (condition-type . handler) :in *client-handlers*
      :do (when (typep condition condition-type)
-           (let1 *client-handlers* (rest *client-handlers*)
+           (let ((*client-handlers* (rest *client-handlers*)))
              (handler-bind ((condition #'condition-handler))
                (funcall handler condition)))))
   (when (and (typep condition 'error)
@@ -92,13 +92,13 @@ control (or not)."
 (defun make-debugger-hook ()
   "Record `*debugger-error*' for the `transfer-error' restart."
   (if *debugger-hook*
-      (let1 previous-hook *debugger-hook*
+      (let ((previous-hook *debugger-hook*))
         (lambda (condition self)
-          (let1 *debugger-error* condition
+          (let ((*debugger-error* condition))
             (funcall previous-hook condition self))))
       (lambda (condition self)
         (declare (ignore self))
-        (let1 *debugger-error* condition
+        (let ((*debugger-error* condition))
           (invoke-debugger condition)))))
 
 (defun transfer-error-report (stream)

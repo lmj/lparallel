@@ -65,8 +65,8 @@ error will be signaled."
       (unless (slot-name slot)
         (error "empty slot in ~a" name))
       (when (slot-props slot)
-        (let1 diff (set-difference (plist-keys (slot-props slot))
-                                   '(:initform :type :reader))
+        (let ((diff (set-difference (plist-keys (slot-props slot))
+                                    '(:initform :type :reader))))
           (unless (null diff)
             (error "Invalid slot option~p in DEFPAIR: ~{~a^ ~}"
                    (length diff) diff)))))

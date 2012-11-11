@@ -117,7 +117,7 @@
   (with-node-slots (function children result) node
     (unwind-protect/ext
      :main  (setf result (with-task-context
-                           (let1 function function
+                           (let ((function function))
                              (typecase function
                                (function (apply (the function function)
                                                 (mapcar #'result children)))
@@ -172,16 +172,16 @@
                   (push-queue node queue))))
     (make-task
      (if *ptree-node-kernel*
-         (let1 node-kernel *ptree-node-kernel*
+         (let ((node-kernel *ptree-node-kernel*))
            (make-task-fn
-             (let1 *kernel* node-kernel
+             (let ((*kernel* node-kernel))
                (compute))))
          (make-task-fn
            (compute))))))
 
 (defun/type submit-node (node queue kernel) (node queue kernel) null
   (declare #.*normal-optimize*)
-  (let1 task (make-node-task queue node)
+  (let ((task (make-node-task queue node)))
     (submit-raw-task task kernel))
   nil)
 
@@ -217,7 +217,7 @@
 (defun/type compute-ptree (root ptree kernel) (node %ptree kernel) node
   (declare #.*normal-optimize*)
   (with-%ptree-slots (queue pending) ptree
-    (loop (let1 node (find-node root)
+    (loop (let ((node (find-node root)))
             (cond (node
                    (lock-node node)
                    (incf pending)
@@ -276,13 +276,13 @@ computations.
     (flet ((fetch-node (id) (or (gethash id nodes)
                                 (setf (gethash id nodes)
                                       (make-node-instance :id id)))))
-      (let1 node (fetch-node id)
+      (let ((node (fetch-node id)))
         (with-node-slots ((node-function function)
                           (node-children children)) node
           (when node-function
             (error 'ptree-redefinition-error :id id))
           (setf node-function function)
-          (let1 children (mapcar #'fetch-node args)
+          (let ((children (mapcar #'fetch-node args)))
             (dolist (child children)
               (with-node-slots (parents) child
                 (push node parents)))
@@ -296,7 +296,7 @@ computations.
 If the node is uncomputed, compute the result.
 
 If the node is already computed, return the computed result."
-  (let1 root (gethash id (nodes ptree))
+  (let ((root (gethash id (nodes ptree))))
     (unless root
       (error 'ptree-undefined-function-error :id id))
     (unwrap-result
@@ -343,7 +343,7 @@ For each `node-name', a symbol macro is defined which expands to a
                :id id
                :keyword keyword))))
   (with-gensyms (tree)
-    `(let1 ,tree (make-ptree)
+    `(let ((,tree (make-ptree)))
        ,@(loop
             :for def :in defs
             :collect (destructuring-bind (id args &rest forms) def

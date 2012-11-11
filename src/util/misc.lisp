@@ -122,11 +122,6 @@ nil then no docstring is parsed."
   (finish-output *query-io*)
   (multiple-value-list (eval (read *query-io*))))
 
-(defmacro let1 (var value &body body)
-  "Make a single `let' binding, heroically saving three columns."
-  `(let ((,var ,value))
-     ,@body))
-
 (defmacro while (test &body body)
   `(loop :while ,test :do (progn ,@body)))
 
@@ -137,27 +132,17 @@ nil then no docstring is parsed."
   `(loop :repeat ,n :do (progn ,@body)))
 
 (defmacro when-let ((var test) &body body)
-  `(let1 ,var ,test
+  `(let ((,var ,test))
      (when ,var ,@body)))
-
-(defmacro while-let ((var test) &body body)
-  `(loop (let1 ,var ,test
-           (if ,var
-               (progn ,@body)
-               (return)))))
 
 (defmacro dosequence ((var sequence &optional return) &body body)
   `(block nil
      (map nil (lambda (,var) ,@body) ,sequence)
-     ,(if return
-          `(let1 ,var nil
-             (declare (ignorable ,var))
-             ,return)
-          nil)))
-
-(defmacro rebind (vars &body body)
-  `(let ,(mapcar #'list vars vars)
-     ,@body))
+     ,@(if return
+           `((let ((,var nil))
+               (declare (ignorable ,var))
+               ,return))
+           nil)))
 
 (defmacro unwind-protect/ext (&key prepare main cleanup abort)
   "Extended `unwind-protect'.
@@ -171,7 +156,7 @@ nil then no docstring is parsed."
     `(progn
        ,@(unsplice prepare)
        ,(cond ((and main cleanup abort)
-               `(let1 ,finishedp nil
+               `(let ((,finishedp nil))
                   (declare (type boolean ,finishedp))
                   (unwind-protect
                        (prog1 ,main  ; m-v-prog1 in real life
@@ -182,7 +167,7 @@ nil then no docstring is parsed."
               ((and main cleanup)
                `(unwind-protect ,main ,cleanup))
               ((and main abort)
-               `(let1 ,finishedp nil
+               `(let ((,finishedp nil))
                   (declare (type boolean ,finishedp))
                   (unwind-protect
                        (prog1 ,main

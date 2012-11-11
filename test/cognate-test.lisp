@@ -31,28 +31,28 @@
 (in-package #:lparallel-test)
 
 (lp-test pmap-into-test
-  (let1 a (list nil nil nil)
+  (let ((a (list nil nil nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
     (is (equal '(15 17 19) a))
     (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
     (is (equal '(15 17 19) a))
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equal '(15 17 19) a)))
-  (let1 a (list nil)
+  (let ((a (list nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
     (is (equal '(15) a))
     (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
     (is (equal '(15) a))
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equal '(15) a)))
-  (let1 a (vector nil nil nil)
+  (let ((a (vector nil nil nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
     (is (equalp #(15 17 19) a))
     (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
     (is (equalp #(15 17 19) a))
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equalp #(15 17 19) a)))
-  (let1 a (vector nil)
+  (let ((a (vector nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
     (is (equalp #(15) a))
     (pmap-into a '+ :parts 2 '(5 6 7) '(10 11 12))
@@ -126,10 +126,10 @@
                   (apply #'pmap 'simple-vector args)))
       (is (equalp (map 'simple-vector #'identity expected)
                   (apply #'pmap 'simple-vector #'f :parts 500 lists)))
-      (let1 result (make-list 500)
+      (let ((result (make-list 500)))
         (is (equal expected (apply #'pmap-into result args)))
         (is (equal expected result)))
-      (let1 result (make-list 500)
+      (let ((result (make-list 500)))
         (is (equal expected (apply #'pmap-into result #'f :parts 500 lists)))
         (is (equal expected result)))
       (dolist (parts '(nil 1000))
@@ -281,7 +281,7 @@
               :initial-value (vector 1 0 0 1)
               :from-end t)
 
-      (let1 serial (reduce #'non-associative/non-commutative c)
+      (let ((serial (reduce #'non-associative/non-commutative c)))
         (is (= serial
                (preduce #'non-associative/non-commutative c :parts 1)
                (preduce #'non-associative/non-commutative c :parts (length c))))
@@ -329,7 +329,7 @@
        :for parts :from 1 :to 8
        :do (loop
               :for n :from 1 :to 6
-              :do (let1 a (collect-n n (random n))
+              :do (let ((a (collect-n n (random n))))
                     (is (equalp ( map-into (make-array n) #'sq a)
                                 (pmap-into (make-array n) #'sq :parts parts a)))
                     (is (equal  ( map-into (make-list n) #'sq a)
@@ -356,7 +356,7 @@
        (plet ((a 3)
               (b 4))
          (assert (= 7 (+ a b))))
-       (let1 handledp nil
+       (let ((handledp nil))
          (block done
            (handler-bind ((client-error (lambda (e)
                                           (declare (ignore e))
@@ -424,7 +424,7 @@
      (dolist (granularity '(nil 1 5 100))
        (dolist (size #-lparallel.with-green-threads '(1 5 10 100 10000)
                      #+lparallel.with-green-threads '(1 5 10))
-         (let1 source (make-random-vector size)
+         (let ((source (make-random-vector size)))
            (let ((a (copy-seq source))
                  (b (copy-seq source)))
              (is (equalp (  sort a #'<)
@@ -438,7 +438,7 @@
              #-abcl
              (is (equalp (  sort a #'>)
                          (,psort b #'> :granularity granularity)))))
-         (let1 source (make-random-vector size)
+         (let ((source (make-random-vector size)))
            (let ((a (copy-seq source))
                  (b (copy-seq source)))
              (is (equalp (  sort a '< :key '-)
@@ -452,7 +452,7 @@
              #-abcl
              (is (equalp (  sort a #'> :key #'-)
                          (,psort b #'> :key #'- :granularity granularity))))))
-       (let1 source (vector 5 1 9 3 6 0 1 9)
+       (let ((source (vector 5 1 9 3 6 0 1 9)))
          (let ((a (copy-seq source))
                (b (copy-seq source)))
            (is (equalp (  sort a #'<)
@@ -466,7 +466,7 @@
            #-abcl
            (is (equalp (  sort a #'>)
                        (,psort b #'> :granularity granularity)))))
-       (let1 source (vector 5 1 9 3 6 0 1 9)
+       (let ((source (vector 5 1 9 3 6 0 1 9)))
          (let ((a (copy-seq source))
                (b (copy-seq source)))
            (is (equalp (  sort a #'< :key (lambda (x) (* -1 x)))
@@ -484,7 +484,7 @@
            (is (equalp (  sort a #'> :key (lambda (x) (* -1 x)))
                        (,psort b #'> :key (lambda (x) (* -1 x))
                                :granularity granularity)))))
-       (let1 source (make-array 50 :initial-element 5)
+       (let ((source (make-array 50 :initial-element 5)))
          (let ((a (copy-seq source))
                (b (copy-seq source)))
            (is (equalp (  sort a #'<)
@@ -558,10 +558,10 @@
                                      :adjustable t
                                      :initial-contents
                                      (list 0 1 2 3 4 9 3 2 3 9 1)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equal (remove  x (list 3 4 x 4 9 x 2))
                (premove x (list 3 4 x 4 9 x 2)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equalp (remove  x (make-array
                             7
                             :adjustable t
@@ -580,12 +580,12 @@
                                      (invoke-restart 'double-me 3))))
              (funcall fn))))
     (dolist (n '(1 2 3 4 5 6 10))
-      (let1 result (with-new-kernel (n :context #'my-worker-context)
-                     (pmapcar (lambda (x)
-                                (declare (ignore x))
-                                (restart-case (warn 'foo-warning)
-                                  (double-me (z) (* 2 z))))
-                              '(3 3)))
+      (let ((result (with-new-kernel (n :context #'my-worker-context)
+                      (pmapcar (lambda (x)
+                                 (declare (ignore x))
+                                 (restart-case (warn 'foo-warning)
+                                   (double-me (z) (* 2 z))))
+                               '(3 3)))))
         (is (equal '(6 6) result))))))
 
 (lp-test cognate-handler-test
@@ -624,12 +624,12 @@
 (lp-test pmap-into-bounds-test
   (dotimes (i 3)
     (dotimes (j (1+ i))
-      (let1 contents (collect-n i (random 1000))
+      (let ((contents (collect-n i (random 1000))))
         (destructuring-bind (a b)
             (collect-n 2
               (make-array i :fill-pointer j :initial-contents contents))
           (dotimes (k 6)
-            (let1 source (collect-n k (random 1000))
+            (let ((source (collect-n k (random 1000))))
               (let ((c (pmap-into b #'identity source))
                     (d (map-into  a #'identity source)))
                 (is (equalp a b))
@@ -718,7 +718,7 @@
 
 (lp-test pfuncall-test
   (is (= 7 (pfuncall '+ 3 4)))
-  (let1 memo (make-queue)
+  (let ((memo (make-queue)))
     (is (= 7 (pfuncall
               #'+
               (progn (sleep 0.2) (push-queue 3 memo) 3)
@@ -786,10 +786,10 @@
                                      :adjustable t
                                      :initial-contents
                                      (list 0 1 2 3 4 9 3 2 3 9 1)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equal (count  x (list 3 4 x 4 9 x 2))
                (pcount x (list 3 4 x 4 9 x 2)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equalp (count  x (make-array
                            7
                            :adjustable t
@@ -829,7 +829,7 @@
             :for size :from 1 :below 100
             :for a := (make-random-list size)
             :for b := (make-random-vector size)
-            :for target := (let1 index (random size)
+            :for target := (let ((index (random size)))
                              (setf (elt a index) 99.0
                                    (elt b index) 99.0))
             :do (is (equal  (funcall std (curry #'eql target) a)
@@ -853,7 +853,7 @@
      :for size :from 1 :below 100
      :for a := (make-random-list size)
      :for b := (make-random-vector size)
-     :for target := (let1 index (random size)
+     :for target := (let ((index (random size)))
                       (setf (elt a index) 99.0
                             (elt b index) 99.0))
      :do (is (equal  (find  target a)
@@ -870,10 +870,10 @@
                                    :adjustable t
                                    :initial-contents
                                    (list 0 1 2 3 4 9 3 2 3 9 1)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equal (find  x (list 3 4 x 4 9 x 2))
                (pfind x (list 3 4 x 4 9 x 2)))))
-  (let1 x (cons nil nil)
+  (let ((x (cons nil nil)))
     (is (equalp (find  x (make-array
                           7
                           :adjustable t
@@ -898,19 +898,19 @@
                  (pmap-into (vector 9 9 9) 'identity (vector))))
      (is (equalp #()
                  (pmap-into (vector) 'identity (vector 1 2 3))))
-     (let1 v (make-array 3 :fill-pointer 0)
+     (let ((v (make-array 3 :fill-pointer 0)))
        (is (equalp #(1 2 3)
                    (pmap-into v 'identity (vector 1 2 3))))
        (is (equalp #(1 2 3) v)))
-     (let1 v (make-array 3 :fill-pointer 0)
+     (let ((v (make-array 3 :fill-pointer 0)))
        (is (equalp #(1 2)
                    (pmap-into v 'identity (vector 1 2))))
        (is (equalp #(1 2) v)))
-     (let1 v (make-array 3 :fill-pointer 3)
+     (let ((v (make-array 3 :fill-pointer 3)))
        (is (equalp #(1 2)
                    (pmap-into v 'identity (vector 1 2))))
        (is (equalp #(1 2) v)))
-     (let1 v (make-array 3 :fill-pointer 3)
+     (let ((v (make-array 3 :fill-pointer 3)))
        (is (equalp #(1)
                    (pmap-into v 'identity :size 1 (vector 1 2))))
        (is (equalp #(1) v)))))
@@ -959,24 +959,24 @@
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
 
 (lp-test cognate-steal-test
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
                    (pmap 'vector 'identity '(1 2 3 4 5))))
     (is (equalp #(1 2 3 4 5) (receive-result channel))))
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
                    (pmap-reduce 'identity '+ '(1 2 3 4 5))))
     (is (eql 15 (receive-result channel))))
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
                    (por nil nil 5)))
     (is (eql 5 (receive-result channel))))
   (is (not (null (pand 9 (por nil 3)))))
   (is (= 3 (por nil nil (por nil 3) (por nil nil 3))))
-  (let1 channel (make-channel)
+  (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
                    (let* ((a (make-random-vector 1000))
@@ -1041,14 +1041,14 @@
          (pdotimes (i *memo* i)
            (declare (ignorable i))))) 
   (setf *memo* t)
-  (let1 q (make-queue)
+  (let ((q (make-queue)))
     (dotimes (i 4)
       (when *memo* (go :end))
       (error "skip me")
       :end
       (push-queue i q))
     (is (equal '(0 1 2 3) (sort (extract-queue q) '<))))
-  (let1 q (make-queue)
+  (let ((q (make-queue)))
     (pdotimes (i 4)
       (when *memo* (go :end))
       (error "skip me")

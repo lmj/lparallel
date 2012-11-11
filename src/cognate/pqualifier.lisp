@@ -32,7 +32,7 @@
 
 (defun pqualifier (qualifier predicate sequences bail)
   (with-parsed-options (sequences size parts-hint)
-    (let1 input-parts (make-input-parts sequences size parts-hint)
+    (let ((input-parts (make-input-parts sequences size parts-hint)))
       (with-submit-cancelable
         (dosequence (subseqs input-parts)
           (submit-cancelable 'apply qualifier predicate subseqs))

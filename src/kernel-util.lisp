@@ -47,7 +47,7 @@
 
 (defun receive-results (channel count fn)
   (declare #.*normal-optimize*)
-  (let1 worker *worker*
+  (let ((worker *worker*))
     (if worker
         (repeat count
           (steal-until-receive-result channel worker fn))
@@ -77,7 +77,7 @@
 
 (defmacro/once with-submit-indexed (&once count &once array &body body)
   (with-gensyms (channel)
-    `(let1 ,channel (make-channel)
+    `(let ((,channel (make-channel)))
        (flet ((submit-indexed (index function &rest args)
                 (submit-task
                  ,channel #'indexing-wrapper ,array index function args))

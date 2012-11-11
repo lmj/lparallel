@@ -44,7 +44,7 @@
   
   ;; only used for testing
   (defun peek-spin-queue (queue)
-    (let1 list (sb-concurrency:list-queue-contents queue)
+    (let ((list (sb-concurrency:list-queue-contents queue)))
       (if list
           (values (first list) t)
           (values nil nil))))

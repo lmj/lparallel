@@ -41,7 +41,7 @@
                              peek-queue)
   `(lp-base-test ,name
      (dolist (n (loop :for i :below 20 :collect i))
-       (let1 q (,make-queue n)
+       (let ((q (,make-queue n)))
          (is (eq t (,queue-empty-p q)))
          (multiple-value-bind (a b) (,try-pop-queue q)
            (is (null a))
@@ -119,7 +119,7 @@
              (with-thread (:name "grind-queue"
                            :bindings `((*standard-output* .
                                         ,*standard-output*)))
-               (loop (let1 obj (,pop-queue to-workers)
+               (loop (let ((obj (,pop-queue to-workers)))
                        (if obj
                            (,push-queue obj from-workers)
                            (return)))))

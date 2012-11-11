@@ -73,7 +73,7 @@ error will be signaled."))
      :with allowed := '(:initform :type :reader)
      :for (nil . plist) :in slots
      :for keys := (plist-keys plist)
-     :do (let1 diff (set-difference keys allowed)
+     :do (let ((diff (set-difference keys allowed)))
            (unless (null diff)
              (error "Slot option ~s in DEFSLOTS is not one of ~s"
                     (first diff) allowed)))))

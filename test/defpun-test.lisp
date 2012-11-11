@@ -36,7 +36,7 @@
 
 (defpun defpun-accept ()
   ;; use assert since this may execute in another thread
-  (let1 queue (make-queue)
+  (let ((queue (make-queue)))
     (plet ((outer (progn
                     (sleep 0.6)
                     (push-queue :outer queue))))
@@ -60,7 +60,7 @@
 
 (defpun defpun-reject ()
   ;; use assert since this may execute in another thread
-  (let1 queue (make-queue)
+  (let ((queue (make-queue)))
     (plet ((outer1 (progn
                      (sleep 0.4)
                      (push-queue :outer queue)))
@@ -195,7 +195,7 @@
 (define-plet-test defpun*-basic-test defpun*-basic-test-fn defpun*)
 
 (defpun* defpun*-accept ()
-  (let1 queue (make-queue)
+  (let ((queue (make-queue)))
     (plet ((outer (progn
                     (sleep 0.6)
                     (push-queue :outer queue))))
@@ -217,7 +217,7 @@
     (defpun*-accept)))
 
 (defpun* defpun*-reject ()
-  (let1 queue (make-queue)
+  (let ((queue (make-queue)))
     (plet ((outer1 (progn
                      (sleep 0.4)
                      (push-queue :outer queue)))

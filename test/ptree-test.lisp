@@ -53,7 +53,7 @@
            border))))
 
 (lp-test basic-ptree-fn-test
-  (let1 tree (make-ptree)
+  (let ((tree (make-ptree)))
     (ptree-fn 'area   '(width height) (lambda (w h) (* w h))       tree)
     (ptree-fn 'width  '(border)       (lambda (b)   (+ 7 (* 2 b))) tree)
     (ptree-fn 'height '(border)       (lambda (b)   (+ 5 (* 2 b))) tree)
@@ -68,7 +68,7 @@
            (call-ptree 'border tree)))))
 
 (lp-test ptree-no-double-compute-test
-  (let1 tree (make-ptree)
+  (let ((tree (make-ptree)))
     (setf *memo* 0)
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
     (ptree-fn 'x '()  (lambda () (incf *memo*) 5) tree)
@@ -84,13 +84,13 @@
     (is (= 7 lone))))
 
 (lp-test ptree-missing-node-test
-  (let1 tree (make-ptree)
+  (let ((tree (make-ptree)))
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
     (signals ptree-undefined-function-error
       (call-ptree 'g tree))))
 
 (lp-test ptree-unknown-node-test
-  (let1 signaledp nil
+  (let ((signaledp nil))
     (handler-case
         (task-handler-bind ((error #'invoke-transfer-error))
           (ptree ((x () 3)
@@ -110,7 +110,7 @@
     (is (not (null signaledp)))))
 
 (lp-test missing-ptree-function-test
-  (let1 tree (make-ptree)
+  (let ((tree (make-ptree)))
     (ptree-fn 'area   '(width height) (lambda (w h) (* w h))       tree)
     (ptree-fn 'width  '(border)       (lambda (b)   (+ 7 (* 2 b))) tree)
     (ptree-fn 'height '(border)       (lambda (b)   (+ 5 (* 2 b))) tree)
@@ -127,7 +127,7 @@
 
 (lp-test ptree-redefinition-test
   (signals ptree-redefinition-error
-    (let1 tree (make-ptree)
+    (let ((tree (make-ptree)))
       (ptree-fn 'foo () (lambda () 3) tree)
       (ptree-fn 'foo () (lambda () 4) tree))))
 
@@ -138,14 +138,14 @@
     (eval '(ptree ((foo (x &REST y) (list x y)))))))
 
 (lp-test error-inside-ptree-function-test
-  (let1 memo (make-queue)
+  (let ((memo (make-queue)))
     (task-handler-bind ((foo-error (lambda (e)
                                      (push-queue e memo)
                                      (invoke-restart 'transfer-error e))))
-      (let1 tree (make-ptree)
+      (let ((tree (make-ptree)))
         (ptree-fn 'root '(child) (lambda (x) x) tree)
         (ptree-fn 'child () (lambda () (error 'foo-error)) tree)
-        (let1 err nil
+        (let ((err nil))
           (handler-case (call-ptree 'root tree)
             (error (result) (setf err result)))
           (is (not (null err)))
@@ -180,13 +180,13 @@
       (for-range (num-levels level-range)
         (for-range (num-children children-range)
           (repeat main-iterations
-            (let1 tree (make-ptree)
+            (let ((tree (make-ptree)))
               (setf count 0)
               (generate-ptree num-levels num-children tree)
               (is (eql count (call-ptree root tree))))))))))
 
 (lp-base-test ptree-node-kernel-test
-  (let1 *ptree-node-kernel* (make-kernel 2)
+  (let ((*ptree-node-kernel* (make-kernel 2)))
     (unwind-protect 
          (with-new-kernel (1)
            (is (equal
@@ -194,13 +194,13 @@
                 (ptree ((area   (width height) (* width height))
                         (width  (border)       (+ 7 (* 2 border)))
                         (height (border)       (+ 5 (* 2 border)))
-                        (border ()             (let1 channel (make-channel)
+                        (border ()             (let ((channel (make-channel)))
                                                  (submit-task
                                                   channel (lambda () 1))
                                                  (receive-result channel))))
                   ;; will hang without separate node kernel
                   (list area width height border)))))
-      (let1 *kernel* *ptree-node-kernel*
+      (let ((*kernel* *ptree-node-kernel*))
         (end-kernel)))))
 
 (lp-test ptree-node-id-test

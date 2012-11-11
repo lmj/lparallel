@@ -40,7 +40,7 @@
   (debug!))
 
 (defmacro with-new-kernel ((&rest args) &body body)
-  `(let1 *kernel* (make-kernel ,@args)
+  `(let ((*kernel* (make-kernel ,@args)))
      (unwind-protect
           (progn ,@body)
        (end-kernel :wait t))))
@@ -60,7 +60,7 @@
 (defmacro lp-test (name &body body)
   (with-gensyms (body-fn n)
     `(lp-base-test ,name
-       (let1 *random-state* (make-random-state t)
+       (let ((*random-state* (make-random-state t)))
          (setf *last-random-state* (make-random-state *random-state*))
          (dolist (,n '(1 2 4 8 16))
            (flet ((,body-fn () ,@body))
@@ -85,8 +85,8 @@
       (if (find 'abort restarts)
           (invoke-restart 'abort)
           #-sbcl (fail)
-          #+sbcl (let1 term (find-symbol (string '#:terminate-thread)
-                                         'sb-thread)
+          #+sbcl (let ((term (find-symbol (string '#:terminate-thread)
+                                          'sb-thread)))
                    (if (and term (find term restarts))
                        (invoke-restart term)
                        (fail)))))))
@@ -95,7 +95,7 @@
   (with-gensyms (old-thread-count)
     `(progn
        (sleep 0.2)
-       (let1 ,old-thread-count (length (bordeaux-threads:all-threads))
+       (let ((,old-thread-count (length (bordeaux-threads:all-threads))))
          ,@body
          (sleep 0.2)
          (is (eql ,old-thread-count

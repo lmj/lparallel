@@ -31,7 +31,7 @@
 (in-package #:lparallel.cognate)
 
 (defun pmap-into/parts (map-into result-seq fn seqs size parts-hint)
-  (let1 input-parts (make-input-parts seqs size parts-hint)
+  (let ((input-parts (make-input-parts seqs size parts-hint)))
     (multiple-value-bind (result-parts stitch)
         (make-result-parts result-seq size parts-hint)
       (unwind-protect
@@ -50,7 +50,7 @@
 
 (defun maplist-into (result-list fn &rest lists)
   "A variation of map-into."
-  (let1 fn (ensure-function fn)
+  (let ((fn (ensure-function fn)))
     (apply #'mapl
            (lambda (result &rest args)
              ;; This is an inner loop.
@@ -82,7 +82,7 @@ manually."
 (defun pmap-into/powder/array (result-seq fn seqs size)
   "When a sequence of size N is divided into N parts, it becomes powder."
   (with-submit-indexed size result-seq
-    (let1 index 0
+    (let ((index 0))
       (map-iterate #'map-nil
                    size
                    (lambda (&rest args)
@@ -93,12 +93,12 @@ manually."
     (receive-indexed)))
 
 (defun pmap-into/powder/list (map result-seq fn seqs size)
-  (let1 result result-seq
+  (let ((result result-seq))
     (with-submit-counted
       (map-iterate map
                    size
                    (lambda (&rest args)
-                     (submit-counted (rebind (result)
+                     (submit-counted (let ((result result))
                                        (lambda ()
                                          (setf (car result) (apply fn args)))))
                      (setf result (cdr result)))
@@ -108,7 +108,7 @@ manually."
 (defun pmap-into/powder (map-into result-seq fn seqs size)
   (etypecase result-seq
     (array (pmap-into/powder/array result-seq fn seqs size))
-    (list  (let1 map (if (eq map-into #'maplist-into) #'mapl #'map-nil)
+    (list  (let ((map (if (eq map-into #'maplist-into) #'mapl #'map-nil)))
              (pmap-into/powder/list map result-seq fn seqs size)))))
 
 (defun pmap-into/parsed (map-into result-seq fn seqs size parts-hint)
@@ -125,9 +125,9 @@ manually."
                             (array-has-fill-pointer-p result-seq)))
            (parts-hint (get-parts-hint parts-hint))
            (size       (or size
-                           (let1 limit (if has-fill-p
-                                           (array-total-size result-seq)
-                                           (length result-seq))
+                           (let ((limit (if has-fill-p
+                                            (array-total-size result-seq)
+                                            (length result-seq))))
                              (if seqs
                                  (min limit (find-min-length seqs))
                                  limit)))))
@@ -157,7 +157,7 @@ manually."
   result-sequence)
 
 (defun pmap-iterate/parts (map fn seqs size parts-hint)
-  (let1 input-parts (make-input-parts seqs size parts-hint)
+  (let ((input-parts (make-input-parts seqs size parts-hint)))
     (with-submit-counted
       (with-parts size parts-hint
         (dosequence (subseqs input-parts)

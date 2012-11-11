@@ -217,7 +217,7 @@
 (defmacro define-future/fast (name update-task-count)
   `(defmacro ,name (&body body)
      (with-gensyms (kernel)
-       `(let1 ,kernel (the kernel *kernel*)
+       `(let ((,kernel (the kernel *kernel*)))
           (declare (type kernel ,kernel))
           (future
             (unwind-protect
@@ -322,10 +322,10 @@
 
 (defmacro call-impl-in-worker ()
   (with-gensyms (worker channel)
-    `(let1 ,worker *worker*
+    `(let ((,worker *worker*))
        (if ,worker
            (call-impl)
-           (let1 ,channel (make-channel)
+           (let ((,channel (make-channel)))
              (submit-task ,channel (lambda ()
                                      (multiple-value-list (call-impl))))
              (values-list (receive-result ,channel)))))))

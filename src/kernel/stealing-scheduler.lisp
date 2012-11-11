@@ -55,7 +55,7 @@
 
 (defmacro repeat/fixnum (count &body body)
   (with-gensyms (left)
-    `(let1 ,left (the fixnum ,count)
+    `(let ((,left (the fixnum ,count)))
        (declare (type fixnum ,left))
        (loop
           (when (zerop ,left)
@@ -69,7 +69,7 @@
            (,size (the index ,size-form)))
        (declare (type index ,var ,size))
        (repeat/fixnum ,size
-         ,(let1 next `(mod-incf ,var ,size)
+         ,(let ((next `(mod-incf ,var ,size)))
             (if from-start-p
                 `(progn ,@body ,next)
                 `(progn ,next ,@body)))))))
@@ -111,7 +111,7 @@
                   (length (the simple-vector ,workers))
                   ,start-index
                   ,from-start-p)
-       (let1 ,worker-var (svref (the simple-vector ,workers) ,worker-index)
+       (let ((,worker-var (svref (the simple-vector ,workers) ,worker-index)))
          (declare (type worker ,worker-var))
          ,@body))))
 

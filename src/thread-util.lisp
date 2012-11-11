@@ -58,7 +58,7 @@
   `(progn ,@body))
 
 (defmacro with-thread ((&key bindings name) &body body)
-  `(let1 *default-special-bindings* ,bindings
+  `(let ((*default-special-bindings* ,bindings))
      (make-thread (lambda ()
                     (with-abort-restart
                       ,@body))
@@ -68,7 +68,7 @@
   ;; predicate intentionally evaluated twice
   (with-gensyms (lock-var)
     `(when ,predicate
-       (let1 ,lock-var ,lock
+       (let ((,lock-var ,lock))
          (when (acquire-lock ,lock-var nil)
            (unwind-protect
                 (when ,predicate
@@ -87,7 +87,7 @@
                                   defun/no-lock
                                   arg-types/no-lock return-type/no-lock
                                   &body body)
-  (let1 name/no-lock (symbolicate name '#:/no-lock)
+  (let ((name/no-lock (symbolicate name '#:/no-lock)))
     `(progn
        (,defun/no-lock ,name/no-lock ,args
          ,@(unsplice arg-types/no-lock)

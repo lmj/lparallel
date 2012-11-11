@@ -71,13 +71,14 @@
                 (right `(,name vec i hi
                                compare ,@(unsplice gran) ,@(unsplice key))))
             (if gran
-                `(let1 left-size (the fixnum (- j lo))
+                `(let ((left-size (the fixnum (- j lo))))
                    (declare (type fixnum left-size))
                    (if (> left-size ,gran)
                        (plet ((result ,left))
                          ,right
                          result)
-                       (let1 right-size (the fixnum (1+ (the fixnum (- hi i))))
+                       (let ((right-size (the fixnum
+                                           (1+ (the fixnum (- hi i))))))
                          (declare (type fixnum right-size))
                          (if (> right-size ,gran)
                              (plet ((result ,right))

@@ -38,8 +38,10 @@
         (to-workers (make-queue)))
     (repeat num-threads
       (with-thread ()
-        (while-let (object (pop-queue to-workers))
-          (push-queue object from-workers))))
+        (loop (let ((object (pop-queue to-workers)))
+                (if object
+                    (push-queue object from-workers)
+                    (return))))))
     (repeat num-iterations
       (repeat num-objects
         (push-queue 99 to-workers))

@@ -33,7 +33,7 @@
 (defmacro with-preduce-context (size parts &body body)
   (with-gensyms (results)
     `(with-parts ,size ,parts
-       (let1 ,results (make-array (num-parts))
+       (let ((,results (make-array (num-parts))))
          (with-submit-indexed (num-parts) ,results
            ,@body
            (receive-indexed))))))
@@ -107,7 +107,7 @@
                                      (list :initial-value initial-value)))))
            (if partial
                results
-               (let1 new-size (length results)
+               (let ((new-size (length results)))
                  (if (and recurse (>= new-size 4))
                      (apply #'preduce/common
                             function

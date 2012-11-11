@@ -127,7 +127,7 @@ If `queue' is empty, return (values nil nil).")
 inside `body'.")
 
 (do-external-symbols (sym *package*)
-  (let1 name (string-downcase (string sym))
+  (let ((name (string-downcase (string sym))))
     (when (search "/no-lock" name)
       (setf (documentation sym 'function)
             (format nil

@@ -47,7 +47,7 @@
 
   (defun/type push-raw-queue (value queue) (t raw-queue) t
     (declare #.*normal-optimize*)
-    (let1 new (cons value nil)
+    (let ((new (cons value nil)))
       (if (car queue)
           (setf (cddr queue) new)
           (setf (car  queue) new))
@@ -82,7 +82,7 @@
   (defun/type push-raw-queue (value queue) (t raw-queue) null
     (declare #.*normal-optimize*)
     (with-raw-queue-slots (data start count) queue
-      (let1 size (length data)
+      (let ((size (length data)))
         (cond ((eql count size)
                (adjust-array data (if (zerop size) 1 (* 2 size)))
                (replace data data :start1 size :start2 0 :end2 start)

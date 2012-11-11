@@ -35,10 +35,10 @@
 
 The `parts' option divides `sequence' into `parts' number of parts.
 Default is (kernel-worker-count)."
-  (let1 subsize (subsize sequence (length sequence) start end)
+  (let ((subsize (subsize sequence (length sequence) start end)))
     (if (zerop subsize)
         0
-        (let1 predicate (ensure-function predicate)
+        (let ((predicate (ensure-function predicate)))
           (flet ((maybe-inc (acc x)
                    (declare #.*normal-optimize*
                             (fixnum acc))

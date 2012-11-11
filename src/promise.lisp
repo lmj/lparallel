@@ -290,11 +290,11 @@ unknown at the time it is created."
 
 (defun/type make-future (fn) (function) %future
   (declare #.*normal-optimize*)
-  (let1 kernel *kernel*
+  (let ((kernel *kernel*))
     (unless kernel
       (check-kernel)
       (setf kernel *kernel*))
-    (let1 future (make-%future-instance :fn fn)
+    (let ((future (make-%future-instance :fn fn)))
       (submit-raw-task (make-future-task future) kernel)
       future)))
 
@@ -307,5 +307,5 @@ parallel by the implicit progn `body'."
 
 (defmacro speculate (&body body)
   "Create a speculation. A speculation is a low-priority future."
-  `(let1 *task-priority* :low
+  `(let ((*task-priority* :low))
      (future ,@body)))

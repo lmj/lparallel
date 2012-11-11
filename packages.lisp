@@ -34,7 +34,6 @@
   (:use #:cl)
   (:export #:with-gensyms
            #:defmacro/once
-           #:mklist
            #:unsplice
            #:symbolicate
            #:with-parsed-body)
@@ -42,13 +41,9 @@
            #:until
            #:repeat
            #:when-let
-           #:while-let
            #:dosequence
-           #:rebind
-           #:let1
            #:alias-function
            #:alias-macro
-           #:alias-special
            #:unwind-protect/ext
            #:import-now)
   (:export #:defun/inline

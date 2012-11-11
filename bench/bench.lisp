@@ -38,7 +38,7 @@
 
 (defmacro collecting1 (&body body)
   (with-gensyms (result value)
-    `(let1 ,result nil
+    `(let ((,result nil))
        (flet ((collect (,value) (push ,value ,result)))
          ,@body)
        (nreverse ,result))))
@@ -46,7 +46,7 @@
 (defun compose (&rest fns)
   (flet ((compose2 (f g) (lambda (x) (funcall g (funcall f x)))))
     (destructuring-bind (right &rest lefts) (reverse fns)
-      (let1 left (reduce #'compose2 lefts)
+      (let ((left (reduce #'compose2 lefts)))
         (lambda (&rest args) (funcall left (apply right args)))))))
 
 (defun groups-of (n list)
@@ -87,9 +87,9 @@
 
 (defmacro with-wall-time (&body body)
   (with-gensyms (start end)
-    `(let1 ,start (get-time)
+    `(let ((,start (get-time)))
        (values (progn ,@body) 
-               (let1 ,end (get-time)
+               (let ((,end (get-time)))
                  (time-interval ,start ,end))))))
 
 (defun wall-time (fn args)
@@ -140,7 +140,7 @@ results are riffled for comparison."
                        (mapcar (compose 'funcall 'args-fn) specs)))))))))
 
 (defmacro with-temp-kernel ((&rest make-kernel-args) &body body)
-  `(let1 *kernel* (make-kernel ,@make-kernel-args)
+  `(let ((*kernel* (make-kernel ,@make-kernel-args)))
      (unwind-protect
           (progn ,@body)
        (end-kernel :wait t))))

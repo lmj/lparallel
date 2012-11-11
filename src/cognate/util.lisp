@@ -43,7 +43,7 @@
     (setf test (complement test-not))
     (setf test-not nil))
   (if test
-      (let1 test (ensure-function test)
+      (let ((test (ensure-function test)))
         (lambda (x)
           (declare #.*normal-optimize*)
           (funcall test item x)))
@@ -58,7 +58,7 @@
            (eq item x))))))
 
 (defun subsize (seq size start end)
-  (let1 result (- (or end size) start)
+  (let ((result (- (or end size) start)))
     (when (or (minusp result) (> result size))
       (error "Bad interval for sequence operation on ~a: start=~a end=~a"
              seq start end))

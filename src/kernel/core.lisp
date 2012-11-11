@@ -35,7 +35,7 @@
   ;; already inside call-with-task-handler
   (declare #.*full-optimize*)
   (with-worker-slots (running-category) worker
-    (let1 prev-category running-category
+    (let ((prev-category running-category))
       (unwind-protect/ext
        :prepare (setf running-category (task-category task))
        :main    (funcall (task-fn task))
@@ -81,13 +81,14 @@
 (defun replace-worker (kernel worker)
   (with-kernel-slots (workers workers-lock) kernel
     (with-lock-held (workers-lock)
-      (let1 index (position worker workers :test #'eq)
+      (let ((index (position worker workers :test #'eq)))
         (assert index)
         (assert (eql index (with-worker-slots (index) worker
                              index)))
         (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
-           :main    (let1 new-worker (make-worker kernel index (tasks worker))
+           :main    (let ((new-worker (make-worker kernel index
+                                                   (tasks worker))))
                       (setf (svref workers index) new-worker)
                       (handshake/to-worker new-worker))
            :abort   (warn "lparallel: Worker replacement failed! ~
@@ -103,7 +104,7 @@
   ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
   (declare #.*normal-optimize*)
-  (let1 scheduler (scheduler kernel)
+  (let ((scheduler (scheduler kernel)))
     (unwind-protect/ext
        :main  (loop (exec-task/worker (or (next-task scheduler worker) (return))
                                       worker))
@@ -113,8 +114,8 @@
 (defun call-with-worker-context (fn worker-context kernel)
   (funcall worker-context
            (lambda ()
-             (let1 *worker* (find (current-thread) (workers kernel)
-                                  :key #'thread)
+             (let ((*worker* (find (current-thread) (workers kernel)
+                                   :key #'thread)))
                (assert *worker*)
                (%call-with-task-handler fn)))))
 
@@ -251,9 +252,9 @@ As an optimization, an internal size may be given with
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
     `(if *client-handlers*
-         (let1 ,client-handlers *client-handlers*
+         (let ((,client-handlers *client-handlers*))
            (lambda ()
-             (let1 *client-handlers* ,client-handlers
+             (let ((*client-handlers* ,client-handlers))
                ,@body)))
          (lambda () ,@body))))
 
@@ -263,7 +264,7 @@ As an optimization, an internal size may be given with
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
   (declare #.*full-optimize*)
-  (let1 queue (channel-queue channel)
+  (let ((queue (channel-queue channel)))
     (make-task
       (make-task-fn
         (unwind-protect/ext
@@ -306,7 +307,7 @@ each time with the result bound to `result'.
 
 `body' should be a trivial operation such as an aref call."
   `(repeat ,count
-     (let1 ,result (receive-result ,channel)
+     (let ((,result (receive-result ,channel)))
        ,@body)))
 
 #-abcl
@@ -339,18 +340,18 @@ return value is the number of tasks that would have been killed if
       (error "task category cannot be NIL in KILL-TASKS"))
     (with-kernel-slots (workers workers-lock) *kernel*
       (with-lock-held (workers-lock)
-        (let1 victims (map 'vector 
-                           #'thread 
-                           (remove-if-not (lambda (worker)
-                                            (eql (running-category worker)
-                                                 task-category))
-                                          workers))
+        (let ((victims (map 'vector 
+                            #'thread 
+                            (remove-if-not (lambda (worker)
+                                             (eql (running-category worker)
+                                                  task-category))
+                                           workers))))
           (unless dry-run
             (map nil #'destroy-thread victims))
           (length victims))))))
 
 (defun shutdown (channel kernel)
-  (let1 *task-priority* :low
+  (let ((*task-priority* :low))
     (submit-task channel (lambda ())))
   (receive-result channel)
   (with-kernel-slots (scheduler workers) kernel
@@ -384,7 +385,7 @@ deadlocked or infinite looping tasks."
           (channel (make-channel)))
       (setf *kernel* nil)
       (with-kernel-slots (workers) kernel
-        (let1 threads (map 'list #'thread workers)
+        (let ((threads (map 'list #'thread workers)))
           (cond (wait
                  (shutdown channel kernel)
                  threads)
