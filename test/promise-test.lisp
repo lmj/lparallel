@@ -247,7 +247,7 @@
      :for n :from 1 :to 64
      :do (with-new-kernel (n)
            (let* ((channel (make-channel))
-                  (counter (lparallel.counter:make-counter))
+                  (counter (make-queue))
                   (future  (task-handler-bind
                                ((foo-error #'invoke-transfer-error))
                              (future (error 'foo-error)))))
@@ -259,9 +259,10 @@
                   (handler-bind
                       ((foo-error (lambda (e)
                                     (declare (ignore e))
+                                    (push-queue nil counter)
                                     (invoke-restart
                                      'store-value
-                                     (lparallel.counter:inc-counter counter)))))
+                                     (queue-count counter)))))
                     (force future)))))
              (let ((results (loop
                                :repeat n

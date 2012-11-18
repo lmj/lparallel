@@ -79,6 +79,7 @@ See http://lparallel.org for documentation and examples.
                              (:file "thread-util")
                              (:file "raw-queue")
                              (:file "queue")
+                             #+lparallel.with-stealing-scheduler
                              (:file "counter")
                              (:file "biased-queue")
                              (:file "spin-queue")
