@@ -62,7 +62,7 @@
         (throw +worker-suicide-tag+ nil)))))
 
 (defun kill-errors-report (stream)
-  (format stream "Kill current errors (remove debugger instances)."))
+  (format stream "Kill errors in workers (remove debugger instances)."))
 
 (defmacro with-worker-restarts (&body body)
   `(catch +worker-suicide-tag+
