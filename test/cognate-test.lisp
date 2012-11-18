@@ -974,7 +974,7 @@
                    (por nil nil 5)))
     (is (eql 5 (receive-result channel))))
   (is (not (null (pand 9 (por nil 3)))))
-  (is (= 3 (por nil nil (por nil 3) (por nil nil 3))))
+  (is (eql 3 (por nil nil (por nil 3) (por nil nil 3))))
   (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
