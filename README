@@ -29,7 +29,10 @@ test suite:
   * LispWorks
   * SBCL
 
-To run the tests, load lparallel-test.asd and call lparallel-test:execute.
+To run tests, load lparallel-test.asd and call (lparallel-test:execute).
+
+To run benchmarks, load lparallel-bench.asd and call (lparallel-test:execute N)
+where N is the number of worker threads.
 
 Author
 ------
