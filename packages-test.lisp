@@ -42,12 +42,4 @@
         #:lparallel.defpun
         #:lparallel.promise
         #:lparallel.ptree)
-  (:import-from #:eos
-                #:def-suite
-                #:in-suite
-                #:run!
-                #:debug!
-                #:is
-                #:signals
-                #:test)
   (:export #:execute))

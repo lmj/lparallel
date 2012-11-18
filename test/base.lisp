@@ -30,14 +30,15 @@
 
 (in-package #:lparallel-test)
 
-(def-suite :lparallel)
-(in-suite :lparallel)
+#-lparallel-test.with-simple-framework
+(import-now eos:is eos:signals eos:test eos:run! eos:debug! eos:in-suite*)
 
-(defun execute ()
-  (run!))
+#+lparallel-test.with-simple-framework
+(import-now 1am:is 1am:signals 1am:test 1am:run! 1am:debug! 1am:in-suite*)
 
-(defun debug-execute ()
-  (debug!))
+(in-suite* :lparallel)
+
+(alias-function execute run!)
 
 (defmacro with-new-kernel ((&rest args) &body body)
   `(let ((*kernel* (make-kernel ,@args)))
@@ -47,11 +48,11 @@
 
 (defmacro lp-base-test (name &body body)
   `(progn
-     (test #-lparallel-test.with-precompile ,name
-           #+lparallel-test.with-precompile (,name :compile-at :definition-time)
+     (test ,name
        (format t "~&~a~%" ',name)
        (finish-output)
        ,@body)
+     #-lparallel-test.with-simple-framework
      (defun ,name ()
        (debug! ',name))))
 
