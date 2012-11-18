@@ -36,8 +36,6 @@
         #:lparallel.cognate
         #:lparallel.defpun
         #:lparallel.kernel)
-  (:import-from #:trivial-garbage
-                #:gc)
   (:export #:execute
            #+sbcl #:profile
            #+sbcl #:stat-profile)

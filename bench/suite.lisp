@@ -30,6 +30,8 @@
 
 (in-package #:lparallel-bench)
 
+(import-now trivial-garbage:gc)
+
 (defparameter *trials* 12)
 
 (defparameter *rehearsals* 8)
@@ -90,7 +92,7 @@
 (defun reset ()
   (sleep 0.2)
   (repeat *repeat-gc*
-    (gc)))
+    (gc :full t)))
 
 (defmacro collect-trials (trials &body body)
   `(repeat ,trials
