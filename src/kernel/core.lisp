@@ -94,7 +94,7 @@
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct."))))))
 
-(defun worker-loop (kernel worker)
+(defun/type worker-loop (kernel worker) (kernel worker) t
   ;; All implementations tested so far execute unwind-protect clauses
   ;; when the ABORT restart is invoked (TERMINATE-THREAD in SBCL),
   ;; including ABCL.
@@ -103,11 +103,13 @@
   ;;
   ;; This function is inside `call-with-task-handler' (or
   ;; equivalent). Jumping out means a thread abort.
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (let ((scheduler (scheduler kernel)))
     (unwind-protect/ext
-       :main  (loop (exec-task/worker (or (next-task scheduler worker) (return))
-                                      worker))
+       :main  (loop (let ((task (next-task scheduler worker)))
+                      (if task
+                          (exec-task/worker (the task task) worker)
+                          (return))))
        :abort (unless *lisp-exiting-p*
                 (replace-worker kernel worker)))))
 
@@ -272,7 +274,7 @@ As an optimization, an internal size may be given with
          (lambda () ,@body))))
 
 (defun/type/inline make-task (fn) (function) task
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (make-task-instance :category *task-category* :fn fn))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
