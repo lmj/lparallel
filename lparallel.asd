@@ -28,16 +28,18 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-;;; default to stealing scheduler on sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; unless otherwise requested, default to stealing scheduler on sbcl
   (when (and (find :sbcl *features*)
              (not (find :lparallel.without-stealing-scheduler *features*)))
     (pushnew :lparallel.with-stealing-scheduler *features*))
 
+  ;; green threads need calls to yield
   (when (and (find :allegro *features*)
              (not (find :os-threads *features*)))
     (pushnew :lparallel.with-green-threads *features*))
 
+  ;; thread kill does not call unwind-protect cleanup forms
   (when (find :abcl *features*)
     (pushnew :lparallel.without-kill *features*)))
 
