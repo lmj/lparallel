@@ -66,7 +66,7 @@
   (sleep 0.2)
   (is (eq :main *memo*)))
 
-#-abcl
+#-lparallel.without-kill
 (lp-base-test destroy-thread-cleanup-test
   (let* ((cleanedp nil)
          (thread (with-thread ()

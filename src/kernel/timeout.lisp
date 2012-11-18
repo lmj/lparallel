@@ -67,7 +67,7 @@ A timeout object is returned, which may be passed to `cancel-timeout'."
                          (push-result timeout-result))))))
     timeout))
 
-#-abcl
+#-lparallel.without-kill
 (defun cancel-timeout (timeout timeout-result)
   "Attempt to cancel a timeout. If successful, the channel passed to
 `submit-timeout' will receive `timeout-result'.

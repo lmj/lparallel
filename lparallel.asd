@@ -36,7 +36,10 @@
 
   (when (and (find :allegro *features*)
              (not (find :os-threads *features*)))
-    (pushnew :lparallel.with-green-threads *features*)))
+    (pushnew :lparallel.with-green-threads *features*))
+
+  (when (find :abcl *features*)
+    (pushnew :lparallel.without-kill *features*)))
 
 (defsystem :lparallel
   :version "2.1.0"

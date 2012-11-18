@@ -113,7 +113,7 @@
        :abort (unless *lisp-exiting-p*
                 (replace-worker kernel worker)))))
 
-#+abcl
+#+lparallel.without-kill
 (defmacro with-worker-restarts (&body body)
   `(progn ,@body))
 
