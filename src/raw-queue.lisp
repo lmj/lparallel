@@ -39,33 +39,39 @@
 #-lparallel.with-vector-queue
 (progn
   (deftype raw-queue () '(cons list list))
+  (defmacro head (queue) `(car ,queue))
+  (defmacro tail (queue) `(cdr ,queue))
 
-  (defun/type make-raw-queue
-      (&optional initial-capacity) (&optional raw-queue-count) raw-queue
+  (defun/type/inline make-raw-queue (&optional initial-capacity)
+      (&optional raw-queue-count) raw-queue
     (declare (ignore initial-capacity))
     (cons nil nil))
 
   (defun/type push-raw-queue (value queue) (t raw-queue) t
     (declare #.*normal-optimize*)
     (let ((new (cons value nil)))
-      (if (car queue)
-          (setf (cddr queue) new)
-          (setf (car  queue) new))
-      (setf (cdr queue) new)))
+      (if (head queue)
+          (setf (cdr (tail queue)) new)
+          (setf (head queue) new))
+      (setf (tail queue) new)))
 
   (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
     (declare #.*normal-optimize*)
-    (if (car queue)
-        (multiple-value-prog1 (values (caar queue) t)
-          (unless (setf (car queue) (cdar queue))
-            ;; clear lingering ref
-            (setf (cdr queue) nil)))
+    (if (head queue)
+        (let ((node (head queue)))
+          (multiple-value-prog1 (values (car node) t)
+            (when (null (setf (head queue) (cdr node)))
+              (setf (tail queue) nil))
+            ;; clear node for conservative gc
+            #+sbcl
+            (setf (car node) nil
+                  (cdr node) nil)))
         (values nil nil)))
 
-  (defun/inline raw-queue-count   (queue) (length (the list (car queue))))
-  (defun/inline raw-queue-empty-p (queue) (not (car queue)))
-  (defun/inline peek-raw-queue    (queue) (values (caar queue)
-                                                  (if (car queue) t nil))))
+  (defun/inline raw-queue-count   (queue) (length (the list (head queue))))
+  (defun/inline raw-queue-empty-p (queue) (not (head queue)))
+  (defun/inline peek-raw-queue    (queue) (values (car (head queue))
+                                                  (if (head queue) t nil))))
 
 #+lparallel.with-vector-queue
 (progn
