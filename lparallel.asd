@@ -67,54 +67,65 @@ See http://lparallel.org for documentation and examples.
   :author "James M. Lawrence <llmjjmll@gmail.com>"
   :depends-on (:bordeaux-threads)
   :serial t
-  :components ((:file "packages")
-               (:module "src"
-                :serial t
-                :components ((:module "util"
+  :components               ((:file "packages")
+                             (:module "src"
                               :serial t
-                              :components ((:file "config")
-                                           (:file "misc")
-                                           (:file "defmacro")
-                                           (:file "defun")
-                                           (:file "defslots")
-                                           (:file "defpair")))
-                             (:file "thread-util")
-                             (:file "raw-queue")
-                             (:file "queue")
-                             #+lparallel.with-stealing-scheduler
-                             (:file "counter")
-                             (:file "biased-queue")
-                             (:file "spin-queue")
-                             (:module "kernel"
-                              :serial t
-                              :components ((:file "specials")
-                                           (:file "handling")
-                                           (:file "classes")
-       #-lparallel.with-stealing-scheduler (:file "central-scheduler")
-       #+lparallel.with-stealing-scheduler (:file "stealing-scheduler")
-                                    #-abcl (:file "kill")
-                                           (:file "core")
-                                           (:file "timeout")))
-                             (:file "kernel-util")
-                             (:file "promise")
-                             (:file "ptree")
-                             (:file "defpun")
-                             (:module "cognate"
-                              :serial t
-                              :components ((:file "util")
-                                           (:file "option")
-                                           (:file "subdivide")
-                                           (:file "pandor")
-                                           (:file "plet")
-                                           (:file "pmap")
-                                    #-abcl (:file "pmap-open-coded")
-                                           (:file "pdotimes")
-                                           (:file "pqualifier")
-                                           (:file "preduce")
-                                           (:file "premove")
-                                           (:file "pfind")
-                                           (:file "pcount")
-                                           (:file "psort")))))))
+                              :components
+		                   ((:module "util"
+                                     :serial t
+                                     :components
+                                             ((:file "config")
+                                              (:file "misc")
+                                              (:file "defmacro")
+                                              (:file "defun")
+                                              (:file "defslots")
+                                              (:file "defpair")))
+                                    (:file "thread-util")
+                                    (:file "raw-queue")
+                                    (:file "queue")
+#-lparallel.with-stealing-scheduler (:file "biased-queue")
+#+lparallel.with-stealing-scheduler (:file "counter")
+#+lparallel.with-stealing-scheduler (:module "spin-queue"
+                                     :serial t
+                                     :components
+#+(and (not lparallel.without-spin-queue)
+       sbcl)                                 ((:file "sbcl-spin-queue"))
+#+(and (not lparallel.without-spin-queue)
+       ccl)                                  ((:file "ccl-spin-queue"))
+#+(or lparallel.without-spin-queue
+      (and (not sbcl) (not ccl)))            ((:file "default-spin-queue")))
+                                    (:module "kernel"
+                                     :serial t
+                                     :components
+                                             ((:file "specials")
+                                              (:file "handling")
+                                              (:file "classes")
+#-lparallel.with-stealing-scheduler           (:file "central-scheduler")
+#+lparallel.with-stealing-scheduler           (:file "stealing-scheduler")
+#-lparallel.without-kill                      (:file "kill")
+                                              (:file "core")
+                                              (:file "timeout")))
+                                    (:file "kernel-util")
+                                    (:file "promise")
+                                    (:file "ptree")
+                                    (:file "defpun")
+                                    (:module "cognate"
+                                     :serial t
+                                     :components
+                                             ((:file "util")
+                                              (:file "option")
+                                              (:file "subdivide")
+                                              (:file "pandor")
+                                              (:file "plet")
+                                              (:file "pmap")
+#-abcl                                        (:file "pmap-open-coded")
+                                              (:file "pdotimes")
+                                              (:file "pqualifier")
+                                              (:file "preduce")
+                                              (:file "premove")
+                                              (:file "pfind")
+                                              (:file "pcount")
+                                              (:file "psort")))))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))
