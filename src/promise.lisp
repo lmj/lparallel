@@ -73,15 +73,6 @@
 (defslots %chain ()
   ((object :reader chain-object)))
 
-;;;; generics
-
-(defgeneric %fulfill (promise client-fn)
-  (:method (object client-fn)
-    (declare (ignore object client-fn))
-    nil))
-
-(defgeneric %force (promise))
-
 ;;;; macros
 
 (defmacro with-lock-operation (operation promise &body body)
@@ -98,102 +89,6 @@
   `(with-lock-operation with-lock-predicate/wait ,promise
      ,@body))
 
-;;;; chain
-
-(defun chain (object)
-  "Create a chain. A chain links objects together by relaying `force'
-and `fulfilledp' calls."
-  (make-%chain-instance :object object))
-
-(defmethod %fulfill ((chain %chain) client-fn)
-  (%fulfill (chain-object chain) client-fn))
-
-;;;; promise-base
-
-;;; for work-stealing loop
-(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
-  (declare #.*full-optimize*)
-  (not (eq (result promise) +no-result+)))
-
-(defun fulfilledp (object)
-   "If `object' is a promise, return a boolean indicating whether the
-promise is fulfilled.
-
-If `object' is a chain, call `fulfilledp' on the chained object.
-
-If `object' is not a promise and not a chain, return true."
-  (declare #.*normal-optimize*)
-  (typecase object
-    (promise-base (not (eq (result object) +no-result+)))
-    (%chain       (fulfilledp (chain-object object)))
-    (otherwise    t)))
-
-(defmacro fulfill (object &body body)
-  "Attempt to give `object' a value.
-
-If `object' is a promise which is not fulfilled and not currently
-being fulfilled, then the implicit progn `body' will be executed and
-the promise will store the result. In this case `fulfill' returns
-true.
-
-If `object' is a promise that is either already fulfilled or actively
-being fulfilled, then `body' will not be executed and `fulfill'
-returns false.
-
-If `object' is a chain, call `fullfill' on the chained object.
-
-If `object' is not a promise and not a chain then false is returned
-immediately, with `body' being ignored."
-  `(%fulfill ,object (lambda () ,@body)))
-
-(defun maybe-replace-error (promise)
-  ;; It is not possible to return from `force' while the promise
-  ;; contains an error. Therefore we do not violate the one-value-only
-  ;; constraint by replacing a wrapped error with value(s).
-  ;;
-  ;; If a successful store-value invocation happens in the meantime
-  ;; then we won't signal an error.
-  (with-promise-base-slots (result lock) promise
-    (with-lock-predicate/wait lock (typep (first result) 'wrapped-error)
-      (restart-case (unwrap-result (first result))
-        (store-value (&rest values)
-          :report "Set promise value(s)."
-          :interactive (lambda () (interact "Promise value(s): "))
-          (setf result values))))))
-
-(defun force (object)
-  "If `object' is a promise and the promise is fulfilled, return the
-fulfilled value (possibly multiple values). If the promise is
-unfulfilled then the call blocks until the promise is fulfilled.
-
-If `object' is a chain, call `force' on the chained object.
-
-If `object' is not a promise and not a chain, return the identical
-object passed.
-
-Note if `force' is called on an unfulfilled future then the future is
-fulfilled by the caller of `force'."
-  (declare #.*normal-optimize*)
-  (typecase object
-    (promise-base
-     (with-unfulfilled/wait object
-       (%force object))
-     ;; result must now be a list
-     (with-promise-base-slots (result) object
-       (typecase (first result)
-         (wrapped-error
-          (maybe-replace-error object)
-          ;; result must now be a non-error
-          (force object))
-         (%chain
-          (force (chain-object (first result))))
-         (otherwise
-          (values-list result)))))
-    (%chain
-     (force (chain-object object)))
-    (otherwise
-     object)))
-
 ;;;; promise
 
 (defun promise ()
@@ -201,7 +96,7 @@ fulfilled by the caller of `force'."
 unknown at the time it is created."
   (make-%promise-instance))
 
-(defmethod %fulfill ((promise %promise) client-fn)
+(defun fulfill-promise (promise client-fn)
   (with-%promise-slots (result lock cvar availablep) promise
     ;; spin until it is claimed
     (while availablep
@@ -215,7 +110,7 @@ unknown at the time it is created."
           (condition-notify-and-yield cvar))
         (return t)))))
 
-(defmethod %force ((promise %promise))
+(defun force-promise (promise)
   (with-%promise-slots (result lock cvar) promise
     (unless cvar
       (setf cvar (make-condition-variable)))
@@ -244,19 +139,19 @@ unknown at the time it is created."
 `force' is called upon it."
   `(make-%delay-instance :fn (lambda () ,@body)))
 
-(defmethod %fulfill ((delay %delay) client-fn)
+(defun fulfill-delay (delay client-fn)
   (with-unfulfilled/no-wait delay
     (fulfill-plan/values delay (multiple-value-list (funcall client-fn)))
     t))
 
-(defmethod %force ((delay %delay))
+(defun force-delay (delay)
   ;; do not use task handler
   (fulfill-plan/values
    delay (multiple-value-list (funcall (plan-fn delay)))))
 
 ;;;; future
 
-(defmethod %fulfill ((future %future) client-fn)
+(defun fulfill-future (future client-fn)
   (with-unfulfilled/no-wait future
     ;; If we are here then we've stolen the task from the kernel.
     (with-%future-slots (canceledp) future
@@ -264,7 +159,7 @@ unknown at the time it is created."
       (fulfill-plan/values future (multiple-value-list (funcall client-fn))))
     t))
 
-(defmethod %force ((future %future))
+(defun force-future (future)
   ;; If we are here then we've stolen the task from the kernel.
   (with-%future-slots (canceledp) future
     (setf canceledp t)
@@ -309,3 +204,102 @@ parallel by the implicit progn `body'."
   "Create a speculation. A speculation is a low-priority future."
   `(let ((*task-priority* :low))
      (future ,@body)))
+
+;;;; chain
+
+(defun chain (object)
+  "Create a chain. A chain links objects together by relaying `force'
+and `fulfilledp' calls."
+  (make-%chain-instance :object object))
+
+;;;; fulfill, fulfilledp, force
+
+(defun fulfill-object (object client-fn)
+  (typecase object
+    (%future   (fulfill-future object client-fn))
+    (%promise  (fulfill-promise object client-fn))
+    (%delay    (fulfill-delay object client-fn))
+    (%chain    (fulfill-object (chain-object object) client-fn))
+    (otherwise nil)))
+
+(defmacro fulfill (object &body body)
+  "Attempt to give `object' a value.
+
+If `object' is a promise which is not fulfilled and not currently
+being fulfilled, then the implicit progn `body' will be executed and
+the promise will store the result. In this case `fulfill' returns
+true.
+
+If `object' is a promise that is either already fulfilled or actively
+being fulfilled, then `body' will not be executed and `fulfill'
+returns false.
+
+If `object' is a chain, call `fullfill' on the chained object.
+
+If `object' is not a promise and not a chain then false is returned
+immediately, with `body' being ignored."
+  `(fulfill-object ,object (lambda () ,@body)))
+
+(defun fulfilledp (object)
+   "If `object' is a promise, return a boolean indicating whether the
+promise is fulfilled.
+
+If `object' is a chain, call `fulfilledp' on the chained object.
+
+If `object' is not a promise and not a chain, return true."
+  (declare #.*normal-optimize*)
+  (typecase object
+    (promise-base (not (eq (result object) +no-result+)))
+    (%chain       (fulfilledp (chain-object object)))
+    (otherwise    t)))
+
+;;; for work-stealing loop
+(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
+  (declare #.*full-optimize*)
+  (not (eq (result promise) +no-result+)))
+
+(defun replace-error (promise)
+  ;; It is not possible to return from `force' while the promise
+  ;; contains an error. Therefore we do not violate the
+  ;; one-result-only constraint by replacing a wrapped error result
+  ;; with value(s).
+  ;;
+  ;; If a successful store-value invocation happens concurrently then
+  ;; skip.
+  (with-promise-base-slots (result lock) promise
+    (with-lock-predicate/wait lock (typep (first result) 'wrapped-error)
+      (restart-case (unwrap-result (first result))
+        (store-value (&rest values)
+          :report "Set promise value(s)."
+          :interactive (lambda () (interact "Promise value(s): "))
+          (setf result values))))))
+
+(defun force (object)
+  "If `object' is a promise and the promise is fulfilled, return the
+fulfilled value (possibly multiple values). If the promise is
+unfulfilled then the call blocks until the promise is fulfilled.
+
+If `object' is a chain, call `force' on the chained object.
+
+If `object' is not a promise and not a chain, return the identical
+object passed.
+
+Note if `force' is called on an unfulfilled future then the future is
+fulfilled by the caller of `force'."
+  (declare #.*normal-optimize*)
+  (typecase object
+    (promise-base
+     (with-unfulfilled/wait object
+       (etypecase object
+         (%future  (force-future object))
+         (%promise (force-promise object))
+         (%delay   (force-delay object))))
+     ;; result must now be a list
+     (let ((result (result object)))
+       (typecase (first result)
+         (wrapped-error (replace-error object)
+                        (force object))
+         (%chain (force (chain-object (first result))))
+         (otherwise (values-list result)))))
+    (%chain (force (chain-object object)))
+    (otherwise object)))
