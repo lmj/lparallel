@@ -62,7 +62,7 @@ user receives the return value of this function."
 that were created in `body'."
   (let ((forms (loop
                   :for clause :in clauses
-                  :for (name fn more) := clause
+                  :for (name fn . more) := clause
                   :do (unless (and (symbolp name) (not more))
                         (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
                                clause))
