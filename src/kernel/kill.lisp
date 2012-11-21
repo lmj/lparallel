@@ -57,7 +57,7 @@
             ;; user could possibly (though unlikely) destroy the
             ;; thread simultaneously, so ignore double-destroy error
             (ignore-errors (destroy-thread (thread worker)))))
-      (when (and *worker* suicide)
+      (when suicide
         (assert (eq (thread *worker*) (current-thread)))
         (throw +worker-suicide-tag+ nil)))))
 
