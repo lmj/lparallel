@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 2.1.2
+
+* The stealing scheduler is now lockless under Clozure CL. This is not
+  enabled by default, as it uses a few unexported symbols in the CCL
+  package. Enable it by adding :lparallel.with-stealing-scheduler to
+  *features*. The latest CCL from svn is required.
+
 = 2.1.1
 
 * minor documentation tweaks and other cleanup
