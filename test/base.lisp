@@ -67,6 +67,7 @@
            (flet ((,body-fn () ,@body))
              (with-new-kernel (,n :spin-count 0)
                (,body-fn))
+             #+lparallel.with-stealing-scheduler
              (with-new-kernel (,n :spin-count (random 5000))
                (,body-fn))))))))
 
