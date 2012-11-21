@@ -119,7 +119,8 @@ control (or not)."
 (defconstant +current-task+ 'current-task)
 
 (defun transfer-error-restart (&optional (err *debugger-error*))
-  (throw +current-task+ (wrap-error err)))
+  (when err
+    (throw +current-task+ (wrap-error err))))
 
 #-lparallel.without-task-handling
 (progn
