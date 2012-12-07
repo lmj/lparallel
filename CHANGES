@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.1.3
+
+* fixed image created by ccl:save-application
+* pnotany and pnotevery now accept a symbol as a predicate
+
 = 2.1.2
 
 * The stealing scheduler is now lockless under Clozure CL. This is not
