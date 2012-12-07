@@ -47,7 +47,7 @@ parallel, though not necessarily at the same time. Behavior is
 otherwise indistinguishable from `every'.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
-  (pqualifier #'every predicate sequences nil))
+  (pqualifier #'every (ensure-function predicate) sequences nil))
 
 (defun psome (predicate &rest sequences)
   "Parallel version of `some'. Calls to `predicate' are done in
@@ -56,7 +56,7 @@ otherwise indistinguishable from `some' except that any non-nil
 predicate comparison result may be returned.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
-  (pqualifier #'some predicate sequences t))
+  (pqualifier #'some (ensure-function predicate) sequences t))
 
 (defun pnotevery (predicate &rest sequences)
   "Parallel version of `notevery'. Calls to `predicate' are done in
@@ -65,7 +65,7 @@ otherwise indistinguishable from `notevery'.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
   (declare (dynamic-extent sequences))
-  (apply #'psome (complement predicate) sequences))
+  (not (apply #'pevery predicate sequences)))
 
 (defun pnotany (predicate &rest sequences)
   "Parallel version of `notany'. Calls to `predicate' are done in
@@ -74,4 +74,4 @@ otherwise indistinguishable from `notany'.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
   (declare (dynamic-extent sequences))
-  (apply #'pevery (complement predicate) sequences))
+  (not (apply #'psome predicate sequences)))
