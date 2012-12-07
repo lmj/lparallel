@@ -399,3 +399,10 @@ each worker."
 #+sbcl    (pushnew 'track-exit sb-ext:*exit-hooks*)
 #+ccl     (pushnew 'track-exit ccl:*lisp-cleanup-functions*)
 #+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal)
+
+;;; ccl:save-application calls ccl:*lisp-cleanup-functions* before
+;;; saving. Adjust with a save hook.
+#+ccl
+(progn
+  (defun save-hook () (setf *lisp-exiting-p* nil))
+  (pushnew 'save-hook ccl:*save-exit-functions*))
