@@ -307,25 +307,23 @@
            #:psort
            #:psort*))
 
-(macrolet ((define-merged-package (name doc &rest packages)
-             `(defpackage ,name
-                (:documentation ,doc)
-                (:use #:cl ,@packages)
-                (:export
-                 ,@(loop
-                      :for pkg :in packages
-                      :nconc (loop
-                                :for sym :being :the :external-symbols :in pkg
-                                :collect (make-symbol (string sym))))))))
-  (define-merged-package #:lparallel
-"This is a convenience package which exports the external symbols of:
+(defpackage #:lparallel
+  (:use #:cl))
+
+(dolist (package '(#:lparallel.kernel
+                   #:lparallel.promise
+                   #:lparallel.defpun
+                   #:lparallel.cognate
+                   #:lparallel.ptree))
+  (use-package package (find-package '#:lparallel))
+  (export
+   (loop :for symbol :being :the :external-symbols :in package :collect symbol)
+   (find-package '#:lparallel)))
+
+(setf (documentation (find-package '#:lparallel) t)
+      "This is a convenience package which exports the external symbols of:
    lparallel.kernel
    lparallel.promise
    lparallel.defpun
    lparallel.cognate
-   lparallel.ptree"
-    #:lparallel.kernel
-    #:lparallel.promise
-    #:lparallel.defpun
-    #:lparallel.cognate
-    #:lparallel.ptree))
+   lparallel.ptree")
