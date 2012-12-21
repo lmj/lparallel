@@ -81,10 +81,12 @@ The `parts' option divides `sequence' into `parts' number of parts.
 Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
-  (typecase sequence
-    (vector    (apply #'pfind-if/vector predicate sequence args))
-    (list      (apply #'pfind-if/list   predicate sequence args))
-    (otherwise (apply #'find-if predicate sequence (remove-prop :parts args)))))
+  (let ((predicate (ensure-function predicate)))
+    (typecase sequence
+      (vector    (apply #'pfind-if/vector predicate sequence args))
+      (list      (apply #'pfind-if/list   predicate sequence args))
+      (otherwise (apply #'find-if predicate sequence
+                        (remove-prop :parts args))))))
 
 (defun pfind-if-not (predicate sequence
                      &rest args

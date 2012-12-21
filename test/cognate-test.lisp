@@ -800,8 +800,8 @@
                            :initial-contents (list 3 4 x 4 9 x 2)))))))
 
 (lp-test pfind-if-test
-  (is (null (pfind-if 'non-function '())))
-  (is (null (pfind-if 'non-function #())))
+  (signals error (pfind-if 'non-function '()))
+  (signals error (pfind-if 'non-function #()))
   (signals error (pfind-if 'non-function '() :start 2))
   (signals error (pfind-if 'non-function #() :start 2))
   (is (= 3
