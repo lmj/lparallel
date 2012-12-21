@@ -50,11 +50,11 @@
       (typecase item
         ((or number character)
          (lambda (x)
-           (declare #.*normal-optimize*)
+           (declare #.*full-optimize*)
            (eql item x)))
         (otherwise
          (lambda (x)
-           (declare #.*normal-optimize*)
+           (declare #.*full-optimize*)
            (eq item x))))))
 
 (defun subsize (seq size start end)
