@@ -82,7 +82,7 @@ The `parts' option divides `sequence' into `parts' number of parts.
 Default is (kernel-worker-count)."
   (declare (dynamic-extent args))
   (typecase sequence
-    (list (premove-if-not/list (complement test) sequence
+    (list (premove-if-not/list (complement (ensure-function test)) sequence
                                from-end start end key parts))
     (otherwise (apply #'remove-if test sequence (remove-prop :parts args)))))
 

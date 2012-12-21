@@ -40,7 +40,7 @@
   (when (and test test-not)
     (error "Both :TEST and :TEST-NOT options given."))
   (when test-not
-    (setf test (complement test-not))
+    (setf test (complement (ensure-function test-not)))
     (setf test-not nil))
   (if test
       (let ((test (ensure-function test)))

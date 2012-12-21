@@ -95,7 +95,7 @@ The `parts' option divides `sequence' into `parts' number of parts.
 Default is (kernel-worker-count)."
   (declare (dynamic-extent args)
            (ignore from-end start end key parts))
-  (apply #'pfind-if (complement predicate) sequence args))
+  (apply #'pfind-if (complement (ensure-function predicate)) sequence args))
 
 (defun pfind (item sequence
               &rest args
