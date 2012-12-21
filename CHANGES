@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.1.4
+
+* accept function symbols in pcount, pfind, premove
+* fixed pfind not accepting :test and :test-not
+
 = 2.1.3
 
 * fixed image created by ccl:save-application
