@@ -62,8 +62,7 @@
           (multiple-value-prog1 (values (car node) t)
             (when (null (setf (head queue) (cdr node)))
               (setf (tail queue) nil))
-            ;; clear node for conservative gc
-            #+sbcl
+            ;; clear node for conservative gcs
             (setf (car node) nil
                   (cdr node) nil)))
         (values nil nil)))
