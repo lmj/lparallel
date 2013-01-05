@@ -227,6 +227,7 @@
            #:make-ptree
            #:check-ptree
            #:call-ptree
+           #:ptree-computed-p
            #:clear-ptree
            #:clear-ptree-errors
            #:*ptree-node-kernel*)

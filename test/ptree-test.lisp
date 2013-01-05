@@ -417,3 +417,22 @@
           (is (not timer-finish-p))
           (= 99 width)
           (is (identity timer-finish-p)))))))
+
+(lp-test ptree-query-test
+  (let ((tree (make-ptree)))
+    (signals ptree-undefined-function-error
+      (ptree-computed-p 'foo tree))
+    (ptree-fn 'z '(x y) #'+ tree)
+    (ptree-fn 'x () (lambda () 3) tree)
+    (ptree-fn 'y () (lambda () 4) tree)
+    (is (not (ptree-computed-p 'x tree)))
+    (is (not (ptree-computed-p 'y tree)))
+    (is (not (ptree-computed-p 'z tree)))
+    (is (= 3 (call-ptree 'x tree)))
+    (is (ptree-computed-p 'x tree))
+    (is (not (ptree-computed-p 'y tree)))
+    (is (not (ptree-computed-p 'z tree)))
+    (is (= 7 (call-ptree 'z tree)))
+    (is (ptree-computed-p 'x tree))
+    (is (ptree-computed-p 'y tree))
+    (is (ptree-computed-p 'z tree))))

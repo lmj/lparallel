@@ -297,6 +297,14 @@ computations.
               (setf node-children children)))))))
   id)
 
+(defun ptree-computed-p (id ptree)
+  "Return true if the node with identifier `id' in `ptree' has
+finished computing, otherwise return false."
+  (multiple-value-bind (node presentp) (gethash id (nodes ptree))
+    (if presentp
+        (computedp node)
+        (error 'ptree-undefined-function-error :id id))))
+
 (defun call-ptree (id ptree)
   "Return the computation result of the node with identifier `id' in
 `ptree'.
