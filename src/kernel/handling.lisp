@@ -150,13 +150,13 @@ control (or not)."
   (alias-function call-with-task-handler  funcall))
 
 (define-condition task-killed-error (error) ()
+  (:report
+   "The task was killed.")
   (:documentation
-   "The thread running the task was killed."))
+   "Error signaled when attempting to obtain the result of a killed task."))
 
 (define-condition no-kernel-error (error) ()
-  (:report (lambda (condition stream)
-             (declare (ignore condition))
-             (format stream
+  (:report
 "Welcome to lparallel. To get started, you need to create some worker
 threads. Choose the MAKE-KERNEL restart to create them now.
 
@@ -167,5 +167,6 @@ Adding the following line to your startup code will prevent this
 message from appearing in the future (N is the number of workers):
 
   (setf lparallel:*kernel* (lparallel:make-kernel N))
-")))
-  (:documentation "Error signaled when `*kernel*' is nil."))
+")
+  (:documentation
+   "Error signaled when `*kernel*' is nil."))
