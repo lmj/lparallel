@@ -349,7 +349,7 @@
                     (pmapc #'sq :parts parts a)
                     (pmapl #'cdr :parts parts a))))))
 
-(defmacro define-plet-test (test-name fn-name defun)
+(defmacro define-plet-test (test-name fn-name defun store-value-p)
   ;; use assert since this may execute in another thread
   `(progn
      (,defun ,fn-name ()
@@ -367,20 +367,21 @@
                (plet ((a (error 'client-error)))
                  a))))
          (assert handledp))
-       (task-handler-bind ((error (lambda (e)
-                                    (invoke-restart 'transfer-error e))))
-         (handler-bind ((error (lambda (e)
-                                 (declare (ignore e))
-                                 (invoke-restart 'store-value 4))))
-           (setf *memo* (lambda () (error "foo")))
-           (plet ((a 3)
-                  (b (funcall *memo*)))
-             (assert (= 7 (+ a b)))))))
+       ,(when store-value-p
+          `(task-handler-bind ((error (lambda (e)
+                                        (invoke-restart 'transfer-error e))))
+             (handler-bind ((error (lambda (e)
+                                     (declare (ignore e))
+                                     (invoke-restart 'store-value 4))))
+               (setf *memo* (lambda () (error "foo")))
+               (plet ((a 3)
+                      (b (funcall *memo*)))
+                 (assert (= 7 (+ a b))))))))
      (lp-test ,test-name
        (,fn-name)
        (is (= 1 1)))))
 
-(define-plet-test plet-test plet-test-fn defun)
+(define-plet-test plet-test plet-test-fn defun t)
 
 (lp-base-test plet-if-test
   (setf *memo* 0)

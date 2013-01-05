@@ -32,7 +32,7 @@
 
 ;;;; defpun
 
-(define-plet-test defpun-basic-test defpun-basic-test-fn defpun)
+(define-plet-test defpun-basic-test defpun-basic-test-fn defpun nil)
 
 (defpun defpun-accept ()
   ;; use assert since this may execute in another thread
@@ -192,7 +192,7 @@
 
 ;;;; defpun*
 
-(define-plet-test defpun*-basic-test defpun*-basic-test-fn defpun*)
+(define-plet-test defpun*-basic-test defpun*-basic-test-fn defpun* nil)
 
 (defpun* defpun*-accept ()
   (let ((queue (make-queue)))

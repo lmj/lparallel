@@ -32,6 +32,11 @@
 
 (import-now lparallel.util::symbolicate/package
             lparallel.kernel::kernel
+            lparallel.kernel::unwrap-result
+            lparallel.kernel::wrap-error
+            lparallel.kernel::make-task
+            lparallel.kernel::make-task-fn
+            lparallel.kernel::submit-raw-task
             lparallel.kernel::%kernel-worker-count
             lparallel.kernel::optimizer-data
             lparallel.kernel::optimizer-flag
@@ -39,8 +44,8 @@
             lparallel.kernel::*make-optimizer-data*
             lparallel.kernel::*worker*
             lparallel.kernel::steal-work
-            lparallel.promise::%future
-            lparallel.promise::fulfilledp/promise)
+            lparallel.kernel::*kernel*
+            lparallel.kernel::call-with-task-handler)
 
 ;;;; util
 
@@ -72,6 +77,40 @@
       `(defun ,wrapper-name ,wrapper-params
          (macrolet ((call-impl () ',call-impl))
            ,@body)))))
+
+;;;; lightweight futures
+
+(defconstant +no-result+ 'no-result)
+
+(defmacro result (future) `(car ,future))
+(defmacro future-fn (future) `(cdr ,future))
+
+(defun/inline %make-future (fn)
+  (cons +no-result+ fn))
+
+(defun make-future (kernel fn)
+  (declare #.*full-optimize*)
+  (let ((future (%make-future fn)))
+    (submit-raw-task
+     (make-task
+      (lambda ()
+        (unwind-protect/ext
+         :main  (setf (result future) (call-with-task-handler
+                                       (future-fn future)))
+         :abort (setf (result future) (wrap-error 'task-killed-error)))))
+     kernel)
+    future))
+
+(defmacro future (kernel &body body)
+  `(make-future ,kernel (make-task-fn ,@body)))
+
+(defun/inline fulfilledp (future)
+  (declare #.*full-optimize*)
+  (not (eq (result future) +no-result+)))
+
+(defun/inline force (future)
+  (declare #.*full-optimize*)
+  (unwrap-result (result future)))
 
 ;;;; future-let
 
@@ -220,6 +259,7 @@
        `(let ((,kernel (the kernel *kernel*)))
           (declare (type kernel ,kernel))
           (future
+            ,kernel
             (unwind-protect
                  (progn ,@body)
               (,',update-task-count ,kernel -1)))))))
@@ -227,15 +267,17 @@
 (define-future/fast future/fast    update-task-count)
 (define-future/fast future/fast/-1 update-task-count/-1)
 
-(defun/type force/fast (future) (%future) t
+(defun force/fast (future)
   (declare #.*full-optimize*)
-  (let ((kernel *kernel*)
-        (worker *worker*))
-    (loop
-       (when (fulfilledp/promise future)
-         (return (force future)))
-       #+lparallel.with-green-threads (thread-yield)
-       (steal-work kernel worker))))
+  (if (fulfilledp future)
+      (force future)
+      (let ((kernel *kernel*)
+            (worker *worker*))
+        (loop
+           (when (fulfilledp future)
+             (return (force future)))
+           #+lparallel.with-green-threads (thread-yield)
+           (steal-work kernel worker)))))
 
 (defmacro %%plet/fast (future/fast update-task-count/no-lock
                        predicate future-count bindings body)

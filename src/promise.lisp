@@ -253,11 +253,6 @@ If `object' is not a promise and not a chain, return true."
     (%chain       (fulfilledp (chain-object object)))
     (otherwise    t)))
 
-;;; for work-stealing loop
-(defun/type/inline fulfilledp/promise (promise) (promise-base) boolean
-  (declare #.*full-optimize*)
-  (not (eq (result promise) +no-result+)))
-
 (defun replace-error (promise)
   ;; It is not possible to return from `force' while the promise
   ;; contains an error. Therefore we do not violate the

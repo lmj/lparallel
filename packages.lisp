@@ -255,8 +255,7 @@
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
-        #:lparallel.thread-util
-        #:lparallel.promise)
+        #:lparallel.thread-util)
   (:export #:defpun
            #:defpun*
            #:defpun/type
