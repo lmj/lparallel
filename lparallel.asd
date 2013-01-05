@@ -44,7 +44,7 @@
     (pushnew :lparallel.without-kill *features*)))
 
 (defsystem :lparallel
-  :version "2.1.4"
+  :version "2.2.0"
   :description "Parallelism for Common Lisp"
   :long-description
 "

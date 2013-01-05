@@ -2,6 +2,22 @@
 lparallel Changes
 =================
 
+= 2.2.0
+
+* exported types: kernel, channel, ptree
+
+* added ptree-computed-p -- query the computed state of a ptree node
+
+* make-kernel now aborts cleanly when a worker fails to initialize,
+  e.g. when make-thread fails or when a :context function aborts
+
+* check-kernel now returns a kernel instance
+
+* added a front-end lock to some ptree functions -- removes the
+  requirement that some calls be exclusive
+
+* improved performance of functions defined by defpun
+
 = 2.1.4
 
 * accept function symbols in pcount, pfind, premove
