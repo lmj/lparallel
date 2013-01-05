@@ -278,8 +278,8 @@ As an optimization, an internal size may be given with
   (make-task-instance :category *task-category* :fn fn))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
-  (declare #.*full-optimize*)
   (let ((queue (channel-queue channel)))
+    (declare #.*normal-optimize*)
     (make-task
       (make-task-fn
         (unwind-protect/ext
@@ -289,15 +289,14 @@ As an optimization, an internal size may be given with
          :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
 (defun/type/inline submit-raw-task (task kernel) (task kernel) t
-  (declare #.*full-optimize*)
+  (declare #.*normal-optimize*)
   (unless (alivep kernel)
     (error "Attempted to submit a task to an ended kernel."))
   (schedule-task (scheduler kernel) task *task-priority*))
 
-(defun/type submit-task (channel function &rest args)
-    (channel (or symbol function) &rest t) t
-  (declare #.*normal-optimize*)
+(defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."
+  (declare #.*normal-optimize*)
   (submit-raw-task (make-channeled-task channel
                                         (ensure-function function)
                                         args)
