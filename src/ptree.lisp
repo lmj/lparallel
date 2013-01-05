@@ -208,7 +208,8 @@
   ((nodes   :initform (make-hash-table :test #'eql) :type hash-table
             :reader nodes)
    (queue   :initform (make-queue)                  :type queue)
-   (pending :initform 0                             :type integer)))
+   (pending :initform 0                             :type integer)
+   (lock    :initform (make-lock) :reader lock)))
 
 (defun make-ptree ()
   "Create a ptree instance."
@@ -233,7 +234,7 @@
                      (return node))))))))
 
 (defun wait-for-compute (ptree)
-  (with-%ptree-slots (queue pending) ptree
+  (with-%ptree-slots (lock queue pending) ptree
     (while (plusp pending)
       (pop-queue queue)
       (decf pending))))
@@ -247,19 +248,22 @@
 (defun check-ptree (ptree)
   "Verify that all nodes have been defined with an associated
 function. If not, `ptree-undefined-function-error' is signaled."
-  (each-node ptree #'check-node))
+  (with-lock-held ((lock ptree))
+    (each-node ptree #'check-node)))
 
 (defun clear-ptree (ptree)
   "Clear all node results in `ptree', restoring the tree to its
 uncomputed state."
-  (wait-for-compute ptree)
-  (each-node ptree #'clear-node))
+  (with-lock-held ((lock ptree))
+    (wait-for-compute ptree)
+    (each-node ptree #'clear-node)))
 
 (defun clear-ptree-errors (ptree)
   "Clear all error results in `ptree', allowing the computation to
 resume from its latest pre-error state."
-  (wait-for-compute ptree)
-  (each-node ptree #'clear-node-error))
+  (with-lock-held ((lock ptree))
+    (wait-for-compute ptree)
+    (each-node ptree #'clear-node-error)))
 
 (defun ptree-fn (id args function ptree)
   "Define a ptree node with identifier `id', which is some unique
@@ -272,21 +276,22 @@ passed to `function' are the respective results of the child node
 computations.
 
 `ptree' is the ptree instance in which the node is being defined."
-  (with-%ptree-slots (nodes) ptree
-    (flet ((fetch-node (id) (or (gethash id nodes)
-                                (setf (gethash id nodes)
-                                      (make-node-instance :id id)))))
-      (let ((node (fetch-node id)))
-        (with-node-slots ((node-function function)
-                          (node-children children)) node
-          (when node-function
-            (error 'ptree-redefinition-error :id id))
-          (setf node-function function)
-          (let ((children (mapcar #'fetch-node args)))
-            (dolist (child children)
-              (with-node-slots (parents) child
-                (push node parents)))
-            (setf node-children children))))))
+  (with-%ptree-slots (lock nodes) ptree
+    (with-lock-held (lock)
+      (flet ((fetch-node (id) (or (gethash id nodes)
+                                  (setf (gethash id nodes)
+                                        (make-node-instance :id id)))))
+        (let ((node (fetch-node id)))
+          (with-node-slots ((node-function function)
+                            (node-children children)) node
+            (when node-function
+              (error 'ptree-redefinition-error :id id))
+            (setf node-function function)
+            (let ((children (mapcar #'fetch-node args)))
+              (dolist (child children)
+                (with-node-slots (parents) child
+                  (push node parents)))
+              (setf node-children children)))))))
   id)
 
 (defun call-ptree (id ptree)
@@ -301,15 +306,13 @@ If the node is already computed, return the computed result."
       (error 'ptree-undefined-function-error :id id))
     (unwrap-result
      (result
-      (cond ((computedp root)
-             root)
-            (t
-             (wait-for-compute ptree)
-             (cond ((computedp root)
-                    root)
-                   (t
-                    (check-kernel)
-                    (compute-ptree root ptree *kernel*)))))))))
+      (if (computedp root)
+          root
+          (with-lock-held ((lock ptree))
+            (wait-for-compute ptree)
+            (if (computedp root)
+                root
+                (compute-ptree root ptree (check-kernel)))))))))
 
 (defun has-lambda-list-keyword-p (list)
   (some (lambda (elem) (find elem lambda-list-keywords)) list))
