@@ -67,15 +67,15 @@
   (some (lambda (elem) (find elem lambda-list-keywords)) list))
 
 (defmacro defun/wrapper (wrapper-name impl-name params &body body)
-  (with-gensyms (args)
-    (multiple-value-bind (wrapper-params call-impl)
+  (with-gensyms (args kernel)
+    (multiple-value-bind (wrapper-params expansion)
         (if (has-lambda-list-keyword-p params)
             (values `(&rest ,args)
-                    `(apply (function ,impl-name) *kernel* ,args))
+                    ``(apply (function ,',impl-name) ,,kernel ,',args))
             (values params
-                    `(,impl-name *kernel* ,@params)))
+                    ``(,',impl-name ,,kernel ,@',params)))
       `(defun ,wrapper-name ,wrapper-params
-         (macrolet ((call-impl () ',call-impl))
+         (macrolet ((call-impl (,kernel) ,expansion))
            ,@body)))))
 
 ;;;; lightweight futures
@@ -362,20 +362,20 @@
                 ,@body))
             (defun/wrapper ,name ,(unchecked-name name) ,params
               ,@(unsplice docstring)
-              (check-kernel)
-              (,',call-impl))
+              (let ((kernel (check-kernel)))
+                (,',call-impl kernel)))
             (eval-when (:load-toplevel :execute)
               (register-fn ',name))
             ',name)))))
 
-(defmacro call-impl-in-worker ()
+(defmacro call-impl-in-worker (kernel)
   (with-gensyms (worker channel)
     `(let ((,worker *worker*))
        (if ,worker
-           (call-impl)
+           (call-impl ,kernel)
            (let ((,channel (make-channel)))
              (submit-task ,channel (lambda ()
-                                     (multiple-value-list (call-impl))))
+                                     (multiple-value-list (call-impl ,kernel))))
              (values-list (receive-result ,channel)))))))
 
 (define-defpun defpun

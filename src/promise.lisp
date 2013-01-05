@@ -185,13 +185,10 @@ unknown at the time it is created."
 
 (defun/type make-future (fn) (function) %future
   (declare #.*normal-optimize*)
-  (let ((kernel *kernel*))
-    (unless kernel
-      (check-kernel)
-      (setf kernel *kernel*))
-    (let ((future (make-%future-instance :fn fn)))
-      (submit-raw-task (make-future-task future) kernel)
-      future)))
+  (let ((kernel (check-kernel))
+        (future (make-%future-instance :fn fn)))
+    (submit-raw-task (make-future-task future) kernel)
+    future))
 
 (defmacro future (&body body)
   "Create a future. A future is a promise which is fulfilled in

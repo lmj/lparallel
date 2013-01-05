@@ -252,26 +252,25 @@ A kernel will not be garbage collected until `end-kernel' is called."
     kernel))
 
 (defun check-kernel ()
-  "Ensures that *kernel* is non-nil; provides the MAKE-KERNEL restart."
-  (unless *kernel*
-    (restart-case (error 'no-kernel-error)
-      (make-kernel (worker-count)
-        :report "Make a kernel now (prompt for number of workers)."
-        :interactive (lambda () (interact "Enter number of workers: "))
-        (setf *kernel* (make-kernel worker-count)))
-      (store-value (value)
-        :report "Assign a value to lparallel:*kernel*."
-        :interactive (lambda () (interact "Value for lparallel:*kernel*: "))
-        (check-type value kernel)
-        (setf *kernel* value))))
-  nil)
+  "Ensures the value of `*kernel*' is a kernel instance. Provides the
+MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
+  (or *kernel*
+      (restart-case (error 'no-kernel-error)
+        (make-kernel (worker-count)
+          :report "Make a kernel now (prompt for number of workers)."
+          :interactive (lambda () (interact "Enter number of workers: "))
+          (setf *kernel* (make-kernel worker-count)))
+        (store-value (value)
+          :report "Assign a value to lparallel:*kernel*."
+          :interactive (lambda () (interact "Value for lparallel:*kernel*: "))
+          (check-type value kernel)
+          (setf *kernel* value)))))
 
 (defmacro define-worker-info-reader (name slot &optional (result slot))
   `(defun ,name ()
      ,(format nil "Return the ~a passed to `make-kernel'."
               (string-downcase slot))
-     (check-kernel)
-     (with-kernel-slots (worker-info) *kernel*
+     (with-kernel-slots (worker-info) (check-kernel)
        (with-worker-info-slots (,slot) worker-info
          ,result))))
 
@@ -285,8 +284,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
 
 (defun kernel-worker-count ()
   "Return the number of workers in the current kernel."
-  (check-kernel)
-  (%kernel-worker-count *kernel*))
+  (%kernel-worker-count (check-kernel)))
 
 (defun make-channel (&optional initial-capacity)
   "Create a channel for submitting and receiving tasks. The current
@@ -296,11 +294,11 @@ As an optimization, an internal size may be given with
 `initial-capacity'. This does not limit the internal size."
   #-lparallel.with-vector-queue
   (declare (ignore initial-capacity))
-  (check-kernel)
-  (make-channel-instance
-   :kernel *kernel*
-   :queue (make-queue #+lparallel.with-vector-queue
-                      (or initial-capacity (%kernel-worker-count *kernel*)))))
+  (let ((kernel (check-kernel)))
+    (make-channel-instance
+     :kernel kernel
+     :queue (make-queue #+lparallel.with-vector-queue
+                        (or initial-capacity (%kernel-worker-count kernel))))))
 
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
@@ -412,9 +410,10 @@ deadlocked or infinite looping tasks."
 (defun task-categories-running ()
   "Return a vector containing the task category currently running for
 each worker."
-  (if *kernel*
-      (map 'vector #'running-category (workers *kernel*))
-      #()))
+  (let ((kernel *kernel*))
+    (if kernel
+        (map 'vector #'running-category (workers kernel))
+        #())))
 
 (defun kernel-info (kernel)
   (with-kernel-slots (worker-info alivep) kernel
