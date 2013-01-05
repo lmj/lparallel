@@ -170,3 +170,9 @@ message from appearing in the future (N is the number of workers):
 ")
   (:documentation
    "Error signaled when `*kernel*' is nil."))
+
+(define-condition kernel-creation-error (error) ()
+  (:report
+   "Failed to create a kernel.")
+  (:documentation
+   "Error signaled when `make-kernel' fails."))

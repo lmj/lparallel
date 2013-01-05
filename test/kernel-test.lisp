@@ -547,3 +547,27 @@
       (is (string-equal "foo" (kernel-name)))
       (is (equal '((*blah* . 99)) (kernel-bindings)))
       (is (eq context (kernel-context))))))
+
+(defun aborting-context (worker-loop)
+  (declare (ignore worker-loop))
+  (abort))
+
+(defun non-funcalling-context (worker-loop)
+  (declare (ignore worker-loop)))
+
+(lp-base-test context-error-test
+  (dolist (n '(1 2 4 8))
+    (with-thread-count-check
+      (signals kernel-creation-error
+        (make-kernel n :context #'aborting-context)))))
+
+(lp-base-test non-funcalling-context-test
+  (dolist (n '(1 2 4 8))
+    (with-thread-count-check
+      (signals kernel-creation-error
+        (make-kernel n :context 'non-funcalling-context)))))
+
+(lp-base-test nonexistent-context-test
+  (with-thread-count-check
+    (signals error
+      (make-kernel 1 :context 'nonexistent-function))))

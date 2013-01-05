@@ -60,15 +60,24 @@
         (exec-task/non-worker task))
     t))
 
-(defun handshake/to-worker (worker)
-  (with-worker-slots (handshake/from-worker handshake/to-worker) worker
-    (push-queue 'proceed handshake/to-worker)
-    (assert (eq 'ok (pop-queue handshake/from-worker)))))
+(defun handshake/to-worker/start (worker)
+  (with-worker-slots (handshake/to-worker) worker
+    (push-queue 'proceed handshake/to-worker)))
 
-(defun handshake/from-worker (worker)
-  (with-worker-slots (handshake/from-worker handshake/to-worker) worker
-    (assert (eq 'proceed (pop-queue handshake/to-worker)))
-    (push-queue 'ok handshake/from-worker)))
+(defun handshake/to-worker/finish (worker)
+  (with-worker-slots (handshake/from-worker) worker
+    (ecase (pop-queue handshake/from-worker)
+      (ok)
+      (error (error 'kernel-creation-error)))))
+
+(defun handshake/from-worker/start (worker)
+  (with-worker-slots (handshake/to-worker) worker
+    (assert (eq 'proceed (pop-queue handshake/to-worker)))))
+
+(defun handshake/from-worker/finish (worker status)
+  (check-type status (member ok error))
+  (with-worker-slots (handshake/from-worker) worker
+    (push-queue status handshake/from-worker)))
 
 (defun notify-exit (worker)
   (with-worker-slots (exit-notification) worker
@@ -90,7 +99,8 @@
            :main    (let ((new-worker (make-worker kernel index
                                                    (tasks worker))))
                       (setf (svref workers index) new-worker)
-                      (handshake/to-worker new-worker))
+                      (handshake/to-worker/start new-worker)
+                      (handshake/to-worker/finish new-worker))
            :abort   (warn "lparallel: Worker replacement failed! ~
                            Kernel is defunct."))))))
 
@@ -117,14 +127,20 @@
 (defmacro with-worker-restarts (&body body)
   `(progn ,@body))
 
-(defun call-with-worker-context (fn worker-context kernel)
-  (funcall worker-context
-           (lambda ()
-             (let ((*worker* (find (current-thread) (workers kernel)
-                                   :key #'thread)))
-               (assert *worker*)
-               (with-worker-restarts
-                 (%call-with-task-handler fn))))))
+(defun call-with-worker-context (fn worker-context kernel worker)
+  (handshake/from-worker/start worker)
+  (unwind-protect
+       (funcall worker-context
+                (lambda ()
+                  (let ((*worker* (find (current-thread) (workers kernel)
+                                        :key #'thread)))
+                    (assert *worker*)
+                    (handshake/from-worker/finish worker 'ok)
+                    (with-worker-restarts
+                      (%call-with-task-handler fn)))))
+    ;; This error notification is seen when `worker-context' does not
+    ;; call its worker-loop parameter, otherwise it's ignored.
+    (handshake/from-worker/finish worker 'error)))
 
 (defun enter-worker-loop (kernel worker)
   (with-kernel-slots (worker-info) kernel
@@ -132,7 +148,8 @@
       (call-with-worker-context
        (lambda () (worker-loop kernel worker))
        context
-       kernel))))
+       kernel
+       worker))))
 
 (defun make-all-bindings (kernel bindings)
   (append bindings (list (cons '*kernel* kernel))))
@@ -146,28 +163,49 @@
   (declare (ignore tasks))
   (make-worker-instance :thread nil :index index))
 
+(defun make-worker-thread (kernel worker name bindings)
+  (with-thread (:name name :bindings bindings)
+    (unwind-protect/ext
+     :main    (enter-worker-loop kernel worker)
+     :cleanup (notify-exit worker))))
+
 (defun make-worker (kernel index tasks)
   (with-kernel-slots (worker-info) kernel
     (with-worker-info-slots (bindings name) worker-info
       (let* ((worker (%make-worker index tasks))
-             (all-bindings (make-all-bindings kernel bindings))
-             (worker-thread (with-thread (:bindings all-bindings :name name)
-                              (unwind-protect/ext
-                               :prepare (handshake/from-worker worker)
-                               :main    (enter-worker-loop kernel worker)
-                               :cleanup (notify-exit worker)))))
+             (bindings (make-all-bindings kernel bindings))
+             (worker-thread (make-worker-thread kernel worker name bindings)))
         (with-worker-slots (thread) worker
           (setf thread worker-thread))
         worker))))
 
-(defun start-workers (kernel workers)
-  (dotimes (index (length workers))
-    (setf (aref workers index)
+(defmacro with-make-workers-handler (worker-vector &body body)
+  `(unwind-protect/ext
+    :main  (progn ,@body)
+    :abort (dosequence (worker ,worker-vector)
+             (when (typep worker 'worker)
+               (ignore-errors (destroy-thread (thread worker)))))))
+
+(defun %make-workers (kernel worker-vector)
+  (dotimes (index (length worker-vector))
+    (setf (aref worker-vector index)
           (make-worker kernel
                        index
                        #+lparallel.with-stealing-scheduler (make-spin-queue)
-                       #-lparallel.with-stealing-scheduler nil)))
-  (map nil #'handshake/to-worker workers))
+                       #-lparallel.with-stealing-scheduler nil))))
+
+(defun make-workers (kernel worker-vector)
+  ;; Start/finish calls are separated for parallel initialization.
+  ;;
+  ;; Ensure that each worker calls its worker-loop parameter,
+  ;; otherwise an error is signaled, whereupon all workers are killed.
+  ;;
+  ;; If a `make-thread' call fails (e.g. too many threads) then all
+  ;; workers are killed.
+  (with-make-workers-handler worker-vector
+    (%make-workers kernel worker-vector)
+    (map nil #'handshake/to-worker/start worker-vector)
+    (map nil #'handshake/to-worker/finish worker-vector)))
 
 (defun make-kernel (worker-count
                     &key
@@ -199,18 +237,18 @@ sleeping.
 A kernel will not be garbage collected until `end-kernel' is called."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
   (check-type spin-count index)
-  (let* ((workers (make-array worker-count))
-         (kernel  (make-kernel-instance
-                   :scheduler (make-scheduler workers spin-count)
-                   :workers workers
-                   :workers-lock (make-lock)
-                   :worker-info (make-worker-info-instance
-                                 :bindings bindings
-                                 :context context
-                                 :name name)
-                   :alivep t
-                   :optimizer-data (funcall *make-optimizer-data*))))
-    (start-workers kernel workers)
+  (let* ((worker-vector (make-array worker-count))
+         (kernel (make-kernel-instance
+                  :scheduler (make-scheduler worker-vector spin-count)
+                  :workers worker-vector
+                  :workers-lock (make-lock)
+                  :worker-info (make-worker-info-instance
+                                :bindings bindings
+                                :context (ensure-function context)
+                                :name name)
+                  :alivep t
+                  :optimizer-data (funcall *make-optimizer-data*))))
+    (make-workers kernel worker-vector)
     kernel))
 
 (defun check-kernel ()

@@ -191,6 +191,7 @@
            #:*debug-tasks-p*)
   (:export #:transfer-error
            #:no-kernel-error
+           #:kernel-creation-error
            #:task-killed-error))
 
 (defpackage #:lparallel.kernel-util
