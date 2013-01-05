@@ -93,15 +93,22 @@
                        (invoke-restart term)
                        (fail)))))))
 
+(defun thread-count ()
+  ;; ccl can spontaneously lose the initial thread (issue #1042)
+  #+ccl (count "Initial"
+               (bordeaux-threads:all-threads)
+               :key #'bordeaux-threads:thread-name
+               :test-not #'string=)
+  #-ccl (length (bordeaux-threads:all-threads)))
+
 (defmacro with-thread-count-check (&body body)
   (with-gensyms (old-thread-count)
     `(progn
        (sleep 0.2)
-       (let ((,old-thread-count (length (bordeaux-threads:all-threads))))
+       (let ((,old-thread-count (thread-count)))
          ,@body
          (sleep 0.2)
-         (is (eql ,old-thread-count
-                  (length (bordeaux-threads:all-threads))))))))
+         (is (eql ,old-thread-count (thread-count)))))))
 
 (defparameter *nil* nil)
 (defun infinite-loop () (loop :until *nil*))
