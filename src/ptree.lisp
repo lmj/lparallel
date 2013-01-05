@@ -204,20 +204,23 @@
 
 ;;;; ptree
 
-(defslots %ptree ()
+(defslots ptree ()
   ((nodes   :initform (make-hash-table :test #'eql) :type hash-table
             :reader nodes)
    (queue   :initform (make-queue)                  :type queue)
    (pending :initform 0                             :type integer)
-   (lock    :initform (make-lock) :reader lock)))
+   (lock    :initform (make-lock) :reader lock))
+  (:documentation
+   "A ptree is a computation represented by a tree together with
+   functionality to execute the tree in parallel."))
 
 (defun make-ptree ()
   "Create a ptree instance."
-  (make-%ptree-instance))
+  (make-ptree-instance))
 
-(defun/type compute-ptree (root ptree kernel) (node %ptree kernel) node
+(defun/type compute-ptree (root ptree kernel) (node ptree kernel) node
   (declare #.*normal-optimize*)
-  (with-%ptree-slots (queue pending) ptree
+  (with-ptree-slots (queue pending) ptree
     (loop (let ((node (find-node root)))
             (cond (node
                    (lock-node node)
@@ -234,7 +237,7 @@
                      (return node))))))))
 
 (defun wait-for-compute (ptree)
-  (with-%ptree-slots (lock queue pending) ptree
+  (with-ptree-slots (lock queue pending) ptree
     (while (plusp pending)
       (pop-queue queue)
       (decf pending))))
@@ -276,7 +279,7 @@ passed to `function' are the respective results of the child node
 computations.
 
 `ptree' is the ptree instance in which the node is being defined."
-  (with-%ptree-slots (lock nodes) ptree
+  (with-ptree-slots (lock nodes) ptree
     (with-lock-held (lock)
       (flet ((fetch-node (id) (or (gethash id nodes)
                                   (setf (gethash id nodes)
