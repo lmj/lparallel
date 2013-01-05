@@ -107,23 +107,17 @@
    (worker-info                       :type worker-info)
    (alivep          :reader alivep    :type boolean))
   (:documentation
-   "`scheduler' -- a scheduler instance.
-
-   `workers' -- vector of workers.
-
-   `workers-lock' -- lock for modification of `workers' vector; used
-   when a worker is killed or replaced.
-
-   `worker-info' -- Information common to all workers."))
+   "The kernel encompasses the scheduling and execution of parallel
+   tasks using a pool of worker threads. All parallelism in lparallel
+   is done on top of the kernel."))
 
 (defslots channel ()
   ((queue  :reader channel-queue  :type queue)
    (kernel :reader channel-kernel :type kernel))
   (:documentation
-   "A task is submitted to the kernel using a channel. When the task
-   is complete, the result is pushed to `queue'. A channel always
-   points to the same kernel, which is the value of `*kernel*' when
-   the channel is created."))
+   "A task is submitted to the kernel using a channel. A channel
+   always points to the same kernel, which is the value of `*kernel*'
+   when the channel is created."))
 
 #-lparallel.without-task-categories
 (defpair task ()

@@ -189,7 +189,9 @@
            #:*task-category*
            #:*task-priority*
            #:*debug-tasks-p*)
-  (:export #:transfer-error
+  (:export #:kernel
+           #:channel
+           #:transfer-error
            #:no-kernel-error
            #:kernel-creation-error
            #:task-killed-error))
