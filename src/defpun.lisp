@@ -71,9 +71,9 @@
     (multiple-value-bind (wrapper-params call-impl)
         (if (has-lambda-list-keyword-p params)
             (values `(&rest ,args)
-                    `(apply (function ,impl-name) ,args))
+                    `(apply (function ,impl-name) *kernel* ,args))
             (values params
-                    `(,impl-name ,@params)))
+                    `(,impl-name *kernel* ,@params)))
       `(defun ,wrapper-name ,wrapper-params
          (macrolet ((call-impl () ',call-impl))
            ,@body)))))
@@ -126,17 +126,17 @@
                          :collect (gensym (symbol-name name)))))
      ,@body))
 
-(defmacro future-let (&key future force bindings pre-body body)
+(defmacro future-let (&key kernel future force bindings pre-body body)
   (with-parsed-body (nil declares body)
     (with-parsed-let-args (pairs non-pairs syms) bindings
       `(symbol-macrolet ,(loop
                             :for sym :in syms
                             :for (name nil) :in pairs
-                            :collect `(,name (,force ,sym)))
+                            :collect `(,name (,force ,@(unsplice kernel) ,sym)))
          (let (,@(loop
                     :for sym :in syms
                     :for (nil form) :in pairs
-                    :collect `(,sym (,future ,form)))
+                    :collect `(,sym (,future ,@(unsplice kernel) ,form)))
                ,@non-pairs)
            ,@declares
            ,@(unsplice pre-body)
@@ -200,10 +200,11 @@
   (setf *registered-names*
         (remove-if-not #'valid-registered-name-p *registered-names*)))
 
-(defun registered-macrolets ()
+(defun registered-macrolets (kernel)
   (loop
      :for name :in *registered-names*
-     :collect `(,name (&rest args) `(,',(unchecked-name name) ,@args))))
+     :collect `(,name (&rest args)
+                 `(,',(unchecked-name name) ,',kernel ,@args))))
 
 (defmacro declaim-defpun (&rest names)
   "See `defpun'."
@@ -224,10 +225,11 @@
 
 (setf *make-optimizer-data* 'make-task-counter-instance)
 
-(defmacro accept-task-p ()
+(defmacro accept-task-p (kernel)
+  (check-type kernel symbol)
   ;; needs fast inline for small functions
   `(locally (declare #.*full-optimize*)
-     (the boolean (optimizer-flag (the kernel *kernel*)))))
+     (the boolean (optimizer-flag (the kernel ,kernel)))))
 
 (defmacro define-update-task-count/no-lock (name op)
   `(defun/type ,name (kernel delta) (kernel fixnum) t
@@ -254,60 +256,57 @@
 (define-update-task-count update-task-count/-1 update-task-count/no-lock/-1)
 
 (defmacro define-future/fast (name update-task-count)
-  `(defmacro ,name (&body body)
-     (with-gensyms (kernel)
-       `(let ((,kernel (the kernel *kernel*)))
-          (declare (type kernel ,kernel))
-          (future
-            ,kernel
-            (unwind-protect
-                 (progn ,@body)
-              (,',update-task-count ,kernel -1)))))))
+  `(defmacro ,name (kernel &body body)
+     `(future ,kernel
+        (unwind-protect
+             (progn ,@body)
+          (,',update-task-count ,kernel -1)))))
 
 (define-future/fast future/fast    update-task-count)
 (define-future/fast future/fast/-1 update-task-count/-1)
 
-(defun force/fast (future)
+(defun force/fast (kernel future)
   (declare #.*full-optimize*)
   (if (fulfilledp future)
       (force future)
-      (let ((kernel *kernel*)
-            (worker *worker*))
+      (let ((worker *worker*))
         (loop
            (when (fulfilledp future)
              (return (force future)))
            #+lparallel.with-green-threads (thread-yield)
            (steal-work kernel worker)))))
 
-(defmacro %%plet/fast (future/fast update-task-count/no-lock
+(defmacro %%plet/fast (kernel future/fast update-task-count/no-lock
                        predicate future-count bindings body)
   `(with-lock-predicate/wait*
-       :lock            (lock (optimizer-data *kernel*))
+       :lock            (lock (optimizer-data ,kernel))
        :predicate1      ,predicate
-       :predicate2      (accept-task-p)
-       :succeed/lock    (,update-task-count/no-lock *kernel* ,future-count)
-       :succeed/no-lock (future-let :future ,future/fast
+       :predicate2      (accept-task-p ,kernel)
+       :succeed/lock    (,update-task-count/no-lock ,kernel ,future-count)
+       :succeed/no-lock (future-let :kernel ,kernel
+                                    :future ,future/fast
                                     :force force/fast
                                     :bindings ,bindings
                                     :body ,body)
        :fail            (let ,bindings ,@body)))
 
-(defmacro %plet/fast (future/fast update-task-count/no-lock
+(defmacro %plet/fast (kernel future/fast update-task-count/no-lock
                       predicate bindings body)
   (with-parsed-let-args (pairs non-pairs syms) bindings
     (declare (ignore non-pairs syms))
     (if pairs
-        `(%%plet/fast ,future/fast ,update-task-count/no-lock
+        `(%%plet/fast ,kernel ,future/fast ,update-task-count/no-lock
                       ,predicate ,(length pairs) ,bindings ,body)
         `(let ,bindings ,@body))))
 
 (defmacro define-plet/fast (name
                             future/fast
                             update-task-count/no-lock)
-  `(defmacro ,name (bindings &body body)
-     `(%plet/fast ,',future/fast
+  `(defmacro ,name (kernel bindings &body body)
+     `(%plet/fast ,kernel
+                  ,',future/fast
                   ,',update-task-count/no-lock
-                  (accept-task-p)
+                  (accept-task-p ,kernel)
                   ,bindings
                   ,body)))
 
@@ -322,10 +321,11 @@
 (defmacro define-plet-if/fast (name
                                future/fast
                                update-task-count/no-lock)
-  `(defmacro ,name (predicate bindings &body body)
-     `(%plet/fast ,',future/fast
+  `(defmacro ,name (kernel predicate bindings &body body)
+     `(%plet/fast ,kernel
+                  ,',future/fast
                   ,',update-task-count/no-lock
-                  (and (accept-task-p) ,predicate)
+                  (and (accept-task-p ,kernel) ,predicate)
                   ,bindings ,body)))
 
 (define-plet-if/fast plet-if/fast
@@ -345,22 +345,28 @@
        ;; return form below
        (delete-stale-registrations)
        (register-name name)
-       `(progn
-          (,',defun ,(unchecked-name name) ,params ,,@types
-            ,@declares
-            (macrolet ((plet (bindings &body body)
-                         `(,',',plet/fast ,bindings ,@body))
-                       (plet-if (predicate bindings &body body)
-                         `(,',',plet-if/fast ,predicate ,bindings ,@body))
-                       ,@(registered-macrolets))
-              ,@body))
-          (defun/wrapper ,name ,(unchecked-name name) ,params
-            ,@(unsplice docstring)
-            (check-kernel)
-            (,',call-impl))
-          (eval-when (:load-toplevel :execute)
-            (register-fn ',name))
-          ',name))))
+       (with-gensyms (kernel)
+         `(progn
+            (,',defun ,(unchecked-name name) (,kernel ,@params)
+                ,,@(unsplice (when types ``(kernel ,@,(first types))))
+                ,,@(unsplice (when types (second types)))
+              ,@declares
+              (declare (ignorable ,kernel))
+              (macrolet ((plet (bindings &body body)
+                           `(,',',plet/fast ,',kernel ,bindings
+                              ,@body))
+                         (plet-if (predicate bindings &body body)
+                           `(,',',plet-if/fast ,',kernel ,predicate ,bindings
+                              ,@body))
+                         ,@(registered-macrolets kernel))
+                ,@body))
+            (defun/wrapper ,name ,(unchecked-name name) ,params
+              ,@(unsplice docstring)
+              (check-kernel)
+              (,',call-impl))
+            (eval-when (:load-toplevel :execute)
+              (register-fn ',name))
+            ',name)))))
 
 (defmacro call-impl-in-worker ()
   (with-gensyms (worker channel)
