@@ -125,9 +125,18 @@
    points to the same kernel, which is the value of `*kernel*' when
    the channel is created."))
 
+#-lparallel.without-task-categories
 (defpair task ()
   ((fn       :reader task-fn :type function)
    (category :reader task-category))
   (:documentation
    "A task consists of a function and a category. See `kill-tasks' for
    and explanation of task categories."))
+
+#+lparallel.without-task-categories
+(progn
+  (deftype task () 'function)
+  (defun/inline make-task-instance (&key fn category)
+    (declare (ignore category))
+    fn)
+  (defmacro task-fn (x) x))
