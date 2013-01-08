@@ -49,6 +49,8 @@
 
 #+(or ccl lispworks)
 (progn
+  (deftype counter () 'cons)
+
   (defun make-counter (&optional (value 0))
     (cons value nil))
 
