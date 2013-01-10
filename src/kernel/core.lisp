@@ -436,6 +436,13 @@ each worker."
 #+ccl     (pushnew 'track-exit ccl:*lisp-cleanup-functions*)
 #+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal)
 
+#+lispworks
+(lw:define-action "Confirm when quitting image" "Track exit"
+  #'(lambda ()
+      (track-exit)
+      (values t))
+  :once)
+
 ;;; ccl:save-application calls ccl:*lisp-cleanup-functions* before
 ;;; saving. Adjust with a save hook.
 #+ccl
