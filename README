@@ -31,7 +31,7 @@ test suite:
 
 To run tests, load lparallel-test.asd and call (lparallel-test:execute).
 
-To run benchmarks, load lparallel-bench.asd and call (lparallel-test:execute N)
+To run benchmarks, load lparallel-bench.asd and call (lparallel-bench:execute N)
 where N is the number of worker threads.
 
 Author
