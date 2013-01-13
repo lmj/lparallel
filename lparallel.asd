@@ -89,9 +89,7 @@ See http://lparallel.org for documentation and examples.
 #+(and (not lparallel.without-spin-queue)
        sbcl)                                 ((:file "sbcl-spin-queue"))
 #+(and (not lparallel.without-spin-queue)
-       ccl)                                  ((:file "ccl-spin-queue"))
-#+(and (not lparallel.without-spin-queue)
-       lispworks)                            ((:file "lispworks-spin-queue"))
+       (or ccl lispworks))                   ((:file "cas-spin-queue"))
 #+(or lparallel.without-spin-queue
       (not (or sbcl ccl lispworks)))         ((:file "default-spin-queue")))
                                     (:module "kernel"

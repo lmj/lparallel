@@ -30,56 +30,81 @@
 
 (in-package #:lparallel.spin-queue)
 
+;;;; cas
+
+#+lispworks
+(defmacro cas (place old new)
+  `(sys:compare-and-swap ,place ,old ,new))
+
+#+ccl
+(defmacro cas (place old new)
+  `(ccl::conditional-store ,place ,old ,new))
+
+;;;; node
+
+#+(or lispworks)
+(progn
+  (deftype node () 'cons)
+  (alias-function make-node cons)
+  (defmacro node-car (node) `(car ,node))
+  (defmacro node-cdr (node) `(cdr ,node)))
+
+;;; CCL cannot compare-and-swap on a cons. Slots for defstruct must be
+;;; untyped for ccl::conditional-store.
+#+ccl
+(progn
+  (declaim (inline make-node))
+  (defstruct (node (:constructor make-node (car cdr)))
+    car
+    cdr))
+
+;;;; spin-queue
+
 (defconstant +dummy+ 'dummy)
 
-(declaim (inline make-node))
-(defstruct (node (:constructor make-node (car cdr)))
-  car
-  cdr)
-
 (defstruct (spin-queue (:constructor %make-spin-queue (head tail)))
-  head
-  tail)
+  (head nil :type node)
+  (tail nil :type node))
 
 (defun make-spin-queue ()
   (let ((dummy (make-node +dummy+ nil)))
     (%make-spin-queue dummy dummy)))
 
 (defun/type push-spin-queue (value queue) (t spin-queue) null
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (let ((new (make-node value nil))
         (tail (spin-queue-tail queue))
         next)
     (loop
-      (loop
-        :do (setf next (node-cdr tail))
-        :while next
-        :do (setf tail next))
-      (when (sys:compare-and-swap (node-cdr tail) nil new)
-        (setf (spin-queue-tail queue) new)
-        (return-from push-spin-queue nil)))))
+       (loop
+          :do (setf next (node-cdr tail))
+          :while next
+          :do (setf tail next))
+       (when (cas (node-cdr tail) nil new)
+         (setf (spin-queue-tail queue) new)
+         (return-from push-spin-queue nil)))))
 
 (defun/type pop-spin-queue (queue) (spin-queue) (values t boolean)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (let ((node (spin-queue-head queue))
         target)
     (loop
-      (loop
-        :do (setf node (node-cdr node))
-        :unless node :do (return-from pop-spin-queue (values nil nil))
+       (loop
+          :do (setf node (node-cdr node))
+          :unless node :do (return-from pop-spin-queue (values nil nil))
           :do (setf target (node-car node))
-        :while (eq target +dummy+))
-      (when (sys:compare-and-swap (node-car node) target +dummy+)
-        (setf (spin-queue-head queue) node)
-        (return-from pop-spin-queue (values target t))))))
+          :while (eq target +dummy+))
+       (when (cas (node-car node) target +dummy+)
+         (setf (spin-queue-head queue) node)
+         (return-from pop-spin-queue (values target t))))))
 
 (defun spin-queue-count (queue)
   (loop
-    :with count := 0
-    :for node := (spin-queue-head queue) :then (node-cdr node)
-    :while node
-    :unless (eq (node-car node) +dummy+) :do (incf count)
-      :finally (return count)))
+     :with count := 0
+     :for node := (spin-queue-head queue) :then (node-cdr node)
+     :while node
+     :unless (eq (node-car node) +dummy+) :do (incf count)
+     :finally (return count)))
 
 (defun/inline spin-queue-empty-p (queue)
   (null (node-cdr (spin-queue-head queue))))
@@ -88,8 +113,8 @@
   (let ((node (spin-queue-head queue))
         target)
     (loop
-      :do (setf node (node-cdr node))
-      :unless node :do (return-from peek-spin-queue (values nil nil))
-        :do (setf target (node-car node))
-      :while (eq target +dummy+))
+       :do (setf node (node-cdr node))
+       :unless node :do (return-from peek-spin-queue (values nil nil))
+       :do (setf target (node-car node))
+       :while (eq target +dummy+))
     (values target t)))
