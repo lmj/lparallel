@@ -30,18 +30,16 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; unless otherwise requested, default to stealing scheduler on sbcl
-  (when (and (find :sbcl *features*)
-             (not (find :lparallel.without-stealing-scheduler *features*)))
-    (pushnew :lparallel.with-stealing-scheduler *features*))
+  #+(and sbcl (not lparallel.without-stealing-scheduler))
+  (pushnew :lparallel.with-stealing-scheduler *features*)
 
   ;; green threads need calls to yield
-  (when (and (find :allegro *features*)
-             (not (find :os-threads *features*)))
-    (pushnew :lparallel.with-green-threads *features*))
+  #+(and allegro (not os-threads))
+  (pushnew :lparallel.with-green-threads *features*)
 
   ;; thread kill does not call unwind-protect cleanup forms
-  (when (find :abcl *features*)
-    (pushnew :lparallel.without-kill *features*)))
+  #+abcl
+  (pushnew :lparallel.without-kill *features*))
 
 (defsystem :lparallel
   :version "2.2.0"
