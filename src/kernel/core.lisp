@@ -437,7 +437,7 @@ each worker."
 #+allegro (pushnew '(track-exit) sys:*exit-cleanup-forms* :test #'equal)
 
 #+lispworks
-(lw:define-action "Confirm when quitting image" "Track exit"
+(lw:define-action "When quitting image" "Track exit"
   #'(lambda ()
       (track-exit)
       (values t))
