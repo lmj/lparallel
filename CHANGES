@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.2.1
+
+* added lockless queue support for LispWorks; enable it through
+  feature :lparallel.with-stealing-scheduler
+
 = 2.2.0
 
 * exported types: kernel, channel, ptree
