@@ -310,23 +310,27 @@
            #:psort
            #:psort*))
 
-(defpackage #:lparallel
-  (:use #:cl))
-
-(dolist (package '(#:lparallel.kernel
-                   #:lparallel.promise
-                   #:lparallel.defpun
-                   #:lparallel.cognate
-                   #:lparallel.ptree))
-  (use-package package (find-package '#:lparallel))
-  (export
-   (loop :for symbol :being :the :external-symbols :in package :collect symbol)
-   (find-package '#:lparallel)))
-
-(setf (documentation (find-package '#:lparallel) t)
-      "This is a convenience package which exports the external symbols of:
+;;; Avoid polluting CL-USER by choosing names in CL.
+(macrolet
+    ((package (package-name documentation &rest list)
+       `(defpackage ,package-name
+          (:documentation ,documentation)
+          (:use #:cl ,@list)
+          (:export
+           ,@(loop
+                :for package :in list
+                :nconc (loop
+                          :for symbol :being :the :external-symbols :in package
+                          :collect (make-symbol (string symbol))))))))
+  (package #:lparallel
+"This is a convenience package which exports the external symbols of:
    lparallel.kernel
    lparallel.promise
    lparallel.defpun
    lparallel.cognate
-   lparallel.ptree")
+   lparallel.ptree"
+    #:lparallel.kernel
+    #:lparallel.promise
+    #:lparallel.defpun
+    #:lparallel.cognate
+    #:lparallel.ptree))
