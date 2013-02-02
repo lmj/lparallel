@@ -36,85 +36,36 @@
 
 (deftype raw-queue-count () '(integer 0))
 
-#-lparallel.with-vector-queue
-(progn
-  (deftype raw-queue () '(cons list list))
-  (defmacro head (queue) `(car ,queue))
-  (defmacro tail (queue) `(cdr ,queue))
+(deftype raw-queue () '(cons list list))
+(defmacro head (queue) `(car ,queue))
+(defmacro tail (queue) `(cdr ,queue))
 
-  (defun/type/inline make-raw-queue (&optional initial-capacity)
-      (&optional raw-queue-count) raw-queue
-    (declare (ignore initial-capacity))
-    (cons nil nil))
+(defun/type/inline make-raw-queue (&optional initial-capacity)
+    (&optional raw-queue-count) raw-queue
+  (declare (ignore initial-capacity))
+  (cons nil nil))
 
-  (defun/type push-raw-queue (value queue) (t raw-queue) t
-    (declare #.*normal-optimize*)
-    (let ((new (cons value nil)))
-      (if (head queue)
-          (setf (cdr (tail queue)) new)
-          (setf (head queue) new))
-      (setf (tail queue) new)))
-
-  (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
-    (declare #.*normal-optimize*)
+(defun/type push-raw-queue (value queue) (t raw-queue) t
+  (declare #.*normal-optimize*)
+  (let ((new (cons value nil)))
     (if (head queue)
-        (let ((node (head queue)))
-          (multiple-value-prog1 (values (car node) t)
-            (when (null (setf (head queue) (cdr node)))
-              (setf (tail queue) nil))
-            ;; clear node for conservative gcs
-            (setf (car node) nil
-                  (cdr node) nil)))
-        (values nil nil)))
+        (setf (cdr (tail queue)) new)
+        (setf (head queue) new))
+    (setf (tail queue) new)))
 
-  (defun/inline raw-queue-count   (queue) (length (the list (head queue))))
-  (defun/inline raw-queue-empty-p (queue) (not (head queue)))
-  (defun/inline peek-raw-queue    (queue) (values (car (head queue))
-                                                  (if (head queue) t nil))))
+(defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
+  (declare #.*normal-optimize*)
+  (if (head queue)
+      (let ((node (head queue)))
+        (multiple-value-prog1 (values (car node) t)
+          (when (null (setf (head queue) (cdr node)))
+            (setf (tail queue) nil))
+          ;; clear node for conservative gcs
+          (setf (car node) nil
+                (cdr node) nil)))
+      (values nil nil)))
 
-#+lparallel.with-vector-queue
-(progn
-  (defslots raw-queue ()
-    ((data                                      :type array)
-     (start :initform 0                         :type raw-queue-count)
-     (count :initform 0 :reader raw-queue-count :type raw-queue-count)))
-
-  (defun make-raw-queue (&optional (initial-capacity 2))
-    (declare #.*normal-optimize*)
-    (make-raw-queue-instance
-     :data (make-array initial-capacity :adjustable t)))
-
-  (defun/type push-raw-queue (value queue) (t raw-queue) null
-    (declare #.*normal-optimize*)
-    (with-raw-queue-slots (data start count) queue
-      (let ((size (length data)))
-        (cond ((eql count size)
-               (adjust-array data (if (zerop size) 1 (* 2 size)))
-               (replace data data :start1 size :start2 0 :end2 start)
-               (fill data nil :start 0 :end start)
-               (setf (aref data (mod (+ start count) (length data))) value))
-              (t
-               (setf (aref data (mod (+ start count) size)) value))))
-      (incf count)
-      nil))
-
-  (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
-    (declare #.*normal-optimize*)
-    (with-raw-queue-slots (data start count) queue
-      (if (plusp count)
-          (multiple-value-prog1 (values (aref data start) t)
-            (setf (aref data start) nil
-                  start (mod (1+ start) (length data)))
-            (decf count))
-          (values nil nil))))
-
-  (defun/type/inline peek-raw-queue (queue) (raw-queue) (values t boolean)
-    (declare #.*normal-optimize*)
-    (with-raw-queue-slots (data start count) queue
-      (if (plusp count)
-          (values (aref data start) t)
-          (values nil nil))))
-
-  (defun/type/inline raw-queue-empty-p (queue) (raw-queue) t
-    (declare #.*normal-optimize*)
-    (zerop (raw-queue-count queue))))
+(defun/inline raw-queue-count   (queue) (length (the list (head queue))))
+(defun/inline raw-queue-empty-p (queue) (not (head queue)))
+(defun/inline peek-raw-queue    (queue) (values (car (head queue))
+                                                (if (head queue) t nil)))

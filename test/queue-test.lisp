@@ -40,45 +40,44 @@
                              queue-count
                              peek-queue)
   `(lp-base-test ,name
-     (dolist (n (loop :for i :below 20 :collect i))
-       (let ((q (,make-queue n)))
-         (is (eq t (,queue-empty-p q)))
-         (multiple-value-bind (a b) (,try-pop-queue q)
-           (is (null a))
-           (is (null b)))
-         (multiple-value-bind (a b) (,peek-queue q)
-           (is (null a))
-           (is (null b)))
-         (,push-queue 3 q)
-         (is (eq nil (,queue-empty-p q)))
-         (,push-queue 4 q)
-         (is (eq nil (,queue-empty-p q)))
-         (multiple-value-bind (a b) (,peek-queue q)
-           (is (= 3 a))
-           (is (not (null b))))
-         (,push-queue 5 q)
-         (,push-queue 6 q)
-         (,push-queue 7 q)
-         (is (eql 5 (,queue-count q)))
-         (is (eql 3 (,pop-queue q)))
-         (multiple-value-bind (a b) (,try-pop-queue q)
-           (is (= 4 a))
-           (is (not (null b))))
-         (is (equal '(5 6 7)
-                    (loop :repeat 3 :collect (,pop-queue q))))
-         (is (eq t (,queue-empty-p q)))
-         (multiple-value-bind (a b) (,try-pop-queue q)
-           (is (null a))
-           (is (null b)))
-         (multiple-value-bind (a b) (,peek-queue q)
-           (is (null a))
-           (is (null b)))
-         (,push-queue 88 q)
-         (is (eq nil (,queue-empty-p q)))
-         (is (eq 1 (,queue-count q)))
-         (,pop-queue q)
-         (is (eq t (,queue-empty-p q)))
-         (is (eq 0 (,queue-count q)))))))
+     (let ((q (,make-queue)))
+       (is (eq t (,queue-empty-p q)))
+       (multiple-value-bind (a b) (,try-pop-queue q)
+         (is (null a))
+         (is (null b)))
+       (multiple-value-bind (a b) (,peek-queue q)
+         (is (null a))
+         (is (null b)))
+       (,push-queue 3 q)
+       (is (eq nil (,queue-empty-p q)))
+       (,push-queue 4 q)
+       (is (eq nil (,queue-empty-p q)))
+       (multiple-value-bind (a b) (,peek-queue q)
+         (is (= 3 a))
+         (is (not (null b))))
+       (,push-queue 5 q)
+       (,push-queue 6 q)
+       (,push-queue 7 q)
+       (is (eql 5 (,queue-count q)))
+       (is (eql 3 (,pop-queue q)))
+       (multiple-value-bind (a b) (,try-pop-queue q)
+         (is (= 4 a))
+         (is (not (null b))))
+       (is (equal '(5 6 7)
+                  (loop :repeat 3 :collect (,pop-queue q))))
+       (is (eq t (,queue-empty-p q)))
+       (multiple-value-bind (a b) (,try-pop-queue q)
+         (is (null a))
+         (is (null b)))
+       (multiple-value-bind (a b) (,peek-queue q)
+         (is (null a))
+         (is (null b)))
+       (,push-queue 88 q)
+       (is (eq nil (,queue-empty-p q)))
+       (is (eq 1 (,queue-count q)))
+       (,pop-queue q)
+       (is (eq t (,queue-empty-p q)))
+       (is (eq 0 (,queue-count q))))))
 
 (define-queue-test raw-queue-test
   :make-queue    make-raw-queue
@@ -99,13 +98,8 @@
   :peek-queue    peek-queue)
 
 #+lparallel.with-stealing-scheduler
-(defun make-spin-queue* (&optional ignore)
-  (declare (ignore ignore))
-  (make-spin-queue))
-
-#+lparallel.with-stealing-scheduler
 (define-queue-test spin-queue-test
-  :make-queue    make-spin-queue*
+  :make-queue    make-spin-queue
   :push-queue    push-spin-queue
   :pop-queue     pop-spin-queue
   :try-pop-queue pop-spin-queue
@@ -113,10 +107,40 @@
   :queue-count   spin-queue-count
   :peek-queue    peek-spin-queue)
 
+(defun make-vector-queue* ()
+  (make-vector-queue 20))
+
+(define-queue-test vector-queue-test
+  :make-queue    make-vector-queue*
+  :push-queue    push-vector-queue
+  :pop-queue     pop-vector-queue
+  :try-pop-queue try-pop-vector-queue
+  :queue-empty-p vector-queue-empty-p
+  :queue-count   vector-queue-count
+  :peek-queue    peek-vector-queue)
+
+(lp-base-test vector-queue-blocking-test
+  (loop :for n :from 1 :to 10 :do
+     (let ((queue (make-vector-queue n)))
+       (repeat n
+         (push-vector-queue t queue))
+       (repeat 3
+         (let ((pushedp nil))
+           (with-thread ()
+             (push-vector-queue t queue)
+             (setf pushedp t))
+           (sleep 0.1)
+           (is (not pushedp))
+           (pop-vector-queue queue)
+           (sleep 0.1)
+           (is (not (null pushedp))))))))
+
+(defparameter *grind-queue-count* 100000)
+
 (defmacro define-grind-queue (name
                               &key make-queue push-queue pop-queue queue-count)
   `(lp-base-test ,name
-     (let ((obj-count 100000)
+     (let ((obj-count *grind-queue-count*)
            (iter-count 2))
        (with-thread-count-check
          (dolist (thread-count '(1 2 3 4 8 16 32 64 128))
@@ -146,6 +170,24 @@
     :pop-queue   pop-queue
     :queue-count queue-count)
 
+(defun make-queue* ()
+  (make-queue :fixed-capacity *grind-queue-count*))
+
+(define-grind-queue grind-fixed-capacity-queue-test
+    :make-queue  make-queue*
+    :push-queue  push-queue
+    :pop-queue   pop-queue
+    :queue-count queue-count)
+
+(defun make-vector-queue** ()
+  (make-vector-queue *grind-queue-count*))
+
+(define-grind-queue grind-vector-queue-test
+    :make-queue  make-vector-queue**
+    :push-queue  push-vector-queue
+    :pop-queue   pop-vector-queue
+    :queue-count vector-queue-count)
+
 #+lparallel.with-stealing-scheduler
 (defun pop-spin-queue/wait (queue)
   (loop (multiple-value-bind (item presentp) (pop-spin-queue queue)
@@ -154,7 +196,7 @@
 
 #+lparallel.with-stealing-scheduler
 (define-grind-queue grind-spin-queue-test
-    :make-queue  make-spin-queue*
+    :make-queue  make-spin-queue
     :push-queue  push-spin-queue
     :pop-queue   pop-spin-queue/wait
     :queue-count spin-queue-count)
@@ -172,3 +214,50 @@
     :push-queue  lparallel.biased-queue:push-biased-queue/low
     :pop-queue   lparallel.biased-queue:pop-biased-queue
     :queue-count lparallel.biased-queue:biased-queue-count)
+
+(lp-base-test fixed-capacity-queue-test
+  (loop
+     :for n :from 1 :to 10
+     :do (let ((queue (make-queue :fixed-capacity n)))
+           (repeat n
+             (is (not (queue-full-p queue)))
+             (push-queue t queue))
+           (repeat 3
+             (is (queue-full-p queue))
+             (let ((pushedp nil))
+               (with-thread ()
+                 (push-queue t queue)
+                 (setf pushedp t))
+               (sleep 0.1)
+               (is (not pushedp))
+               (pop-queue queue)
+               (sleep 0.1)
+               (is (not (null pushedp))))))))
+
+(lp-base-test queue-initial-contents-test
+  (let ((q (make-queue :initial-contents '(3 4 5))))
+    (is (= 3 (pop-queue q)))
+    (is (= 4 (pop-queue q)))
+    (is (= 5 (pop-queue q)))
+    (is (queue-empty-p q)))
+  (let ((q (make-queue :initial-contents #(3 4 5))))
+    (is (= 3 (pop-queue q)))
+    (is (= 4 (pop-queue q)))
+    (is (= 5 (pop-queue q)))
+    (is (queue-empty-p q)))
+  (let ((q (make-queue :fixed-capacity 10 :initial-contents '(3 4 5))))
+    (is (= 3 (pop-queue q)))
+    (is (= 4 (pop-queue q)))
+    (is (= 5 (pop-queue q)))
+    (is (queue-empty-p q)))
+  (let ((q (make-queue :fixed-capacity 3 :initial-contents #(3 4 5))))
+    (is (queue-full-p q))
+    (is (= 3 (pop-queue q)))
+    (is (= 4 (pop-queue q)))
+    (is (= 5 (pop-queue q)))
+    (is (queue-empty-p q)))
+  (let ((q (make-queue :fixed-capacity 2 :initial-contents #(3 4 5))))
+    (is (queue-full-p q))
+    (is (= 3 (pop-queue q)))
+    (is (= 4 (pop-queue q)))
+    (is (queue-empty-p q))))

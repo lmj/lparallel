@@ -36,6 +36,7 @@
         #:lparallel.thread-util
         #:lparallel.raw-queue
         #:lparallel.queue
+        #:lparallel.vector-queue
         #:lparallel.spin-queue
         #:lparallel.kernel
         #:lparallel.cognate

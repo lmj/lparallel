@@ -103,13 +103,15 @@
       (is (not (null thread))))))
 
 (lp-test channel-capacity-test
-  (let ((channel (make-channel 10)))
+  (let ((channel (make-channel :fixed-capacity 1)))
     (submit-task channel (lambda () 3))
     (submit-task channel (lambda () 4))
-    (is (equal '(3 4)
+    (submit-task channel (lambda () 5))
+    (is (equal '(3 4 5)
                ;; avoid sbcl warning
                (locally (declare (notinline sort))
                  (sort (list (receive-result channel)
+                             (receive-result channel)
                              (receive-result channel))
                        #'<))))))
 

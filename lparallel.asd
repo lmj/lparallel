@@ -80,6 +80,8 @@ See http://lparallel.org for documentation and examples.
                                               (:file "defpair")))
                                     (:file "thread-util")
                                     (:file "raw-queue")
+                                    (:file "cons-queue")
+                                    (:file "vector-queue")
                                     (:file "queue")
 #-lparallel.with-stealing-scheduler (:file "biased-queue")
 #+lparallel.with-stealing-scheduler (:file "counter")

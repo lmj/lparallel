@@ -286,19 +286,27 @@ MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
   "Return the number of workers in the current kernel."
   (%kernel-worker-count (check-kernel)))
 
-(defun make-channel (&optional initial-capacity)
-  "Create a channel for submitting and receiving tasks. The current
-value of `*kernel*' is stored for use in `submit-task'.
-
-As an optimization, an internal size may be given with
-`initial-capacity'. This does not limit the internal size."
-  #-lparallel.with-vector-queue
-  (declare (ignore initial-capacity))
+(defun %make-channel (&key fixed-capacity)
   (let ((kernel (check-kernel)))
     (make-channel-instance
      :kernel kernel
-     :queue (make-queue #+lparallel.with-vector-queue
-                        (or initial-capacity (%kernel-worker-count kernel))))))
+     :queue (make-queue :fixed-capacity fixed-capacity))))
+
+(defun make-channel (&rest args)
+  "Create a channel for submitting and receiving tasks. The current
+value of `*kernel*' is stored for use in `submit-task'.
+
+By default there is no limit on the channel capacity. Passing a
+`fixed-capacity' keyword argument limits the capacity to the value
+passed.
+
+Note that a fixed capacity channel may cause a deadlocked kernel if
+`receive-result' is not called a sufficient number of times."
+  (when (= 1 (length args))
+    (warn "Calling `make-channel' with one argument is deprecated.~%~
+           Pass no arguments instead.")
+    (setf args nil))
+  (apply #'%make-channel args))
 
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)

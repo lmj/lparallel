@@ -28,71 +28,131 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+;;; This yearns for defmethod, however there are outstanding issues
+;;; with highly concurrent defmethod calls.
+;;;
+;;; The `queue' type is a chimera because a cons-based queue was
+;;; measurably faster than a resizeable vector queue even with
+;;; pre-allocation.
+
 (in-package #:lparallel.queue)
 
-(defslots queue ()
-  ((impl :reader impl                      :type raw-queue)
-   (lock :reader lock :initform (make-lock))
-   (cvar              :initform nil))
-  (:documentation
-   "A blocking FIFO queue for thread communication."))
+(deftype queue () '(or cons-queue vector-queue))
 
-;;; Queues were originally vector-based, hence the `initial-capacity'.
-;;; Keep the parameter in order to leave the option open.
-(defun make-queue (&optional (initial-capacity 1))
-  (make-queue-instance :impl (make-raw-queue initial-capacity)))
+(defun %make-queue (&key fixed-capacity initial-contents)
+  (if fixed-capacity
+      (make-vector-queue fixed-capacity :initial-contents initial-contents)
+      (make-cons-queue :initial-contents initial-contents)))
+
+(defun make-queue (&rest args)
+  (when (= 1 (length args))
+    (warn "Calling `make-queue' with one argument is deprecated.~%~
+           Pass no arguments instead.")
+    (setf args nil))
+  (apply #'%make-queue args))
+
+(defun call-with-locked-cons-queue (fn queue)
+  (with-locked-cons-queue queue
+    (funcall fn)))
+
+(defun call-with-locked-vector-queue (fn queue)
+  (with-locked-vector-queue queue
+    (funcall fn)))
 
 (defmacro with-locked-queue (queue &body body)
-  `(with-lock-held ((lock ,queue))
-     ,@body))
+  `(call-with-locked-queue (lambda () ,@body) ,queue))
 
-(define-locking-fn push-queue (object queue) (t queue) null lock
-  (with-queue-slots (impl cvar) queue
-    (push-raw-queue object impl)
-    (when cvar
-      (condition-notify-and-yield cvar)))
+(defun/inline cons-queue-full-p (queue)
+  (declare (ignore queue))
   nil)
 
-(define-locking-fn pop-queue (queue) (queue) t lock
-  (with-queue-slots (impl lock cvar) queue
-    (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
-            (if presentp
-                (return value)
-                (condition-wait (or cvar (setf cvar (make-condition-variable)))
-                                lock))))))
+(defun/inline cons-queue-full-p/no-lock (queue)
+  (declare (ignore queue))
+  nil)
 
-(defun/type try-pop-queue (queue) (queue) (values t boolean)
-  (declare #.*normal-optimize*)
-  (with-queue-slots (impl lock) queue
-    (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
-      (return-from try-pop-queue (pop-raw-queue impl)))
-    (values nil nil)))
+(defmacro define-queue-fn (name params cons-name vector-name)
+  `(defun/inline ,name ,params
+     (declare #.*normal-optimize*)
+     ;; inferencing can lead to a deleted 'otherwise' clause
+     #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+     (typecase ,(car (last params))
+       (cons-queue (,cons-name ,@params))
+       (vector-queue (,vector-name ,@params))
+       (otherwise (error 'type-error
+                         :datum ,(car (last params))
+                         :expected-type 'queue)))))
 
-(defun/inline try-pop-queue/no-lock (queue)
-  (pop-raw-queue (impl queue)))
+(define-queue-fn push-queue (object queue)
+  push-cons-queue
+  push-vector-queue)
 
-(defmacro define-simple-queue-fn (name raw arg-types return-type)
-  `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock
-     (,raw (impl queue))))
+(define-queue-fn push-queue/no-lock (object queue)
+  push-cons-queue/no-lock
+  push-vector-queue/no-lock)
 
-(defmacro define-simple-queue-fns (&rest defs)
-  `(progn ,@(loop
-               :for def :in defs
-               :collect `(define-simple-queue-fn ,@def))))
+(define-queue-fn pop-queue (queue)
+  pop-cons-queue
+  pop-vector-queue)
 
-(define-simple-queue-fns
-  (queue-count   raw-queue-count   (queue) raw-queue-count)
-  (queue-empty-p raw-queue-empty-p (queue) boolean)
-  (peek-queue    peek-raw-queue    (queue) (values t boolean)))
+(define-queue-fn pop-queue/no-lock (queue)
+  pop-cons-queue/no-lock
+  pop-vector-queue/no-lock)
+
+(define-queue-fn peek-queue (queue)
+  peek-cons-queue
+  peek-vector-queue)
+
+(define-queue-fn peek-queue/no-lock (queue)
+  peek-cons-queue/no-lock
+  peek-vector-queue/no-lock)
+
+(define-queue-fn queue-count (queue)
+  cons-queue-count
+  vector-queue-count)
+
+(define-queue-fn queue-count/no-lock (queue)
+  cons-queue-count/no-lock
+  vector-queue-count/no-lock)
+
+(define-queue-fn queue-empty-p (queue)
+  cons-queue-empty-p
+  vector-queue-empty-p)
+
+(define-queue-fn queue-empty-p/no-lock (queue)
+  cons-queue-empty-p/no-lock
+  vector-queue-empty-p/no-lock)
+
+(define-queue-fn queue-full-p (queue)
+  cons-queue-full-p
+  vector-queue-full-p)
+
+(define-queue-fn queue-full-p/no-lock (queue)
+  cons-queue-full-p/no-lock
+  vector-queue-full-p/no-lock)
+
+(define-queue-fn try-pop-queue (queue)
+  try-pop-cons-queue
+  try-pop-vector-queue)
+
+(define-queue-fn try-pop-queue/no-lock (queue)
+  try-pop-cons-queue/no-lock
+  try-pop-vector-queue/no-lock)
+
+(define-queue-fn call-with-locked-queue (fn queue)
+  call-with-locked-cons-queue
+  call-with-locked-vector-queue)
 
 ;;;; doc
 
 (setf (documentation 'make-queue 'function)
 "Create a queue.
 
-As an optimization, an internal size may be given with
-`initial-capacity'. This does not affect `queue-count' and does not
-limit the queue size.")
+The queue contents may be initialized with the keyword argument
+`initial-contents'.
+
+By default there is no limit on the queue capacity. Passing a
+`fixed-capacity' keyword argument limits the capacity to the value
+passed. `push-queue' will block for a full fixed-capacity queue.")
 
 (setf (documentation 'peek-queue 'function)
 "If `queue' is non-empty, return (values element t) where `element' is
@@ -121,6 +181,9 @@ If `queue' is empty, return (values nil nil).")
 
 (setf (documentation 'queue-empty-p 'function)
 "Return true if `queue' is empty, otherwise return false.")
+
+(setf (documentation 'queue-full-p 'function)
+"Return true if `queue' is full, otherwise return false.")
 
 (setf (documentation 'with-locked-queue 'function)
 "Execute `body' with the queue lock held. Use the `/no-lock' functions

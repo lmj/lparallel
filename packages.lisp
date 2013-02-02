@@ -91,13 +91,49 @@
            #:raw-queue-count
            #:raw-queue-empty-p))
 
+(defpackage #:lparallel.cons-queue
+  (:documentation
+   "(private) Blocking infinite-capacity queue.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.raw-queue)
+  (:export #:cons-queue
+           #:make-cons-queue
+           #:push-cons-queue    #:push-cons-queue/no-lock
+           #:pop-cons-queue     #:pop-cons-queue/no-lock
+           #:peek-cons-queue    #:peek-cons-queue/no-lock
+           #:cons-queue-count   #:cons-queue-count/no-lock
+           #:cons-queue-empty-p #:cons-queue-empty-p/no-lock
+           #:try-pop-cons-queue #:try-pop-cons-queue/no-lock
+           #:with-locked-cons-queue))
+
+(defpackage #:lparallel.vector-queue
+  (:documentation
+   "(private) Blocking fixed-capacity queue.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util)
+  (:export #:vector-queue
+           #:make-vector-queue
+           #:push-vector-queue    #:push-vector-queue/no-lock
+           #:pop-vector-queue     #:pop-vector-queue/no-lock
+           #:peek-vector-queue    #:peek-vector-queue/no-lock
+           #:vector-queue-count   #:vector-queue-count/no-lock
+           #:vector-queue-empty-p #:vector-queue-empty-p/no-lock
+           #:vector-queue-full-p  #:vector-queue-full-p/no-lock
+           #:try-pop-vector-queue #:try-pop-vector-queue/no-lock
+           #:with-locked-vector-queue
+           #:vector-queue-capacity))
+
 (defpackage #:lparallel.queue
   (:documentation
    "Blocking FIFO queue for communication between threads.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
-        #:lparallel.raw-queue)
+        #:lparallel.cons-queue
+        #:lparallel.vector-queue)
   (:export #:queue
            #:make-queue
            #:push-queue    #:push-queue/no-lock
@@ -105,6 +141,7 @@
            #:peek-queue    #:peek-queue/no-lock
            #:queue-count   #:queue-count/no-lock
            #:queue-empty-p #:queue-empty-p/no-lock
+           #:queue-full-p  #:queue-full-p/no-lock
            #:try-pop-queue #:try-pop-queue/no-lock
            #:with-locked-queue))
 
