@@ -2,6 +2,18 @@
 lparallel Changes
 =================
 
+= 2.3.0
+
+* make-queue and make-channel now accept a :fixed-capacity argument
+  for limiting the number of elements stored
+
+* make-queue now accepts an :initial-contents argument
+
+* passing a single argument to make-queue or make-channel is
+  deprecated; a &rest hack is present for backward compatibility
+
+* added function queue-full-p
+
 = 2.2.1
 
 * added lockless queue support for LispWorks; enable it through
