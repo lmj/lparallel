@@ -31,10 +31,20 @@
 (in-package #:lparallel-test)
 
 #-lparallel-test.with-simple-framework
-(import-now eos:is eos:signals eos:test eos:run! eos:debug! eos:in-suite*)
+(import-now eos:is
+            eos:signals
+            eos:test
+            eos:run!
+            eos:debug!
+            eos:in-suite*)
 
 #+lparallel-test.with-simple-framework
-(import-now 1am:is 1am:signals 1am:test 1am:run! 1am:debug! 1am:in-suite*)
+(import-now lparallel-test.1am:is
+            lparallel-test.1am:signals
+            lparallel-test.1am:test
+            lparallel-test.1am:run!
+            lparallel-test.1am:debug!
+            lparallel-test.1am:in-suite*)
 
 (in-suite* :lparallel)
 

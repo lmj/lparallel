@@ -28,11 +28,29 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:1am
+;;; 1am implements a minimal subset of the 5am/eos testing API. Some
+;;; reasons for its existence:
+;;;
+;;; * Compiling tests is ~8x faster than 5am/eos configured with
+;;; :compile-at :definition-time.
+;;;
+;;; * Compiling tests does not cause the default heap size to be
+;;; exceeded on some platforms (32-bit SBCL, Allegro Express).
+;;;
+;;; * Checks may occur inside threads.
+;;;
+;;; * Test order is randomized on each run.
+;;;
+;;; * Type inferencing works inside the `is' macro.
+;;;
+;;; Although some or all of these issues may be addressed by 5am or
+;;; eos in the future, until then 1am serves an immediate need.
+
+(defpackage #:lparallel-test.1am
   (:use #:cl)
   (:export #:is #:signals #:test #:run! #:debug! #:in-suite*))
 
-(in-package #:1am)
+(in-package #:lparallel-test.1am)
 
 (defvar *tests* nil)
 (defvar *pass-count* 0)
@@ -48,39 +66,43 @@
      (passed)))
 
 (defun check-signals (expected fn)
-  (let ((result nil))
-    (block nil
-      (handler-bind ((condition (lambda (condition)
-                                  (setf result condition)
-                                  (return))))
-        (funcall fn)))
-    (unless (and result (typep result expected))
-      (error "Expected to signal ~s, but got ~a."
-             expected (if result
-                          (type-of result)
-                          "nothing"))))
-  (passed))
+  (flet ((handler (condition)
+           (cond ((typep condition expected)
+                  (passed)
+                  (return-from check-signals))
+                 (t
+                  (error "Expected to signal ~s, but got ~a."
+                         expected (if condition
+                                      (type-of condition)
+                                      "nothing"))))))
+    (handler-bind ((condition #'handler))
+      (funcall fn))
+    (handler nil)))
 
 (defmacro signals (condition &body body)
   `(check-signals ',condition (lambda () ,@body)))
 
 (defun report ()
   (format t "~& Did ~d check~:p.~%    ~
-             Pass: ~d (100%)~%    Skip: 0 ( 0%)~%    Fail: 0 ( 0%)~%"
+                   Pass: ~d (100%)~%    ~
+                   Skip: 0 ( 0%)~%    ~
+                   Fail: 0 ( 0%)~%"
           *pass-count* *pass-count*))
 
 (defmacro test (name &body body)
   `(progn
      (defun ,name ()
        (unless *running* (setf *pass-count* 0))
-       ,@body
-       (unless *running* (report)))
-     (pushnew ',name *tests*)))
+       (multiple-value-prog1 (progn ,@body)
+         (unless *running* (report))))
+     (pushnew ',name *tests*)
+     ',name))
 
 (defun shuffle (vector)
-  (loop
-     :for i :downfrom (- (length vector) 1) :to 1
-     :do (rotatef (aref vector i) (aref vector (random (1+ i)))))
+  (let ((*random-state* (make-random-state t)))
+    (loop
+       :for i :downfrom (- (length vector) 1) :to 1
+       :do (rotatef (aref vector i) (aref vector (random (1+ i))))))
   vector)
 
 (defun make-test-seq (test-spec)
