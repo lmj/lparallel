@@ -37,6 +37,8 @@
 
 (in-package #:lparallel.queue)
 
+(import-now alexandria:simple-style-warning)
+
 (deftype queue () '(or cons-queue vector-queue))
 
 (defun %make-queue (&key fixed-capacity initial-contents)
@@ -45,11 +47,16 @@
       (make-cons-queue :initial-contents initial-contents)))
 
 (defun make-queue (&rest args)
+  (apply #'%make-queue (if (= 1 (length args))
+                           nil
+                           args)))
+
+(define-compiler-macro make-queue (&whole whole &rest args)
   (when (= 1 (length args))
-    (warn "Calling `make-queue' with one argument is deprecated.~%~
-           Pass no arguments instead.")
-    (setf args nil))
-  (apply #'%make-queue args))
+    (simple-style-warning
+     "Calling `make-queue' with one argument is deprecated.~%~
+      Pass no arguments instead."))
+  whole)
 
 (defun call-with-locked-cons-queue (fn queue)
   (with-locked-cons-queue queue

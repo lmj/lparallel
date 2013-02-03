@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.kernel)
 
+(import-now alexandria:simple-style-warning)
+
 #-lparallel.without-task-categories
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler
@@ -302,11 +304,16 @@ passed.
 
 Note that a fixed capacity channel may cause a deadlocked kernel if
 `receive-result' is not called a sufficient number of times."
+  (apply #'%make-channel (if (= 1 (length args))
+                             nil
+                             args)))
+
+(define-compiler-macro make-channel (&whole whole &rest args)
   (when (= 1 (length args))
-    (warn "Calling `make-channel' with one argument is deprecated.~%~
-           Pass no arguments instead.")
-    (setf args nil))
-  (apply #'%make-channel args))
+    (simple-style-warning
+     "Calling `make-channel' with one argument is deprecated.~%~
+      Pass no arguments instead."))
+  whole)
 
 (defmacro make-task-fn (&body body)
   (with-gensyms (client-handlers)
