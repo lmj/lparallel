@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.3.1
+
+* issue a compile-time deprecation warning when make-queue or
+  make-channel is called with one argument
+
 = 2.3.0
 
 * make-queue and make-channel now accept a :fixed-capacity argument
