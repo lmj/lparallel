@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.util)
 
+(import-now alexandria:once-only)
+
 (defmacro defmacro/once (name params &body body)
   "Like `defmacro' except that params which are immediately preceded
 by `&once' are passed to a `once-only' call which surrounds `body'."
