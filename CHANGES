@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.3.2
+
+* improved stealing scheduler performance
+
 = 2.3.1
 
 * issue a compile-time deprecation warning when make-queue or
