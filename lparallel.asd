@@ -90,11 +90,9 @@ See http://lparallel.org for documentation and examples.
                                      :serial t
                                      :components
 #+(and (not lparallel.without-spin-queue)
-       sbcl)                                 ((:file "sbcl-spin-queue"))
-#+(and (not lparallel.without-spin-queue)
-       (or ccl lispworks))                   ((:file "cas-spin-queue"))
-#+(or lparallel.without-spin-queue
-      (not (or sbcl ccl lispworks)))         ((:file "default-spin-queue")))
+       (or sbcl ccl lispworks))              ((:file "cas-spin-queue"))
+#-(and (not lparallel.without-spin-queue)
+       (or sbcl ccl lispworks))              ((:file "default-spin-queue")))
                                     (:module "kernel"
                                      :serial t
                                      :components

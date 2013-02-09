@@ -28,9 +28,32 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+;;; Singly-linked queue with compare-and-swap operations.
+;;;
+;;; The following invariants hold except during updates:
+;;;
+;;;   (node-car (spin-queue-head queue)) == +dummy+
+;;;
+;;;   (node-cdr (spin-queue-tail queue)) == nil
+;;;
+;;;   If the queue is empty, (spin-queue-head queue) == (queue-tail queue).
+;;;
+;;;   If the queue is non-empty,
+;;;   (node-car (node-cdr (spin-queue-head queue))) is the next value
+;;;   to be dequeued and (node-car (spin-queue-tail queue)) is the
+;;;   most recently enqueued value.
+;;;
+;;; The CDR of a discarded node is set to +DEAD-END+. This flag must
+;;; be checked at each traversal.
+
 (in-package #:lparallel.spin-queue)
 
 ;;;; cas
+
+#+sbcl
+(defmacro cas (place old new)
+  (check-type old symbol)
+  `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
 
 #+lispworks
 (defmacro cas (place old new)
@@ -42,7 +65,7 @@
 
 ;;;; node
 
-#+(or lispworks)
+#+(or sbcl lispworks)
 (progn
   (deftype node () 'cons)
   (alias-function make-node cons)
@@ -55,66 +78,74 @@
 (progn
   (declaim (inline make-node))
   (defstruct (node (:constructor make-node (car cdr)))
-    car
-    cdr))
+    (car (error "no car"))
+    (cdr (error "no cdr"))))
 
 ;;;; spin-queue
 
 (defconstant +dummy+ 'dummy)
+(defconstant +dead-end+ 'dead-end)
 
 (defstruct (spin-queue (:constructor %make-spin-queue (head tail)))
-  (head nil :type node)
-  (tail nil :type node))
+  (head (error "no head") #-ccl :type #-ccl node)
+  (tail (error "no tail") #-ccl :type #-ccl node))
 
 (defun make-spin-queue ()
   (let ((dummy (make-node +dummy+ nil)))
     (%make-spin-queue dummy dummy)))
 
-(defun/type push-spin-queue (value queue) (t spin-queue) null
-  (declare #.*full-optimize*)
-  (let ((new (make-node value nil))
-        (tail (spin-queue-tail queue))
-        next)
-    (loop
-       (loop
-          :do (setf next (node-cdr tail))
-          :while next
-          :do (setf tail next))
-       (when (cas (node-cdr tail) nil new)
-         (setf (spin-queue-tail queue) new)
-         (return-from push-spin-queue nil)))))
+(defun push-spin-queue (value queue)
+  ;; Attempt CAS, repeat upon failure. Upon success update QUEUE-TAIL.
+  (declare (optimize speed))
+  (let ((new (make-node value nil)))
+    (loop (when (cas (node-cdr (spin-queue-tail queue)) nil new)
+            (setf (spin-queue-tail queue) new)
+            (return value)))))
 
-(defun/type pop-spin-queue (queue) (spin-queue) (values t boolean)
-  (declare #.*full-optimize*)
-  (let ((node (spin-queue-head queue))
-        target)
-    (loop
-       (loop
-          :do (setf node (node-cdr node))
-          :unless node :do (return-from pop-spin-queue (values nil nil))
-          :do (setf target (node-car node))
-          :while (eq target +dummy+))
-       (when (cas (node-car node) target +dummy+)
-         (setf (spin-queue-head queue) node)
-         (return-from pop-spin-queue (values target t))))))
+(defun pop-spin-queue (queue)
+  ;; Attempt to CAS QUEUE-HEAD with the next node, repeat upon
+  ;; failure. Upon success, clear the discarded node and set the CAR
+  ;; of QUEUE-HEAD to +DUMMY+.
+  (declare (optimize speed))
+  (loop (let* ((head (spin-queue-head queue))
+               (next (node-cdr head)))
+          ;; NEXT could be +DEAD-END+, whereupon we try again.
+          (typecase next
+            (null (return (values nil nil)))
+            (node (when (cas (spin-queue-head queue) head next)
+                    (let ((value (node-car next)))
+                      (setf (node-cdr head) +dead-end+
+                            (node-car next) +dummy+)
+                      (return (values value t)))))))))
 
-(defun spin-queue-count (queue)
-  (loop
-     :with count := 0
-     :for node := (spin-queue-head queue) :then (node-cdr node)
-     :while node
-     :unless (eq (node-car node) +dummy+) :do (incf count)
-     :finally (return count)))
-
-(defun/inline spin-queue-empty-p (queue)
+(defun spin-queue-empty-p (queue)
   (null (node-cdr (spin-queue-head queue))))
 
-(defun peek-spin-queue (queue)
-  (let ((node (spin-queue-head queue))
-        target)
+(defun try-each-elem (fun queue)
+  (let ((node (spin-queue-head queue)))
     (loop
-       :do (setf node (node-cdr node))
-       :unless node :do (return-from peek-spin-queue (values nil nil))
-       :do (setf target (node-car node))
-       :while (eq target +dummy+))
-    (values target t)))
+       (let ((value (node-car node)))
+         (unless (eq value +dummy+)
+           (funcall fun value)))
+       (setf node (node-cdr node))
+       (cond ((eq node +dead-end+)
+              (return nil))
+             ((null node)
+              (return t))))))
+
+(defun spin-queue-count (queue)
+  (tagbody
+   :retry
+     (let ((count 0))
+       (unless (try-each-elem (lambda (elem)
+                                (declare (ignore elem))
+                                (incf count))
+                              queue)
+         (go :retry))
+       (return-from spin-queue-count count))))
+
+(defun peek-spin-queue (queue)
+  (loop :until (try-each-elem (lambda (elem)
+                                (return-from peek-spin-queue (values elem t)))
+                              queue))
+  (values nil nil))
