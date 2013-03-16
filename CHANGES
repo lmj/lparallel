@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.3.3
+
+* added support for sbcl-1.0.42 and older on x86 and x86-64
+
 = 2.3.2
 
 * improved stealing scheduler performance
