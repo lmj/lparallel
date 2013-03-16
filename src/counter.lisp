@@ -35,7 +35,11 @@
 
 #+sbcl
 (progn
-  (deftype counter-value () 'sb-ext:word)
+  ;; try to avoid using sb-ext:word since it is newish
+  (deftype counter-value () '(unsigned-byte
+                              #+x86-64 64
+                              #+x86 32
+                              #-(or x86-64 x86) sb-ext:word))
 
   (defstruct (counter (:constructor make-counter (&optional value)))
     (value 0 :type counter-value))
