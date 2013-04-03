@@ -371,3 +371,15 @@
     #:lparallel.defpun
     #:lparallel.cognate
     #:lparallel.ptree))
+
+;;; Work around svref problem in sbcl-1.1.6.
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (when (string= "1.1.6" (lisp-implementation-version))
+    (alexandria:simple-style-warning
+     "Using SBCL 1.1.6 is not recommended; pick another version.")
+    (dolist (package '(#:lparallel.vector-queue #:lparallel.kernel))
+      (shadow (string '#:svref) package)
+      (let ((symbol (intern (string '#:svref) package)))
+        (setf (fdefinition symbol) #'aref)
+        (setf (fdefinition `(setf ,symbol)) #'(setf aref))))))
