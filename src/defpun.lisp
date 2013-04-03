@@ -47,6 +47,42 @@
             lparallel.kernel::*kernel*
             lparallel.kernel::call-with-task-handler)
 
+;;;; spin lock
+
+#+sbcl
+(defmacro cas (place old new)
+  (check-type old symbol)
+  `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
+
+#+lispworks
+(defmacro cas (place old new)
+  `(sys:compare-and-swap ,place ,old ,new))
+
+#+ccl
+(defmacro cas (place old new)
+  `(ccl::conditional-store ,place ,old ,new))
+
+#+(or sbcl lispworks ccl)
+(progn
+  (defun make-spin-lock ()
+    nil)
+
+  (defmacro/once with-spin-lock-held (((access &once container)) &body body)
+    `(locally (declare #.*full-optimize*)
+       (unwind-protect/ext
+        :prepare (loop :until (cas (,access ,container) nil t))
+        :main (progn ,@body)
+        :cleanup (setf (,access ,container) nil)))))
+
+#-(or sbcl lispworks ccl)
+(progn
+  (defun make-spin-lock ()
+    (make-lock))
+
+  (defmacro with-spin-lock-held (((access container)) &body body)
+    `(with-lock-held ((,access ,container))
+       ,@body)))
+
 ;;;; util
 
 (defmacro with-lock-predicate/wait*
@@ -55,7 +91,7 @@
     `(block ,top
        (tagbody
           (when ,predicate1
-            (with-lock-held (,lock)
+            (with-spin-lock-held (,lock)
               (if ,predicate2
                   ,succeed/lock
                   (go ,fail-tag)))
@@ -219,14 +255,19 @@
 ;;;; defpun
 
 (locally (declare #.*full-optimize*)
-  (defslots task-counter ()
-    ((count :initform 0 :type fixnum)
-     (lock  :reader task-counter-lock :initform (make-lock)))))
+  (defstruct task-counter
+    (count 0 :type fixnum)
+    (lock (make-spin-lock))))
 
-(setf *make-optimizer-data* 'make-task-counter-instance)
+(setf *make-optimizer-data* 'make-task-counter)
 
 (defmacro task-counter (kernel)
   `(optimizer-data ,kernel))
+
+(defmacro/once with-task-counter-slots (slots &once task-counter &body body)
+  (assert (equal '(count) slots))
+  `(symbol-macrolet ((count (task-counter-count ,task-counter)))
+     ,@body))
 
 (defmacro accept-task-p (kernel)
   (check-type kernel symbol)
@@ -253,7 +294,7 @@
 (defmacro define-update-task-count (name op)
   `(defun/type ,name (kernel delta) (kernel fixnum) t
      (declare #.*full-optimize*)
-     (with-lock-held ((task-counter-lock (task-counter kernel)))
+     (with-spin-lock-held ((task-counter-lock (task-counter kernel)))
        (,op kernel delta))))
 
 (define-update-task-count update-task-count    update-task-count/no-lock)
