@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.3.4
+
+* improved defpun performance
+* added workaround for sbcl-1.1.6 issue
+
 = 2.3.3
 
 * added support for sbcl-1.0.42 and older on x86 and x86-64
