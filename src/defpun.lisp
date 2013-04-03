@@ -220,10 +220,13 @@
 
 (locally (declare #.*full-optimize*)
   (defslots task-counter ()
-    ((count              :initform 0 :type fixnum)
-     (lock  :reader lock :initform (make-lock)))))
+    ((count :initform 0 :type fixnum)
+     (lock  :reader task-counter-lock :initform (make-lock)))))
 
 (setf *make-optimizer-data* 'make-task-counter-instance)
+
+(defmacro task-counter (kernel)
+  `(optimizer-data ,kernel))
 
 (defmacro accept-task-p (kernel)
   (check-type kernel symbol)
@@ -234,11 +237,12 @@
 (defmacro define-update-task-count/no-lock (name op)
   `(defun/type ,name (kernel delta) (kernel fixnum) t
      (declare #.*full-optimize*)
-     (with-optimizer-slots (optimizer-data optimizer-flag) kernel
-       (with-task-counter-slots (count) optimizer-data
+     (with-optimizer-slots ((accept-task-p optimizer-flag)
+                            (task-counter optimizer-data)) kernel
+       (with-task-counter-slots (count) task-counter
          (incf count delta)
          ;; `<=' returns generalized boolean
-         (setf optimizer-flag
+         (setf accept-task-p
                (to-boolean (<= count (the fixnum (,op kernel)))))))))
 
 (macrolet ((n-workers   (k) `(%kernel-worker-count ,k))
@@ -249,7 +253,7 @@
 (defmacro define-update-task-count (name op)
   `(defun/type ,name (kernel delta) (kernel fixnum) t
      (declare #.*full-optimize*)
-     (with-lock-held ((lock (optimizer-data kernel)))
+     (with-lock-held ((task-counter-lock (task-counter kernel)))
        (,op kernel delta))))
 
 (define-update-task-count update-task-count    update-task-count/no-lock)
@@ -279,7 +283,7 @@
 (defmacro %%plet/fast (kernel future/fast update-task-count/no-lock
                        predicate future-count bindings body)
   `(with-lock-predicate/wait*
-       :lock            (lock (optimizer-data ,kernel))
+       :lock            (task-counter-lock (task-counter ,kernel))
        :predicate1      ,predicate
        :predicate2      (accept-task-p ,kernel)
        :succeed/lock    (,update-task-count/no-lock ,kernel ,future-count)
@@ -362,13 +366,12 @@
                 ,@body))
             (defun/wrapper ,name ,(unchecked-name name) ,params
               ,@(unsplice docstring)
-              (let ((kernel (check-kernel)))
-                (,',call-impl kernel)))
+              (,',call-impl (check-kernel)))
             (eval-when (:load-toplevel :execute)
               (register-fn ',name))
             ',name)))))
 
-(defmacro call-impl-in-worker (kernel)
+(defmacro/once call-impl-in-worker (&once kernel)
   (with-gensyms (worker channel)
     `(let ((,worker *worker*))
        (if ,worker
