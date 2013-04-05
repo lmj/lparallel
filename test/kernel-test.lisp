@@ -552,7 +552,7 @@
 
 (defun aborting-context (worker-loop)
   (declare (ignore worker-loop))
-  (abort))
+  (invoke-abort-thread))
 
 (defun non-funcalling-context (worker-loop)
   (declare (ignore worker-loop)))
