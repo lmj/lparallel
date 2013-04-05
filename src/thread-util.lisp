@@ -126,7 +126,8 @@
   (defmacro cas (place old new)
     #+sbcl (progn
              (assert (atom old))
-             `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
+             ;; macroexpand is needed for sbcl-1.0.53 and older
+             `(eq ,old (sb-ext:compare-and-swap ,(macroexpand place) ,old ,new)))
     #+ccl `(ccl::conditional-store ,place ,old ,new)
     #+lispworks `(sys:compare-and-swap ,place ,old ,new))
 
