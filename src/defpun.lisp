@@ -49,20 +49,7 @@
 
 ;;;; spin lock
 
-#+sbcl
-(defmacro cas (place old new)
-  (check-type old symbol)
-  `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
-
-#+lispworks
-(defmacro cas (place old new)
-  `(sys:compare-and-swap ,place ,old ,new))
-
-#+ccl
-(defmacro cas (place old new)
-  `(ccl::conditional-store ,place ,old ,new))
-
-#+(or sbcl lispworks ccl)
+#+lparallel.with-cas
 (progn
   (defun make-spin-lock ()
     nil)
@@ -74,7 +61,7 @@
         :main (progn ,@body)
         :cleanup (setf (,access ,container) nil)))))
 
-#-(or sbcl lispworks ccl)
+#-lparallel.with-cas
 (progn
   (defun make-spin-lock ()
     (make-lock))

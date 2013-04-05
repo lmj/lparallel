@@ -48,21 +48,6 @@
 
 (in-package #:lparallel.spin-queue)
 
-;;;; cas
-
-#+sbcl
-(defmacro cas (place old new)
-  (check-type old symbol)
-  `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
-
-#+lispworks
-(defmacro cas (place old new)
-  `(sys:compare-and-swap ,place ,old ,new))
-
-#+ccl
-(defmacro cas (place old new)
-  `(ccl::conditional-store ,place ,old ,new))
-
 ;;;; node
 
 #+(or sbcl lispworks)

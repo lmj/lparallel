@@ -120,3 +120,15 @@
 
 #-lparallel.with-green-threads
 (alias-function condition-notify-and-yield condition-notify)
+
+#+lparallel.with-cas
+(progn
+  (defmacro cas (place old new)
+    #+sbcl (progn
+             (assert (atom old))
+             `(eq ,old (sb-ext:compare-and-swap ,place ,old ,new)))
+    #+ccl `(ccl::conditional-store ,place ,old ,new)
+    #+lispworks `(sys:compare-and-swap ,place ,old ,new))
+
+  #-(or sbcl ccl lispworks)
+  (error "cas not defined"))

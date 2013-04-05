@@ -33,6 +33,10 @@
   #+(and sbcl (not lparallel.without-stealing-scheduler))
   (pushnew :lparallel.with-stealing-scheduler *features*)
 
+  ;; unless otherwise requested, use compare-and-swap optimizations
+  #+(and (or sbcl ccl lispworks) (not lparallel.without-cas))
+  (pushnew :lparallel.with-cas *features*)
+
   ;; green threads need calls to yield
   #+(and allegro (not os-threads))
   (pushnew :lparallel.with-green-threads *features*)
@@ -89,10 +93,8 @@ See http://lparallel.org for documentation and examples.
 #+lparallel.with-stealing-scheduler (:module "spin-queue"
                                      :serial t
                                      :components
-#+(and (not lparallel.without-spin-queue)
-       (or sbcl ccl lispworks))              ((:file "cas-spin-queue"))
-#-(and (not lparallel.without-spin-queue)
-       (or sbcl ccl lispworks))              ((:file "default-spin-queue")))
+#+lparallel.with-cas                         ((:file "cas-spin-queue"))
+#-lparallel.with-cas                         ((:file "default-spin-queue")))
                                     (:module "kernel"
                                      :serial t
                                      :components

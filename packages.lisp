@@ -68,7 +68,8 @@
            #:with-lock-predicate/no-wait
            #:define-locking-fn
            #:define-simple-locking-fn
-           #:condition-notify-and-yield)
+           #:condition-notify-and-yield
+           #:cas)
   (:export #:make-lock
            #:make-condition-variable
            #:with-lock-held
@@ -181,8 +182,7 @@
    "(private) Thread-safe FIFO queue which spins instead of locks.")
   (:use #:cl
         #:lparallel.util
-        #:lparallel.raw-queue
-        #:lparallel.counter)
+        #:lparallel.thread-util)
   (:export #:spin-queue
            #:make-spin-queue
            #:push-spin-queue
