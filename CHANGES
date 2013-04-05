@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.3.5
+
+* added workaround for compilation failure on sbcl-1.0.53 and older
+* fixed a test for older sbcl versions lacking an `abort' restart
+
 = 2.3.4
 
 * improved defpun performance
