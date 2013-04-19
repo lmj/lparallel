@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.3.7
+
+* fixed a warning on non-sbcl implementations
+
 = 2.3.6
 
 * recent workaround for sbcl-1.0.53 now covers all cases
