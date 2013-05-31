@@ -193,7 +193,7 @@
   ;; We could intern this into a private package and maintain an alist
   ;; of (public . private) package pairs, but that seems
   ;; over-engineered. Anonymous packages don't exist anyway.
-  (symbolicate/package (symbol-package name) '#:%%.defpun. name) )
+  (symbolicate/package (symbol-package name) '#:%%%%.defpun. name) )
 
 (defun register-name (name)
   (pushnew name *registered-names*))
