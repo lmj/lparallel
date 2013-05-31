@@ -189,6 +189,7 @@
 (defconstant +unchecked-key+ 'unchecked-key)
 
 (defvar *registered-names* nil)
+(defvar *registration-lock* (make-lock))
 
 (defun unchecked-name (name)
   ;; We could intern this into a private package and maintain an alist
@@ -232,13 +233,17 @@
 
 (defmacro declaim-defpun (&rest names)
   "See `defpun'."
+  ;; This is used outside of the defpun macro.
   `(eval-when (:compile-toplevel :load-toplevel :execute)
-     ,@(loop
-          :for name :in names
-          :collect `(register-name ',name))))
+     (with-lock-held (*registration-lock*)
+       ,@(loop
+            :for name :in names
+            :collect `(register-name ',name)))))
 
 (defun delete-registered-names (names)
-  (setf *registered-names* (set-difference *registered-names* names)))
+  ;; This is used outside of the defpun macro.
+  (with-lock-held (*registration-lock*)
+    (setf *registered-names* (set-difference *registered-names* names))))
 
 ;;;; defpun
 
@@ -336,34 +341,36 @@
   `(defmacro ,defpun (name params ,@types &body body)
      ,doc
      (with-parsed-body (docstring declares body)
-       ;; these two calls may affect the registered macrolets in the
-       ;; return form below
-       (delete-stale-registrations)
-       (register-name name)
-       (with-gensyms (kernel)
-         `(progn
-            (,',defun ,(unchecked-name name) (,kernel ,@params)
-                ,,@(unsplice (when types ``(kernel ,@,(first types))))
-                ,,@(unsplice (when types (second types)))
-              ,@declares
-              (declare (ignorable ,kernel))
-              (macrolet ((plet (bindings &body body)
-                           `(plet/fast ,',kernel ,bindings
-                              ,@body))
-                         (plet-if (predicate bindings &body body)
-                           `(plet-if/fast ,',kernel ,predicate ,bindings
-                              ,@body))
-                         ,@(registered-macrolets kernel))
-                ,@body))
-            (defun/wrapper ,name ,(unchecked-name name) ,params
-              ,@(unsplice docstring)
-              (let ((kernel (check-kernel)))
-                (if (use-caller-p kernel)
-                    (call-impl kernel)
-                    (call-impl-in-worker kernel))))
-            (eval-when (:load-toplevel :execute)
-              (register-fn ',name))
-            ',name)))))
+       (with-lock-held (*registration-lock*)
+         ;; these two calls may affect the registered macrolets in the
+         ;; return form below
+         (delete-stale-registrations)
+         (register-name name)
+         (with-gensyms (kernel)
+           `(progn
+              (,',defun ,(unchecked-name name) (,kernel ,@params)
+                  ,,@(unsplice (when types ``(kernel ,@,(first types))))
+                  ,,@(unsplice (when types (second types)))
+                ,@declares
+                (declare (ignorable ,kernel))
+                (macrolet ((plet (bindings &body body)
+                             `(plet/fast ,',kernel ,bindings
+                                ,@body))
+                           (plet-if (predicate bindings &body body)
+                               `(plet-if/fast ,',kernel ,predicate ,bindings
+                                  ,@body))
+                           ,@(registered-macrolets kernel))
+                  ,@body))
+              (defun/wrapper ,name ,(unchecked-name name) ,params
+                ,@(unsplice docstring)
+                (let ((kernel (check-kernel)))
+                  (if (use-caller-p kernel)
+                      (call-impl kernel)
+                      (call-impl-in-worker kernel))))
+              (eval-when (:load-toplevel :execute)
+                (with-lock-held (*registration-lock*)
+                  (register-fn ',name)))
+              ',name))))))
 
 (define-defpun defpun
   "`defpun' defines a function which is specially geared for
