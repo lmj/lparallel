@@ -92,15 +92,15 @@
   (defun tasks (scheduler) (declare (ignore scheduler))))
 
 (locally (declare #.*full-optimize*)
-  (defslots optimizer ()
-    ((optimizer-flag :reader optimizer-flag :initform t :type boolean)
-     (optimizer-data :reader optimizer-data))
+  (defslots limiter ()
+    ((accept-task-p :reader accept-task-p :initform t :type boolean)
+     (limiter-data :reader limiter-data))
     (:documentation
-     "Optimization data to be used by a plugin. The `optimizer-flag'
+     "Optimization data to be used by a plugin. The `accept-task-p'
      flag must be inlined in order to be useful, which is why `kernel'
      subclasses directly from this.")))
 
-(defslots kernel (optimizer)
+(defslots kernel (limiter)
   ((scheduler       :reader scheduler :type scheduler)
    (workers         :reader workers   :type simple-vector)
    (workers-lock)

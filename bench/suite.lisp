@@ -55,7 +55,7 @@
      ,(+ 10 *rehearsals*))
 
     (bench-psort
-     (sort psort*)
+     (sort psort)
      (10 50 100 500 1000 5000 10000 50000 100000 200000)
      ,*trials*
      ,*rehearsals*)
@@ -72,7 +72,7 @@
      ,*trials*
      ,*rehearsals*)))
 
-(defparameter *one-worker-less* '(bench-pfib bench-pmatrix-mul bench-psort))
+(defparameter *use-caller* '(bench-pfib bench-pmatrix-mul bench-psort))
 
 (defparameter *spin-count* 20000)
 
@@ -183,7 +183,7 @@
             (b (fib-let (- n 2))))
         (+ a b))))
 
-(defpun* fib-plet (n)
+(defpun fib-plet (n)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (if (< n 2)
       n
@@ -191,7 +191,7 @@
              (b (fib-plet (- n 2))))
         (+ a b))))
 
-(defpun* fib-plet-if (n)
+(defpun fib-plet-if (n)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (if (< n 2)
       n
@@ -259,7 +259,7 @@
        (compute-rows-between 0 (1- n)))))
 
 (define-mm matrix-mul defun let)
-(define-mm pmatrix-mul defpun* plet)
+(define-mm pmatrix-mul defpun plet)
 
 (defun run-mm (fn n)
   (funcall fn
@@ -292,8 +292,10 @@
                    *benches*))
           fn-names))
 
-(defun call-with-temp-kernel (worker-count fn)
-  (with-temp-kernel (worker-count :spin-count *spin-count*)
+(defun call-with-temp-kernel (worker-count use-caller fn)
+  (with-temp-kernel (worker-count
+                     :spin-count *spin-count*
+                     :use-caller use-caller)
     (funcall fn)))
 
 (defvar *last-random-state* nil)
@@ -308,9 +310,7 @@
     (setf *last-random-state* (make-random-state *random-state*))
     (dolist (spec (if fns (select-benches fns) *benches*))
       (let ((fn (first spec)))
-        (cond ((member fn *one-worker-less*)
-               (format t "Using ~a workers for ~a.~%~%" (- num-workers 1) fn)
-               (call-with-temp-kernel (- num-workers 1) fn))
-              (t
-               (call-with-temp-kernel num-workers fn)))
+        (if (member fn *use-caller*)
+            (call-with-temp-kernel (- num-workers 1) t fn)
+            (call-with-temp-kernel num-workers nil fn))
         (reset)))))

@@ -215,7 +215,8 @@
                     (bindings `((*standard-output* . ,*standard-output*)
                                 (*error-output*    . ,*error-output*)))
                     (context #'funcall)
-                    (spin-count *kernel-spin-count*))
+                    (spin-count *kernel-spin-count*)
+                    (use-caller nil))
   "Create a kernel with `worker-count' number of worker threads.
 
 `name' is a string identifier for this kernel which is reported by
@@ -236,6 +237,13 @@ When a worker discovers that no tasks are available, `spin-count' is
 the number of task-searching iterations done by the worker before
 sleeping.
 
+If `use-caller' is true (default is false) then in certain situations
+the calling thread may be enlisted to steal work from worker threads.
+This is an optimization strategy that currently applies only during
+the execution of functions defined by `defpun' and `defpun/type'.
+Typically in this case the number of workers will be one less than the
+number of cores/CPUs.
+
 A kernel will not be garbage collected until `end-kernel' is called."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
   (check-type spin-count index)
@@ -249,7 +257,9 @@ A kernel will not be garbage collected until `end-kernel' is called."
                                 :context (ensure-function context)
                                 :name name)
                   :alivep t
-                  :optimizer-data (funcall *make-optimizer-data*))))
+                  :limiter-data (funcall *make-limiter-data*
+                                         worker-count
+                                         use-caller))))
     (make-workers kernel worker-vector)
     kernel))
 

@@ -53,8 +53,8 @@
 (defvar *kernel* nil
   "The current kernel, or nil.")
 
-(defvar *make-optimizer-data* (lambda ())
-  "A function that creates the optimizer-data instance.")
+(defvar *make-limiter-data* (lambda ())
+  "A function that creates the limiter-data instance.")
 
 ;;; On a Core-i7 3.4GHz, a single spin takes about 2.5 microseconds.
 (defvar *kernel-spin-count* 2000

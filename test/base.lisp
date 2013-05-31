@@ -77,6 +77,10 @@
            (flet ((,body-fn () ,@body))
              (with-new-kernel (,n :spin-count 0)
                (,body-fn))
+             ;; kludge for checking :use-caller
+             ,(when (search "defpun" (string-downcase (symbol-name name)))
+                `(with-new-kernel (,n :spin-count (random 5000) :use-caller t)
+                   (,body-fn)))
              #+lparallel.with-stealing-scheduler
              (with-new-kernel (,n :spin-count (random 5000))
                (,body-fn))))))))
