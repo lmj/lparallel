@@ -30,14 +30,16 @@
 
 (in-package #:lparallel.cognate)
 
+(import-now alexandria:simple-style-warning)
+
 (defun/type/inline midpoint (a b) (fixnum fixnum) fixnum
   (+ a (the fixnum (ash (the fixnum (- b a)) -1))))
 
 ;;;
 ;;; Adapted from Roger Corman's usenet post. Free license.
 ;;;
-(defmacro define-quicksort-fn (name def call-key key key-type gran gran-type)
-  `(,def ,name (vec lo hi compare ,@(unsplice gran) ,@(unsplice key))
+(defmacro define-quicksort-fn (name call-key key key-type gran gran-type)
+  `(defpun/type ,name (vec lo hi compare ,@(unsplice gran) ,@(unsplice key))
        (vector fixnum fixnum function
         ,@(unsplice gran-type) ,@(unsplice key-type))
        null
@@ -100,21 +102,13 @@
     `(macrolet ((,iden (x) x)
                 (,call-key (x) `(funcall ,',key ,x)))
        (define-quicksort-fn quicksort/no-key/no-gran
-           defpun/type  ,iden nil nil nil nil)
-       (define-quicksort-fn quicksort/no-key/no-gran*
-           defpun/type* ,iden nil nil nil nil)
+           ,iden nil nil nil nil)
        (define-quicksort-fn quicksort/no-key/gran
-           defpun/type  ,iden nil nil ,gran fixnum)
-       (define-quicksort-fn quicksort/no-key/gran*
-           defpun/type* ,iden nil nil ,gran fixnum)
+           ,iden nil nil ,gran fixnum)
        (define-quicksort-fn quicksort/key/no-gran
-           defpun/type  ,call-key ,key function nil nil)
-       (define-quicksort-fn quicksort/key/no-gran*
-           defpun/type* ,call-key ,key function nil nil)
+           ,call-key ,key function nil nil)
        (define-quicksort-fn quicksort/key/gran
-           defpun/type  ,call-key ,key function ,gran fixnum)
-       (define-quicksort-fn quicksort/key/gran*
-           defpun/type* ,call-key ,key function ,gran fixnum))))
+           ,call-key ,key function ,gran fixnum))))
 
 (define-quicksort-fns)
 
@@ -122,58 +116,33 @@
 ;;; these because users should not call them directly
 (lparallel.defpun::delete-registered-names
  '(quicksort/no-key/no-gran
-   quicksort/no-key/no-gran*
    quicksort/no-key/gran
-   quicksort/no-key/gran*
    quicksort/key/no-gran
-   quicksort/key/no-gran*
-   quicksort/key/gran
-   quicksort/key/gran*))
+   quicksort/key/gran))
 
-(defmacro define-call-quicksort (name
-                                 quicksort/key/gran
-                                 quicksort/key/no-gran
-                                 quicksort/no-key/gran
-                                 quicksort/no-key/no-gran)
-  `(defun ,name (vec lo hi compare granularity key)
-     (if key
-         (if granularity
-             (,quicksort/key/gran       vec lo hi compare granularity key)
-             (,quicksort/key/no-gran    vec lo hi compare             key))
-         (if granularity
-             (,quicksort/no-key/gran    vec lo hi compare granularity)
-             (,quicksort/no-key/no-gran vec lo hi compare)))))
+(defun call-quicksort (vec lo hi compare granularity key)
+  (if key
+      (if granularity
+          (quicksort/key/gran       vec lo hi compare granularity key)
+          (quicksort/key/no-gran    vec lo hi compare             key))
+      (if granularity
+          (quicksort/no-key/gran    vec lo hi compare granularity)
+          (quicksort/no-key/no-gran vec lo hi compare))))
 
-(define-call-quicksort call-quicksort
-    quicksort/key/gran
-    quicksort/key/no-gran
-    quicksort/no-key/gran
-    quicksort/no-key/no-gran)
-
-(define-call-quicksort call-quicksort*
-    quicksort/key/gran*
-    quicksort/key/no-gran*
-    quicksort/no-key/gran*
-    quicksort/no-key/no-gran*)
-
-(defmacro define-psort (name call-quicksort)
-  `(defun ,name (sequence predicate &key key granularity &allow-other-keys)
-     (typecase sequence
-       (vector
-        (when granularity
-          (check-type granularity fixnum))
-        (,call-quicksort sequence
-                         0
-                         (1- (length sequence))
-                         (ensure-function predicate)
-                         granularity
-                         (and key (ensure-function key)))
-        sequence)
-       (otherwise
-        (sort sequence predicate :key key)))))
-
-(define-psort psort  call-quicksort)
-(define-psort psort* call-quicksort*)
+(defun psort (sequence predicate &key key granularity &allow-other-keys)
+  (typecase sequence
+    (vector
+     (when granularity
+       (check-type granularity fixnum))
+     (call-quicksort sequence
+                     0
+                     (1- (length sequence))
+                     (ensure-function predicate)
+                     granularity
+                     (and key (ensure-function key)))
+     sequence)
+    (otherwise
+     (sort sequence predicate :key key))))
 
 (setf (documentation 'psort 'function)
 "Parallel version of `sort'.
@@ -185,10 +154,14 @@ better performance.
 At present `psort' is only parallelized for vectors; other types are
 given to `cl:sort'.")
 
-(setf (documentation 'psort* 'function)
-"Like `psort' but optimized for N-1 worker threads where N is the
-number of cores.
+(defun psort* (&rest args)
+  "Deprecated. Instead use `psort' and pass `:use-caller t' to
+`make-kernel'."
+  (apply #'psort args))
 
-The caller of `psort*' always participates in the computation. In
-contrast, the caller of `psort' participates only when the caller is
-in a worker thread.")
+(define-compiler-macro psort* (&whole whole &rest args)
+  (declare (ignore args))
+  (simple-style-warning
+   "`psort*' is deprecated. Instead use `psort' and pass ~
+    `:use-caller t' to `make-kernel'.")
+  whole)
