@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 2.4.0
+
+* plet now exploits type declarations
+* defpun*, defpun/type*, and psort* are now deprecated -- instead use
+  the unstarred versions and pass `:use-caller t' to make-kernel
+* parallel compilation is now safer
+
 = 2.3.7
 
 * fixed a warning on non-sbcl implementations
