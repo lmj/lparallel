@@ -35,7 +35,7 @@
 (defmacro plet (bindings &body body)
   "The syntax of `plet' matches that of `let'.
 
-  plet ({var-no-init | (var [init-form])}*) form*
+  plet ({var-no-init | (var [init-form])}*) declaration* form*
 
 For each (var init-form) pair, a future is created which executes
 `init-form'. Inside `body', `var' is a symbol macro which expands to a
@@ -43,6 +43,10 @@ For each (var init-form) pair, a future is created which executes
 
 Each `var-no-init' is bound to nil and each `var' without `init-form'
 is bound to nil (no future is created).
+
+Type declarations for vars are recognized by `plet' and incorporated
+into the final expansion. The semantics of these declarations are the
+same as those of a regular `let' form.
 
 `plet' is subject to optimization inside `defpun'."
   `(future-let :future future

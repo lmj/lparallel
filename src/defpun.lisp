@@ -138,8 +138,92 @@
 
 ;;;; future-let
 
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require 'sb-cltl2))
+
+;;; `declaration-information' resolves the ambiguity between types and
+;;; custom declares -- (declare (type foo x)) may be abbreviated as
+;;; (declare (foo x)).
+#+(or sbcl ccl lispworks allegro)
+(progn
+  (defun declaration-information (decl env)
+    (#+sbcl sb-cltl2:declaration-information
+     #+ccl ccl:declaration-information
+     #+lispworks hcl:declaration-information
+     #+allegro sys:declaration-information
+     decl env))
+
+  (defun custom-declaration-p (form env)
+    (member form (declaration-information 'declaration env))))
+
+;;; When `declaration-information' is not available use `subtypep'
+;;; instead. On implementations that have a weak `subtypep', a deftype
+;;; that expands to a compound type might not be recognized as a type.
+;;; There's no way to solve this portably. The user can avoid this
+;;; problem by using the literal `type' declaration instead of
+;;; omitting `type' as shortcut.
+#-(or sbcl ccl lispworks allegro)
+(progn
+  (defun known-type-p (symbol)
+    (ignore-errors (nth-value 1 (subtypep symbol nil))))
+
+  (defun custom-declaration-p (form env)
+    (declare (ignore env))
+    (typecase form
+      (symbol (not (known-type-p form))))))
+
+(defparameter *standard-declaration-identifiers*
+  '(dynamic-extent  ignore     optimize
+    ftype           inline     special
+    ignorable       notinline  type))
+
+(defun declarationp (form env)
+  (or (member form *standard-declaration-identifiers*)
+      (custom-declaration-p form env)))
+
+(defun zip-repeat (fn list object)
+  (mapcar (lambda (elem) (funcall fn elem object)) list))
+
+;;; Terminology:
+;;;
+;;; declares: ((DECLARE FOO BAR) (DECLARE BAZ))
+;;; corresponding declaration specifiers (decl-specs): (FOO BAR BAZ)
+
+(defun decl-spec->typed-vars (decl-spec env)
+  (destructuring-bind (head &rest list) decl-spec
+    (cond ((eq head 'type)
+           (destructuring-bind (type &rest vars) list
+             (zip-repeat #'cons vars type)))
+          ((declarationp head env)
+           nil)
+          (t
+           ;; (foo x) shorthand for (type foo x)
+           (zip-repeat #'cons list head)))))
+
+(defun decl-specs->typed-vars (decl-specs env)
+  (loop
+     :for decl-spec :in decl-specs
+     :if (decl-spec->typed-vars decl-spec env) :append it :into typed-vars
+     :else :collect decl-spec :into non-type-decl-specs
+     :finally (return (values typed-vars non-type-decl-specs))))
+
+(defun declares->decl-specs (declares)
+  (loop
+     :for (first . rest) :in declares
+     :do (assert (eq 'declare first))
+     :append rest))
+
+(defun declares->typed-vars (declares env)
+  (decl-specs->typed-vars (declares->decl-specs declares) env))
+
 (defun pairp (form)
   (and (consp form) (eql (length form) 2)))
+
+(defun lookup-all (item alist &key (test #'eql))
+  (loop
+     :for (x . y) :in alist
+     :when (funcall test x item) :collect y))
 
 (defmacro with-parsed-let-args ((pairs non-pairs syms) bindings &body body)
   (check-type bindings symbol)
@@ -150,21 +234,29 @@
                          :collect (gensym (symbol-name name)))))
      ,@body))
 
-(defmacro future-let (&key kernel future force bindings pre-body body)
+(defmacro future-let (&key kernel future force bindings body &environment env)
   (with-parsed-body (nil declares body)
     (with-parsed-let-args (pairs non-pairs syms) bindings
-      `(symbol-macrolet ,(loop
-                            :for sym :in syms
-                            :for (name nil) :in pairs
-                            :collect `(,name (,force ,@(unsplice kernel) ,sym)))
-         (let (,@(loop
-                    :for sym :in syms
-                    :for (nil form) :in pairs
-                    :collect `(,sym (,future ,@(unsplice kernel) ,form)))
-               ,@non-pairs)
-           ,@declares
-           ,@(unsplice pre-body)
-           ,@body)))))
+      (multiple-value-bind (typed-vars non-type-decl-specs)
+          (declares->typed-vars declares env)
+        (when-let (unrecognized-vars (set-difference (mapcar #'car typed-vars)
+                                                     (mapcar #'first pairs)))
+          (warn "In type declaration for `plet', unrecognized: ~{~s ~^~}"
+                unrecognized-vars))
+        `(symbol-macrolet
+             ,(loop
+                 :for sym :in syms
+                 :for (name nil) :in pairs
+                 :for force-form := `(,force ,@(unsplice kernel) ,sym)
+                 :for types := (lookup-all name typed-vars)
+                 :collect `(,name (the (and ,@types) ,force-form)))
+           (let (,@(loop
+                      :for sym :in syms
+                      :for (nil form) :in pairs
+                      :collect `(,sym (,future ,@(unsplice kernel) ,form)))
+                 ,@non-pairs)
+             (declare ,@non-type-decl-specs)
+             ,@body))))))
 
 ;;;; function registration
 

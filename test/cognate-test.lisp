@@ -393,6 +393,36 @@
         ((a 3))
       (is (= 3 a)))))
 
+(lp-test plet-type-declaration-test
+  (plet ((x 3))
+    (declare (type t x))
+    (is (= 3 x)))
+  (plet ((x 3))
+    (declare (fixnum x))
+    (is (= 3 x)))
+  (plet ((x 3))
+    (declare (fixnum x))
+    (declare (integer x))
+    (is (= 3 x)))
+  (plet ((x 3))
+    (declare (type fixnum x))
+    (declare (type t x))
+    (declare (integer x))
+    (is (= 3 x)))
+  (signals warning
+    (macroexpand '(plet ((x 3))
+                   (declare (fixnum a))
+                   (is (= 3 x)))))
+  (signals warning
+    (macroexpand '(plet ((x 3))
+                   (declare (type fixnum a))
+                   (is (= 3 x)))))
+  (signals warning
+    (macroexpand '(plet ((x 3))
+                   (declare (fixnum a))
+                   (declare (type fixnum b))
+                   (is (= 3 x))))))
+
 (lp-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
   (is (null (pand 3 4 nil 5 6)))
