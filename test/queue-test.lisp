@@ -143,16 +143,17 @@
      (let ((obj-count *grind-queue-count*)
            (iter-count 2))
        (with-thread-count-check
-         (dolist (thread-count '(1 2 3 4 8 16 32 64 128))
+         (dolist (thread-count '(1 2 3 4 8 16 32 64))
            (let ((to-workers (,make-queue))
                  (from-workers (,make-queue)))
-             (with-thread (:name "grind-queue"
-                           :bindings `((*standard-output* .
-                                        ,*standard-output*)))
-               (loop (let ((obj (,pop-queue to-workers)))
-                       (if obj
-                           (,push-queue obj from-workers)
-                           (return)))))
+             (repeat thread-count
+               (with-thread (:name "grind-queue"
+                             :bindings `((*standard-output* .
+                                          ,*standard-output*)))
+                 (loop (let ((obj (,pop-queue to-workers)))
+                         (if obj
+                             (,push-queue obj from-workers)
+                             (return))))))
              (repeat iter-count
                (dotimes (i obj-count)
                  (,push-queue 'hello to-workers))
