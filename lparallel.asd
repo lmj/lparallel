@@ -37,6 +37,12 @@
   #+(and (or sbcl ccl lispworks) (not lparallel.without-cas))
   (pushnew :lparallel.with-cas *features*)
 
+  ;; defpun uses a cltl2 feature
+  #+(or sbcl ccl lispworks allegro)
+  (progn
+    (pushnew :lparallel.with-cltl2 *features*)
+    #+sbcl (require :sb-cltl2))
+
   ;; green threads need calls to yield
   #+(and allegro (not os-threads))
   (pushnew :lparallel.with-green-threads *features*)

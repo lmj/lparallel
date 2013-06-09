@@ -136,17 +136,17 @@
   (declare #.*full-optimize*)
   (unwrap-result (result future)))
 
-;;;; future-let
-
-#+sbcl
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require 'sb-cltl2))
+;;;; declarationp
 
 ;;; `declaration-information' resolves the ambiguity between types and
 ;;; custom declares -- (declare (type foo x)) may be abbreviated as
 ;;; (declare (foo x)).
-#+(or sbcl ccl lispworks allegro)
+#+lparallel.with-cltl2
 (progn
+  #-(or sbcl ccl lispworks allegro)
+  (eval-when (:compile-toplevel :load-toplevel :execute)
+    (error "cltl2 not (yet?) enabled for this implementation."))
+
   (defun declaration-information (decl env)
     (#+sbcl sb-cltl2:declaration-information
      #+ccl ccl:declaration-information
@@ -163,7 +163,7 @@
 ;;; There's no way to solve this portably. The user can avoid this
 ;;; problem by using the literal `type' declaration instead of
 ;;; omitting `type' as shortcut.
-#-(or sbcl ccl lispworks allegro)
+#-lparallel.with-cltl2
 (progn
   (defun known-type-p (symbol)
     (ignore-errors (nth-value 1 (subtypep symbol nil))))
@@ -182,13 +182,15 @@
   (or (member form *standard-declaration-identifiers*)
       (custom-declaration-p form env)))
 
-(defun zip-repeat (fn list object)
-  (mapcar (lambda (elem) (funcall fn elem object)) list))
+;;;; future-let
 
 ;;; Terminology:
 ;;;
 ;;; declares: ((DECLARE FOO BAR) (DECLARE BAZ))
 ;;; corresponding declaration specifiers (decl-specs): (FOO BAR BAZ)
+
+(defun zip-repeat (fn list object)
+  (mapcar (lambda (elem) (funcall fn elem object)) list))
 
 (defun decl-spec->typed-vars (decl-spec env)
   (destructuring-bind (head &rest list) decl-spec
