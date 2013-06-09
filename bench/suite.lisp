@@ -244,17 +244,19 @@
             (if (= i j)
                 (compute-entry row i)
                 (let ((mid (floor (+ i j) 2)))
-                  (,xlet ((half1 (compute-cols-between row i mid)))
-                    (compute-cols-between row (+ mid 1) j)
-                    half1))))
+                  (,xlet ((half1 (compute-cols-between row i mid))
+                          (half2 (compute-cols-between row (+ mid 1) j)))
+                    half1
+                    half2))))
 
           (compute-rows-between (i j)   ; DAC over rows
             (if (= i j)
                 (compute-cols-between (* i n) 0 (- n 1))
                 (let ((mid (floor (+ i j) 2)))
-                  (,xlet ((half1 (compute-rows-between i mid)))
-                    (compute-rows-between (+ mid 1) j)
-                    half1)))))
+                  (,xlet ((half1 (compute-rows-between i mid))
+                          (half2 (compute-rows-between (+ mid 1) j)))
+                    half1
+                    half2)))))
 
        (compute-rows-between 0 (1- n)))))
 
