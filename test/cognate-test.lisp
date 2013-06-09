@@ -611,7 +611,10 @@
                       (pmapcar (lambda (x)
                                  (declare (ignore x))
                                  (restart-case (warn 'foo-warning)
-                                   (double-me (z) (* 2 z))))
+                                   (double-me (z)
+                                     ;; clisp warns unless interactive is given
+                                     :interactive (lambda ())
+                                     (* 2 z))))
                                '(3 3)))))
         (is (equal '(6 6) result))))))
 
@@ -623,7 +626,10 @@
                (pmapcar (lambda (x)
                           (declare (ignore x))
                           (restart-case (error 'foo-error)
-                            (something-else (z) z)))
+                            (something-else (z)
+                              ;; clisp warns unless interactive is given
+                              :interactive (lambda ())
+                              z)))
                         '(0 1))))))
 
 (lp-test pmap-handler-test

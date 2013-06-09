@@ -276,7 +276,10 @@
       (repeat 3
         (submit-task channel (lambda ()
                                (restart-case (error 'foo-error)
-                                 (double-me (x) (* 2 x))))))
+                                 (double-me (x)
+                                   ;; clisp warns unless interactive is given
+                                   :interactive (lambda ())
+                                   (* 2 x))))))
       (is (equal '(6 6 6)
                  (collect-n 3 (receive-result channel)))))))
 
