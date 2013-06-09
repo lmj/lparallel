@@ -408,7 +408,11 @@
     (declare (type fixnum x))
     (declare (type t x))
     (declare (integer x))
-    (is (= 3 x)))
+    (is (= 3 x))))
+
+;;; abcl has incomplete subtypep and no declaration-information
+#-abcl
+(lp-base-test plet-type-warning-test
   (signals warning
     (macroexpand '(plet ((x 3))
                    (declare (fixnum a))
