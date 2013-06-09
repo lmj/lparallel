@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.4.1
+
+* fixed tests on abcl
+
 = 2.4.0
 
 * plet now exploits type declarations
