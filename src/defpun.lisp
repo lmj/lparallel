@@ -217,6 +217,16 @@
 (defun declares->typed-vars (declares env)
   (decl-specs->typed-vars (declares->decl-specs declares) env))
 
+(defun bindings->vars (bindings)
+  (mapcar (lambda (binding)
+            (etypecase binding
+              (cons (first binding))
+              (symbol binding)))
+          bindings))
+
+(defun unknown-typed-vars (typed-vars bindings)
+  (set-difference (mapcar #'car typed-vars) (bindings->vars bindings)))
+
 (defun pairp (form)
   (and (consp form) (eql (length form) 2)))
 
@@ -239,10 +249,8 @@
     (with-parsed-let-args (pairs non-pairs syms) bindings
       (multiple-value-bind (typed-vars non-type-decl-specs)
           (declares->typed-vars declares env)
-        (when-let (unrecognized-vars (set-difference (mapcar #'car typed-vars)
-                                                     (mapcar #'first pairs)))
-          (warn "In type declaration for `plet', unrecognized: ~{~s ~^~}"
-                unrecognized-vars))
+        (when-let (vars (unknown-typed-vars typed-vars bindings))
+          (warn "In type declaration for `plet', unrecognized: ~{~s ~^~}" vars))
         `(symbol-macrolet
              ,(loop
                  :for sym :in syms

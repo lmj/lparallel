@@ -408,7 +408,21 @@
     (declare (type fixnum x))
     (declare (type t x))
     (declare (integer x))
-    (is (= 3 x))))
+    (is (= 3 x)))
+  (plet ((x 3) y)
+    (declare (fixnum x))
+    (is (equal '(3 nil) (list x y))))
+  (plet ((x 3) (y))
+    (declare (fixnum x))
+    (is (equal '(3 nil) (list x y))))
+  (plet ((x 3) y)
+    (declare (fixnum x)
+             (type null y))
+    (is (equal '(3 nil) (list x y))))
+  (plet ((x 3) (y))
+    (declare (fixnum x)
+             (type null y))
+    (is (equal '(3 nil) (list x y)))))
 
 ;;; abcl has incomplete subtypep and no declaration-information
 #-abcl
