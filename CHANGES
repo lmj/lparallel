@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.4.2
+
+* printed kernel now shows :use-caller status
+* various optimizations
+
 = 2.4.1
 
 * fixed tests on abcl
