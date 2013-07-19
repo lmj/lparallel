@@ -32,20 +32,18 @@
 
 (import-now alexandria:simple-style-warning
             lparallel.util::symbolicate/package
+            lparallel.kernel::*worker*
+            lparallel.kernel::*make-limiter-data*
             lparallel.kernel::kernel
             lparallel.kernel::unwrap-result
             lparallel.kernel::wrap-error
             lparallel.kernel::make-task
             lparallel.kernel::make-task-fn
             lparallel.kernel::submit-raw-task
-            lparallel.kernel::%kernel-worker-count
             lparallel.kernel::accept-task-p
             lparallel.kernel::limiter-data
             lparallel.kernel::with-limiter-slots
-            lparallel.kernel::*make-limiter-data*
-            lparallel.kernel::*worker*
             lparallel.kernel::steal-work
-            lparallel.kernel::*kernel*
             lparallel.kernel::call-with-task-handler)
 
 ;;;; spin lock
@@ -106,13 +104,25 @@
 
 (defconstant +no-result+ 'no-result)
 
-(defmacro result (future) `(car ,future))
-(defmacro future-fn (future) `(cdr ,future))
+(deftype future () 'cons)
 
-(defun/inline %make-future (fn)
-  (cons +no-result+ fn))
+(defmacro result (future)
+  `(car (the future ,future)))
 
-(defun make-future (kernel fn)
+(defmacro future-fn (future)
+  `(the function (cdr (the future ,future))))
+
+(defmacro %make-future (fn)
+  `(cons +no-result+ ,fn))
+
+(defmacro fulfilledp (future)
+  `(not (eq (result ,future) +no-result+)))
+
+(defmacro force (future)
+  `(locally (declare #.*full-optimize*)
+     (unwrap-result (result ,future))))
+
+(defun/type make-future (kernel fn) (kernel function) future
   (declare #.*full-optimize*)
   (let ((future (%make-future fn)))
     (submit-raw-task
@@ -127,14 +137,6 @@
 
 (defmacro future (kernel &body body)
   `(make-future ,kernel (make-task-fn ,@body)))
-
-(defun/inline fulfilledp (future)
-  (declare #.*full-optimize*)
-  (not (eq (result future) +no-result+)))
-
-(defun/inline force (future)
-  (declare #.*full-optimize*)
-  (unwrap-result (result future)))
 
 ;;;; declarationp
 
@@ -363,7 +365,13 @@
 
 (setf *make-limiter-data* 'make-limiter-data)
 
-(defun/inline use-caller-p (kernel)
+(defmacro accept-task-p/fast (kernel)
+  (check-type kernel symbol)
+  `(locally (declare #.*full-optimize*)
+     (accept-task-p (the kernel ,kernel))))
+
+(defun/type/inline use-caller-p (kernel) (kernel) t
+  (declare #.*full-optimize*)
   (/= (limiter-data-limit (limiter-data kernel))
       (%kernel-worker-count kernel)))
 
@@ -387,7 +395,7 @@
           (progn ,@body)
        (update-task-count ,kernel -1))))
 
-(defun force/fast (kernel future)
+(defun/type force/fast (kernel future) (kernel future) t
   (declare #.*full-optimize*)
   (if (fulfilledp future)
       (force future)
@@ -402,7 +410,7 @@
   `(with-lock-predicate/wait*
        :lock            (limiter-data-lock (limiter-data ,kernel))
        :predicate1      ,predicate
-       :predicate2      (accept-task-p ,kernel)
+       :predicate2      (accept-task-p/fast ,kernel)
        :succeed/lock    (update-task-count/no-lock ,kernel ,future-count)
        :succeed/no-lock (future-let :kernel ,kernel
                                     :future future/fast
@@ -420,24 +428,22 @@
 
 (defmacro plet/fast (kernel bindings &body body)
   `(%plet/fast ,kernel
-               (accept-task-p ,kernel)
+               (accept-task-p/fast ,kernel)
                ,bindings
                ,body))
 
 (defmacro plet-if/fast (kernel predicate bindings &body body)
   `(%plet/fast ,kernel
-               (and (accept-task-p ,kernel) ,predicate)
+               (and (accept-task-p/fast ,kernel) ,predicate)
                ,bindings ,body))
 
-(defmacro/once call-impl-in-worker (&once kernel)
-  (with-gensyms (worker channel)
-    `(let ((,worker *worker*))
-       (if ,worker
-           (call-impl ,kernel)
-           (let ((,channel (make-channel)))
-             (submit-task ,channel (lambda ()
-                                     (multiple-value-list (call-impl ,kernel))))
-             (values-list (receive-result ,channel)))))))
+(defun call-impl-in-worker (call-impl)
+  (if *worker*
+      (funcall call-impl)
+      (let ((channel (make-channel)))
+        (submit-task channel (lambda ()
+                               (multiple-value-list (funcall call-impl))))
+        (values-list (receive-result channel)))))
 
 (defmacro define-defpun (defpun doc defun &rest types)
   `(defmacro ,defpun (name params ,@types &body body)
@@ -459,16 +465,16 @@
                              `(plet/fast ,',kernel ,bindings
                                 ,@body))
                            (plet-if (predicate bindings &body body)
-                               `(plet-if/fast ,',kernel ,predicate ,bindings
-                                  ,@body))
+                             `(plet-if/fast ,',kernel ,predicate ,bindings
+                                ,@body))
                            ,@(registered-macrolets kernel))
                   ,@body))
               (defun/wrapper ,name ,(unchecked-name name) ,params
                 ,@(unsplice docstring)
-                (let ((kernel (check-kernel)))
-                  (if (use-caller-p kernel)
-                      (call-impl kernel)
-                      (call-impl-in-worker kernel))))
+                (let ((,kernel (check-kernel)))
+                  (if (use-caller-p ,kernel)
+                      (call-impl ,kernel)
+                      (call-impl-in-worker (lambda () (call-impl ,kernel))))))
               (eval-when (:load-toplevel :execute)
                 (with-lock-held (*registration-lock*)
                   (register-fn ',name)))
