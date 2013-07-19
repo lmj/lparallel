@@ -32,7 +32,7 @@
 ;;; with highly concurrent defmethod calls.
 ;;;
 ;;; The `queue' type is a chimera because a cons-based queue was
-;;; measurably faster than a resizeable vector queue even with
+;;; measurably faster than a resizable vector queue even with
 ;;; pre-allocation.
 
 (in-package #:lparallel.queue)
