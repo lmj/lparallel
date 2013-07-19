@@ -84,7 +84,8 @@ Default is (kernel-worker-count)."
   (typecase sequence
     (list (premove-if-not/list (complement (ensure-function test)) sequence
                                from-end start end key parts))
-    (otherwise (apply #'remove-if test sequence (remove-prop :parts args)))))
+    (otherwise (apply #'remove-if test sequence
+                      (remove-from-plist args :parts)))))
 
 (defun premove (item sequence
                 &rest args
@@ -99,4 +100,5 @@ Default is (kernel-worker-count)."
     (list (premove-if-not/list (complement (item-predicate item test test-not))
                                sequence
                                from-end start end key parts))
-    (otherwise (apply #'remove item sequence (remove-prop :parts args)))))
+    (otherwise (apply #'remove item sequence
+                      (remove-from-plist args :parts)))))

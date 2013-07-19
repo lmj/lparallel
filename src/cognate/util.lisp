@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.cognate)
 
+(import-now alexandria:remove-from-plist)
+
 (defun zip/vector (seqs)
   (apply #'map 'vector (lambda (&rest args) args) seqs))
 
@@ -63,15 +65,3 @@
       (error "Bad interval for sequence operation on ~a: start=~a end=~a"
              seq start end))
     result))
-
-(defun remove-prop (target-key plist)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :unless (eq key target-key)
-     :nconc (list key value)))
-
-(defun remove-props (keys plist)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :unless (member key keys)
-     :nconc (list key value)))

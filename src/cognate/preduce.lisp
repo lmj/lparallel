@@ -152,7 +152,7 @@ the first pass only.
      (apply #'reduce
             function
             sequence
-            (remove-props '(:parts :recurse) args)))))
+            (remove-from-plist args :parts :recurse)))))
 
 (defun preduce-partial (function sequence &rest args
                         &key key from-end (start 0) end initial-value parts)

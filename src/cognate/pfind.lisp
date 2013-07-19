@@ -86,7 +86,7 @@ Default is (kernel-worker-count)."
       (vector    (apply #'pfind-if/vector predicate sequence args))
       (list      (apply #'pfind-if/list   predicate sequence args))
       (otherwise (apply #'find-if predicate sequence
-                        (remove-prop :parts args))))))
+                        (remove-from-plist args :parts))))))
 
 (defun pfind-if-not (predicate sequence
                      &rest args
@@ -111,4 +111,4 @@ Default is (kernel-worker-count)."
   (apply #'pfind-if
          (item-predicate item test test-not)
          sequence
-         (remove-props '(:test :test-not) args)))
+         (remove-from-plist args :test :test-not)))
