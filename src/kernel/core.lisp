@@ -326,13 +326,14 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
   whole)
 
 (defmacro make-task-fn (&body body)
-  (with-gensyms (client-handlers)
-    `(if *client-handlers*
-         (let ((,client-handlers *client-handlers*))
-           (lambda ()
-             (let ((*client-handlers* ,client-handlers))
-               ,@body)))
-         (lambda () ,@body))))
+  (with-gensyms (client-handlers body-fn)
+    `(flet ((,body-fn () ,@body))
+       (if *client-handlers*
+           (let ((,client-handlers *client-handlers*))
+             (lambda ()
+               (let ((*client-handlers* ,client-handlers))
+                 (funcall (function ,body-fn)))))
+           (function ,body-fn)))))
 
 (defun/type/inline make-task (fn) (function) task
   (declare #.*full-optimize*)
