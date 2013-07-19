@@ -181,22 +181,22 @@
           (setf thread worker-thread))
         worker))))
 
-(defmacro with-make-workers-handler (worker-vector &body body)
+(defmacro with-fill-workers-handler (workers &body body)
   `(unwind-protect/ext
     :main  (progn ,@body)
-    :abort (dosequence (worker ,worker-vector)
+    :abort (dosequence (worker ,workers)
              (when (typep worker 'worker)
                (ignore-errors (destroy-thread (thread worker)))))))
 
-(defun %make-workers (kernel worker-vector)
-  (dotimes (index (length worker-vector))
-    (setf (aref worker-vector index)
+(defun %fill-workers (workers kernel)
+  (dotimes (index (length workers))
+    (setf (aref workers index)
           (make-worker kernel
                        index
                        #+lparallel.with-stealing-scheduler (make-spin-queue)
                        #-lparallel.with-stealing-scheduler nil))))
 
-(defun make-workers (kernel worker-vector)
+(defun fill-workers (workers kernel)
   ;; Start/finish calls are separated for parallel initialization.
   ;;
   ;; Ensure that each worker calls its worker-loop parameter,
@@ -204,10 +204,10 @@
   ;;
   ;; If a `make-thread' call fails (e.g. too many threads) then all
   ;; workers are killed.
-  (with-make-workers-handler worker-vector
-    (%make-workers kernel worker-vector)
-    (map nil #'handshake/to-worker/start worker-vector)
-    (map nil #'handshake/to-worker/finish worker-vector)))
+  (with-fill-workers-handler workers
+    (%fill-workers workers kernel)
+    (map nil #'handshake/to-worker/start workers)
+    (map nil #'handshake/to-worker/finish workers)))
 
 (defun make-kernel (worker-count
                     &key
@@ -247,10 +247,10 @@ number of cores/CPUs.
 A kernel will not be garbage collected until `end-kernel' is called."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
   (check-type spin-count index)
-  (let* ((worker-vector (make-array worker-count))
+  (let* ((workers (make-array worker-count))
          (kernel (make-kernel-instance
-                  :scheduler (make-scheduler worker-vector spin-count)
-                  :workers worker-vector
+                  :scheduler (make-scheduler workers spin-count)
+                  :workers workers
                   :workers-lock (make-lock)
                   :worker-info (make-worker-info-instance
                                 :bindings bindings
@@ -260,7 +260,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
                   :limiter-data (funcall *make-limiter-data*
                                          worker-count
                                          use-caller))))
-    (make-workers kernel worker-vector)
+    (fill-workers workers kernel)
     kernel))
 
 (defun check-kernel ()
