@@ -61,7 +61,7 @@ parts. Default is (kernel-worker-count).
 
 Unlike `dotimes', `pdotimes' does not define an implicit block named
 nil."
-  (with-parsed-body (nil declares body)
+  (with-parsed-body (body declares)
     `(progn
        (%pdotimes ,count ,parts (lambda (,var)
                                   ,@declares

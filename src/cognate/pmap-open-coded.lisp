@@ -40,9 +40,9 @@
 
 (defmacro defmacro/syms (name params &body body)
   "Like `defmacro' but requires all parameters to be symbols."
-  (with-parsed-body (doc declares body)
+  (with-parsed-body (body declares docstring)
     `(defmacro ,name ,params
-       ,@(unsplice doc)
+       ,@(unsplice docstring)
        ,@declares
        (check-symbols ,@params)
        ,@body)))

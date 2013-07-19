@@ -51,7 +51,7 @@ by `&once' are passed to a `once-only' call which surrounds `body'."
                              (t
                               nil)))
                      params)))
-    (with-parsed-body (docstring declares body)
+    (with-parsed-body (body declares docstring)
       `(defmacro ,name ,(remove-once-keywords params)
          ,@(unsplice docstring)
          ,@declares

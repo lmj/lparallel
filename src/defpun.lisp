@@ -247,7 +247,7 @@
      ,@body))
 
 (defmacro future-let (&key kernel future force bindings body &environment env)
-  (with-parsed-body (nil declares body)
+  (with-parsed-body (body declares)
     (with-parsed-let-args (pairs non-pairs syms) bindings
       (multiple-value-bind (typed-vars non-type-decl-specs)
           (declares->typed-vars declares env)
@@ -442,7 +442,7 @@
 (defmacro define-defpun (defpun doc defun &rest types)
   `(defmacro ,defpun (name params ,@types &body body)
      ,doc
-     (with-parsed-body (docstring declares body)
+     (with-parsed-body (body declares docstring)
        (with-lock-held (*registration-lock*)
          ;; these two calls may affect the registered macrolets in the
          ;; return form below

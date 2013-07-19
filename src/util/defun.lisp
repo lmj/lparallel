@@ -57,7 +57,7 @@
        (defun foo ...).
     Additionally constrains return-type to the number of values provided."
     (setf return-type (constrain-return-type return-type))
-    (with-parsed-body (docstring declares body)
+    (with-parsed-body (body declares docstring)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
          (defun ,name ,params
@@ -81,7 +81,7 @@
 (progn
   (defmacro defun/type (name params arg-types return-type &body body)
     (setf return-type (constrain-return-type return-type))
-    (with-parsed-body (docstring declares body)
+    (with-parsed-body (body declares docstring)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
          (defun ,name ,params
