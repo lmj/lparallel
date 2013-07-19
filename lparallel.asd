@@ -34,7 +34,9 @@
   (pushnew :lparallel.with-stealing-scheduler *features*)
 
   ;; unless otherwise requested, use compare-and-swap optimizations
-  #+(and (or sbcl ccl lispworks) (not lparallel.without-cas))
+  #+(and (or sbcl ccl lispworks)
+         (not lparallel.without-cas)
+         (not lparallel.with-debug))
   (pushnew :lparallel.with-cas *features*)
 
   ;; defpun uses a cltl2 feature

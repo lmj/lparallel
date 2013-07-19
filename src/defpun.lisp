@@ -40,12 +40,12 @@
             lparallel.kernel::make-task
             lparallel.kernel::make-task-fn
             lparallel.kernel::submit-raw-task
-            lparallel.kernel::accept-task-p
             lparallel.kernel::use-caller-p
-            lparallel.kernel::limiter-data
-            lparallel.kernel::with-limiter-slots
             lparallel.kernel::steal-work
-            lparallel.kernel::call-with-task-handler)
+            lparallel.kernel::call-with-task-handler
+            lparallel.kernel::limiter-accept-task-p
+            lparallel.kernel::limiter-count
+            lparallel.kernel::limiter-lock)
 
 ;;;; util
 
@@ -329,44 +329,47 @@
 
 ;;;; defpun
 
-;;; Must use struct due to CAS.
-(locally (declare #.*full-optimize*)
-  (defstruct (limiter-data (:constructor %make-limiter-data))
-    (lock (make-spin-lock))
-    (count 0 :type fixnum)
-    (limit (error "no limit") :type fixnum)))
+;;; New tasks are accepted when limiter-count is positive. Creating a
+;;; task decrements limiter-count; finishing a task increments it.
 
-(defun make-limiter-data (worker-count use-caller)
-  (%make-limiter-data :limit (if use-caller
-                                 (1+ worker-count)
-                                 worker-count)))
+;;; Using (1+ thread-count) as the initial value of limiter-count puts
+;;; task production just barely ahead of consumption. Experimentally
+;;; this appears to be optimal, however other hardware or lisp
+;;; implementations may produce different results.
+(defun initial-limiter-count (thread-count)
+  (1+ thread-count))
+
+(defun make-limiter-data (thread-count)
+  (list :limiter-accept-task-p t
+        :limiter-count (initial-limiter-count thread-count)
+        :limiter-lock (make-spin-lock)))
 
 (setf *make-limiter-data* 'make-limiter-data)
 
 (defmacro accept-task-p/fast (kernel)
   (check-type kernel symbol)
   `(locally (declare #.*full-optimize*)
-     (accept-task-p (the kernel ,kernel))))
+     (limiter-accept-task-p (the kernel ,kernel))))
 
-(defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
+(defun/type update-limiter-count/no-lock (kernel delta) (kernel fixnum) (values)
   (declare #.*full-optimize*)
-  (with-limiter-slots (accept-task-p limiter-data) kernel
-    (incf (limiter-data-count limiter-data) delta)
-    ;; `<=' returns generalized boolean
-    (setf accept-task-p
-          (to-boolean (<= (limiter-data-count limiter-data)
-                          (the fixnum (limiter-data-limit limiter-data)))))))
+  (incf (limiter-count kernel) delta)
+  (setf (limiter-accept-task-p kernel)
+        (to-boolean (plusp (the fixnum (limiter-count kernel)))))
+  (values))
 
-(defun/type update-task-count (kernel delta) (kernel fixnum) t
+(defun/type update-limiter-count (kernel delta) (kernel fixnum) (values)
   (declare #.*full-optimize*)
-  (with-spin-lock-held ((limiter-data-lock (limiter-data kernel)))
-    (update-task-count/no-lock kernel delta)))
+  (with-spin-lock-held ((limiter-lock kernel))
+    (update-limiter-count/no-lock kernel delta))
+  (values))
 
 (defmacro future/fast (kernel &body body)
   `(future ,kernel
      (unwind-protect
           (progn ,@body)
-       (update-task-count ,kernel -1))))
+       (locally (declare #.*full-optimize*)
+         (update-limiter-count (the kernel ,kernel) 1)))))
 
 (defun/type force/fast (kernel future) (kernel future) t
   (declare #.*full-optimize*)
@@ -381,10 +384,10 @@
 
 (defmacro %%plet/fast (kernel predicate future-count bindings body)
   `(with-lock-predicate/wait*
-       :lock            (limiter-data-lock (limiter-data ,kernel))
+       :lock            (limiter-lock (the kernel ,kernel))
        :predicate1      ,predicate
        :predicate2      (accept-task-p/fast ,kernel)
-       :succeed/lock    (update-task-count/no-lock ,kernel ,future-count)
+       :succeed/lock    (update-limiter-count/no-lock ,kernel ,(- future-count))
        :succeed/no-lock (future-let :kernel ,kernel
                                     :future future/fast
                                     :force force/fast

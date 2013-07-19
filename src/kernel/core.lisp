@@ -248,19 +248,18 @@ A kernel will not be garbage collected until `end-kernel' is called."
   (check-type worker-count (integer 1 #.most-positive-fixnum))
   (check-type spin-count index)
   (let* ((workers (make-array worker-count))
-         (kernel (make-kernel-instance
-                  :scheduler (make-scheduler workers spin-count)
-                  :workers workers
-                  :workers-lock (make-lock)
-                  :worker-info (make-worker-info-instance
-                                :bindings bindings
-                                :context (ensure-function context)
-                                :name name)
-                  :use-caller-p (to-boolean use-caller)
-                  :alivep t
-                  :limiter-data (funcall *make-limiter-data*
-                                         worker-count
-                                         use-caller))))
+         (thread-count (if use-caller (1+ worker-count) worker-count))
+         (kernel (apply #'make-kernel-instance
+                        :scheduler (make-scheduler workers spin-count)
+                        :workers workers
+                        :workers-lock (make-lock)
+                        :worker-info (make-worker-info-instance
+                                      :bindings bindings
+                                      :context (ensure-function context)
+                                      :name name)
+                        :use-caller-p (to-boolean use-caller)
+                        :alivep t
+                        (funcall *make-limiter-data* thread-count))))
     (fill-workers workers kernel)
     kernel))
 

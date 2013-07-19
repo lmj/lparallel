@@ -91,14 +91,29 @@
   (deftype scheduler () 'biased-queue)
   (defun tasks (scheduler) (declare (ignore scheduler))))
 
+;;; The limiter, if in use, places a limit on the number of queued
+;;; tasks. This must be a struct for CAS. The `limiter-accept-task-p'
+;;; flag must be fast/inlined in order to be useful, which is why the
+;;; kernel subclasses directly from this."
+#-lparallel.with-debug
 (locally (declare #.*full-optimize*)
-  (defslots limiter ()
-    ((accept-task-p :reader accept-task-p :initform t :type boolean)
-     (limiter-data :reader limiter-data))
-    (:documentation
-     "Optimization data to be used by a plugin. The `accept-task-p'
-     flag must be inlined in order to be useful, which is why `kernel'
-     subclasses directly from this.")))
+  (defstruct (limiter (:conc-name nil))
+    (limiter-accept-task-p (error "no init") :type boolean)
+    (limiter-lock (error "no init"))
+    (limiter-count (error "no init") :type fixnum)))
+
+;;; Debug version of limiter can't be a struct since in this case
+;;; `defslots' expands to `defclass'.
+#+lparallel.with-debug
+(defclass limiter ()
+  ((limiter-accept-task-p :accessor limiter-accept-task-p
+                          :initarg :limiter-accept-task-p
+                          :type boolean)
+   (limiter-lock :accessor limiter-lock
+                 :initarg :limiter-lock)
+   (limiter-count :accessor limiter-count
+                  :initarg :limiter-count
+                  :type fixnum)))
 
 (defslots kernel (limiter)
   ((scheduler    :reader scheduler    :type scheduler)

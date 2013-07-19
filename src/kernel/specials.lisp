@@ -53,8 +53,8 @@
 (defvar *kernel* nil
   "The current kernel, or nil.")
 
-(defvar *make-limiter-data* (lambda ())
-  "A function that creates the limiter-data instance.")
+;;; This is set by the only limiter client, defpun.lisp.
+(defvar *make-limiter-data*)
 
 ;;; On a Core-i7 3.4GHz, a single spin takes about 2.5 microseconds.
 (defvar *kernel-spin-count* 2000
