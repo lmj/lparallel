@@ -46,29 +46,6 @@
             lparallel.kernel::steal-work
             lparallel.kernel::call-with-task-handler)
 
-;;;; spin lock
-
-#+lparallel.with-cas
-(progn
-  (defun make-spin-lock ()
-    nil)
-
-  (defmacro/once with-spin-lock-held (((access &once container)) &body body)
-    `(locally (declare #.*full-optimize*)
-       (unwind-protect/ext
-        :prepare (loop :until (cas (,access ,container) nil t))
-        :main (progn ,@body)
-        :cleanup (setf (,access ,container) nil)))))
-
-#-lparallel.with-cas
-(progn
-  (defun make-spin-lock ()
-    (make-lock))
-
-  (defmacro with-spin-lock-held (((access container)) &body body)
-    `(with-lock-held ((,access ,container))
-       ,@body)))
-
 ;;;; util
 
 (defmacro with-lock-predicate/wait*

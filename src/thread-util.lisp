@@ -134,4 +134,24 @@
     #+lispworks `(sys:compare-and-swap ,place ,old ,new))
 
   #-(or sbcl ccl lispworks)
-  (error "cas not defined"))
+  (error "cas not defined")
+
+  (progn
+    (defun make-spin-lock ()
+      nil)
+
+    (defmacro/once with-spin-lock-held (((access &once container)) &body body)
+      `(locally (declare #.*full-optimize*)
+         (unwind-protect/ext
+          :prepare (loop :until (cas (,access ,container) nil t))
+          :main (progn ,@body)
+          :cleanup (setf (,access ,container) nil))))))
+
+#-lparallel.with-cas
+(progn
+  (defun make-spin-lock ()
+    (make-lock))
+
+  (defmacro with-spin-lock-held (((access container)) &body body)
+    `(with-lock-held ((,access ,container))
+       ,@body)))

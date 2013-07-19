@@ -69,7 +69,9 @@
            #:define-locking-fn
            #:define-simple-locking-fn
            #:condition-notify-and-yield
-           #:cas)
+           #:cas
+           #:make-spin-lock
+           #:with-spin-lock-held)
   (:export #:make-lock
            #:make-condition-variable
            #:with-lock-held
