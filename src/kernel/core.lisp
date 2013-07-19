@@ -340,8 +340,9 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
   (make-task-instance :category *task-category* :fn fn))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
+  ;; avoid allocation from extent checks with safety 0 (sbcl)
+  (declare #.*full-optimize*)
   (let ((queue (channel-queue channel)))
-    (declare #.*normal-optimize*)
     (make-task
       (make-task-fn
         (unwind-protect/ext
@@ -359,6 +360,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 (defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."
   (declare #.*normal-optimize*)
+  (check-type channel channel)
   (submit-raw-task (make-channeled-task channel
                                         (ensure-function function)
                                         args)

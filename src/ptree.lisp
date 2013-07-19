@@ -166,18 +166,19 @@
 
 (defun/type make-node-task (queue node) (queue node) t
   (declare #.*normal-optimize*)
-  (macrolet ((compute ()
-               `(unwind-protect
-                     (compute-node node)
-                  (push-queue node queue))))
+  (let ((compute (make-task-fn
+                   ;; avoid allocation from extent checks with safety 0 (sbcl)
+                   (declare #.*full-optimize*)
+                   (unwind-protect
+                        (compute-node node)
+                     (push-queue node queue)))))
     (make-task
      (if *ptree-node-kernel*
          (let ((node-kernel *ptree-node-kernel*))
-           (make-task-fn
+           (lambda ()
              (let ((*kernel* node-kernel))
-               (compute))))
-         (make-task-fn
-           (compute))))))
+               (funcall compute))))
+         compute))))
 
 (defun/type submit-node (node queue kernel) (node queue kernel) null
   (declare #.*normal-optimize*)
