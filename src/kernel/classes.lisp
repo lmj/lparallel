@@ -101,11 +101,12 @@
      subclasses directly from this.")))
 
 (defslots kernel (limiter)
-  ((scheduler       :reader scheduler :type scheduler)
-   (workers         :reader workers   :type simple-vector)
+  ((scheduler    :reader scheduler    :type scheduler)
+   (workers      :reader workers      :type simple-vector)
    (workers-lock)
    (worker-info                       :type worker-info)
-   (alivep          :reader alivep    :type boolean))
+   (use-caller-p :reader use-caller-p :type boolean)
+   (alivep       :reader alivep       :type boolean))
   (:documentation
    "The kernel encompasses the scheduling and execution of parallel
    tasks using a pool of worker threads. All parallelism in lparallel

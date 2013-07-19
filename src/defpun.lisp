@@ -41,6 +41,7 @@
             lparallel.kernel::make-task-fn
             lparallel.kernel::submit-raw-task
             lparallel.kernel::accept-task-p
+            lparallel.kernel::use-caller-p
             lparallel.kernel::limiter-data
             lparallel.kernel::with-limiter-slots
             lparallel.kernel::steal-work
@@ -346,11 +347,6 @@
   (check-type kernel symbol)
   `(locally (declare #.*full-optimize*)
      (accept-task-p (the kernel ,kernel))))
-
-(defun/type/inline use-caller-p (kernel) (kernel) t
-  (declare #.*full-optimize*)
-  (/= (limiter-data-limit (limiter-data kernel))
-      (%kernel-worker-count kernel)))
 
 (defun/type update-task-count/no-lock (kernel delta) (kernel fixnum) t
   (declare #.*full-optimize*)

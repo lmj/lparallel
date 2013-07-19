@@ -256,6 +256,7 @@ A kernel will not be garbage collected until `end-kernel' is called."
                                 :bindings bindings
                                 :context (ensure-function context)
                                 :name name)
+                  :use-caller-p (to-boolean use-caller)
                   :alivep t
                   :limiter-data (funcall *make-limiter-data*
                                          worker-count
@@ -444,10 +445,11 @@ each worker."
         #())))
 
 (defun kernel-info (kernel)
-  (with-kernel-slots (worker-info alivep) kernel
+  (with-kernel-slots (worker-info alivep use-caller-p) kernel
     (with-worker-info-slots (name) worker-info
       (nconc (list :name name
                    :worker-count (%kernel-worker-count kernel)
+                   :use-caller use-caller-p
                    :alive alivep)
              #+lparallel.with-stealing-scheduler
              (with-scheduler-slots (spin-count) (scheduler kernel)
