@@ -53,13 +53,12 @@
    "Attempted to redefine a node's function."))
 
 (define-condition ptree-undefined-function-error (ptree-error)
-  ((refs :initarg :refs :reader ptree-error-refs))
+  ((refs :initarg :refs :initform nil :reader ptree-error-refs))
   (:report
    (lambda (err stream)
-     (format stream
-             "Function not found in ptree: ~a~%Referenced by: ~{~a ~}"
-             (ptree-error-id err)
-             (ptree-error-refs err))))
+     (format stream "Function not found in ptree: ~a" (ptree-error-id err))
+     (when-let (refs (ptree-error-refs err))
+       (format stream "~%Referenced by: ~{~a~^ ~}" refs))))
   (:documentation
    "Attempted to execute a node which had no function."))
 
