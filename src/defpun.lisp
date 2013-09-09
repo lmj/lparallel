@@ -63,18 +63,15 @@
         ,fail-tag
           (return-from ,top ,fail)))))
 
-(defun has-lambda-list-keyword-p (list)
-  (some (lambda (elem) (find elem lambda-list-keywords)) list))
-
-(defmacro defun/wrapper (wrapper-name impl-name params &body body)
+(defmacro defun/wrapper (wrapper-name impl-name lambda-list &body body)
   (with-gensyms (args kernel)
-    (multiple-value-bind (wrapper-params expansion)
-        (if (has-lambda-list-keyword-p params)
+    (multiple-value-bind (wrapper-lambda-list expansion)
+        (if (intersection lambda-list lambda-list-keywords)
             (values `(&rest ,args)
                     ``(apply (function ,',impl-name) ,,kernel ,',args))
-            (values params
-                    ``(,',impl-name ,,kernel ,@',params)))
-      `(defun ,wrapper-name ,wrapper-params
+            (values lambda-list
+                    ``(,',impl-name ,,kernel ,@',lambda-list)))
+      `(defun ,wrapper-name ,wrapper-lambda-list
          (macrolet ((call-impl (,kernel) ,expansion))
            ,@body)))))
 
@@ -422,7 +419,7 @@
         (values-list (receive-result channel)))))
 
 (defmacro define-defpun (defpun doc defun &rest types)
-  `(defmacro ,defpun (name params ,@types &body body)
+  `(defmacro ,defpun (name lambda-list ,@types &body body)
      ,doc
      (with-parsed-body (body declares docstring)
        (with-lock-held (*registration-lock*)
@@ -432,7 +429,7 @@
          (register-name name)
          (with-gensyms (kernel)
            `(progn
-              (,',defun ,(unchecked-name name) (,kernel ,@params)
+              (,',defun ,(unchecked-name name) (,kernel ,@lambda-list)
                   ,,@(unsplice (when types ``(kernel ,@,(first types))))
                   ,,@(unsplice (when types (second types)))
                 ,@declares
@@ -445,7 +442,7 @@
                                 ,@body))
                            ,@(registered-macrolets kernel))
                   ,@body))
-              (defun/wrapper ,name ,(unchecked-name name) ,params
+              (defun/wrapper ,name ,(unchecked-name name) ,lambda-list
                 ,@(unsplice docstring)
                 (let ((,kernel (check-kernel)))
                   (if (use-caller-p ,kernel)
