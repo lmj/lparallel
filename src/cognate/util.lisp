@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.cognate)
 
-(import-now alexandria:remove-from-plist)
-
 (defun zip/vector (seqs)
   (apply #'map 'vector (lambda (&rest args) args) seqs))
 

@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.cognate)
 
+(import-now alexandria:remove-from-plist)
+
 (defun premove-if-not/list (test list from-end start end key parts)
   (let* ((size (length list))
          (subsize (subsize list size start end)))

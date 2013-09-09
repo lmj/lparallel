@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.cognate)
 
+(import-now alexandria:remove-from-plist)
+
 (defmacro with-preduce-context (size parts &body body)
   (with-gensyms (results)
     `(with-parts ,size ,parts
