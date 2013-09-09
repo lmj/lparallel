@@ -63,14 +63,14 @@
    "Attempted to execute a node which had no function."))
 
 (define-condition ptree-lambda-list-keyword-error (ptree-error)
-  ((keyword :initarg :keyword :reader ptree-error-keyword))
+  ((llks :initarg :llks :reader ptree-error-llks))
   (:report
    (lambda (err stream)
      (format stream
-             "Function arguments in PTREE cannot contain lambda list ~
-              keywords:~%Found ~a in the definition of ~a"
-             (ptree-error-keyword err)
-             (ptree-error-id err))))
+             "Function arguments in `ptree' cannot contain lambda list ~
+              keywords.~%In definition of ~a found: ~{~s~^ ~}"
+             (ptree-error-id err)
+             (ptree-error-llks err))))
   (:documentation
    "Lambda list keywords found in function definition."))
 
@@ -325,9 +325,6 @@ If the node is already computed, return the computed result."
                 root
                 (compute-ptree root ptree (check-kernel)))))))))
 
-(defun has-lambda-list-keyword-p (list)
-  (some (lambda (elem) (find elem lambda-list-keywords)) list))
-
 (defmacro ptree (defs &body body)
   "Create a ptree using `flet' syntax.
 
@@ -352,10 +349,8 @@ For each `node-name', a symbol macro is defined which expands to a
       (declare (ignore forms))
       (check-type id symbol)
       (check-type args list)
-      (when-let (keyword (has-lambda-list-keyword-p args))
-        (error 'ptree-lambda-list-keyword-error
-               :id id
-               :keyword keyword))))
+      (when-let (llks (intersection args lambda-list-keywords))
+        (error 'ptree-lambda-list-keyword-error :id id :llks llks))))
   (with-gensyms (tree)
     `(let ((,tree (make-ptree)))
        ,@(loop
