@@ -30,6 +30,8 @@
 
 (in-package #:lparallel-bench)
 
+(import-now alexandria:curry)
+
 ;;;; util
 
 (eval-when (:compile-toplevel :load-toplevel :execute)

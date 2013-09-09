@@ -30,11 +30,11 @@
 
 (in-package #:lparallel-bench)
 
-;;;; helpers
+(import-now alexandria:curry
+            alexandria:compose
+            alexandria:flatten)
 
-(defun curry (fn &rest init-args)
-  (lambda (&rest args)
-    (multiple-value-call fn (values-list init-args) (values-list args))))
+;;;; helpers
 
 (defmacro collecting1 (&body body)
   (with-gensyms (result value)
@@ -42,12 +42,6 @@
        (flet ((collect (,value) (push ,value ,result)))
          ,@body)
        (nreverse ,result))))
-
-(defun compose (&rest fns)
-  (flet ((compose2 (f g) (lambda (x) (funcall g (funcall f x)))))
-    (destructuring-bind (right &rest lefts) (reverse fns)
-      (let ((left (reduce #'compose2 lefts)))
-        (lambda (&rest args) (funcall left (apply right args)))))))
 
 (defun groups-of (n list)
   (loop
@@ -62,9 +56,6 @@
 
 (defun riffle (groups deck)
   (apply #'zip (groups-of (/ (length deck) groups) deck)))
-
-(defun flatten (list)
-  (mapcan (lambda (x) (if (consp x) (flatten x) (list x))) list))
 
 ;;;; wall time
 

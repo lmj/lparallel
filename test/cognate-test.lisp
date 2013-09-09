@@ -30,6 +30,8 @@
 
 (in-package #:lparallel-test)
 
+(import-now alexandria:curry)
+
 (full-test pmap-into-test
   (let ((a (list nil nil nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
