@@ -30,15 +30,15 @@
 
 (in-package #:lparallel.cognate)
 
-(defun pqualifier (qualifier predicate sequences bail)
+(defun pquantifier (quantifier predicate sequences bail)
   (with-parsed-options (sequences size parts-hint)
     (let ((input-parts (make-input-parts sequences size parts-hint)))
       (with-submit-cancelable
         (dosequence (subseqs input-parts)
-          (submit-cancelable 'apply qualifier predicate subseqs))
+          (submit-cancelable 'apply quantifier predicate subseqs))
         (receive-cancelables result
           (when (eq bail (to-boolean result))
-            (return-from pqualifier result))))))
+            (return-from pquantifier result))))))
   (not bail))
 
 (defun pevery (predicate &rest sequences)
@@ -47,7 +47,7 @@ parallel, though not necessarily at the same time. Behavior is
 otherwise indistinguishable from `every'.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
-  (pqualifier #'every (ensure-function predicate) sequences nil))
+  (pquantifier #'every (ensure-function predicate) sequences nil))
 
 (defun psome (predicate &rest sequences)
   "Parallel version of `some'. Calls to `predicate' are done in
@@ -56,7 +56,7 @@ otherwise indistinguishable from `some' except that any non-nil
 predicate comparison result may be returned.
 
 Keyword arguments `parts' and `size' are also accepted (see `pmap')."
-  (pqualifier #'some (ensure-function predicate) sequences t))
+  (pquantifier #'some (ensure-function predicate) sequences t))
 
 (defun pnotevery (predicate &rest sequences)
   "Parallel version of `notevery'. Calls to `predicate' are done in

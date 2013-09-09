@@ -129,7 +129,7 @@ See http://lparallel.org for documentation and examples.
                                               (:file "pmap")
 #-abcl                                        (:file "pmap-open-coded")
                                               (:file "pdotimes")
-                                              (:file "pqualifier")
+                                              (:file "pquantifier")
                                               (:file "preduce")
                                               (:file "premove")
                                               (:file "pfind")
