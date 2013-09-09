@@ -30,28 +30,25 @@
 
 (in-package #:lparallel.util)
 
-(defun has-lambda-keywords-p (list)
-  (some (lambda (p) (find p lambda-list-keywords)) list))
-
 (defun constrain-return-type (return-type)
   (if (and (consp return-type)
            (eq 'values (first return-type)))
-      (if (has-lambda-keywords-p return-type)
+      (if (intersection return-type lambda-list-keywords)
           return-type
           (append return-type '(&optional)))
       `(values ,return-type &optional)))
 
 #-lparallel.with-debug
 (progn
-  (defmacro defun/inline (name params &body body)
+  (defmacro defun/inline (name lambda-list &body body)
     "Shortcut for
        (declaim (inline foo))
        (defun foo ...)."
     `(progn
        (declaim (inline ,name))
-       (defun ,name ,params ,@body)))
+       (defun ,name ,lambda-list ,@body)))
 
-  (defmacro defun/type (name params arg-types return-type &body body)
+  (defmacro defun/type (name lambda-list arg-types return-type &body body)
     "Shortcut for
        (declaim (ftype (function arg-types return-type) foo)
        (defun foo ...).
@@ -60,41 +57,42 @@
     (with-parsed-body (body declares docstring)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
-         (defun ,name ,params
+         (defun ,name ,lambda-list
            ,@(unsplice docstring)
            ,@declares
            ;; for a simple arg list, also declare types
-           ,@(when (not (has-lambda-keywords-p params))
+           ,@(when (not (intersection lambda-list lambda-list-keywords))
                (loop
                   :for type  :in arg-types
-                  :for param :in params
+                  :for param :in lambda-list
                   :collect `(declare (type ,type ,param))))
            (the ,return-type (progn ,@body))))))
 
-  (defmacro defun/type/inline (name params arg-types return-type &body body)
+  (defmacro defun/type/inline (name lambda-list arg-types return-type
+                               &body body)
     `(progn
        (declaim (inline ,name))
-       (defun/type ,name ,params ,arg-types ,return-type ,@body))))
+       (defun/type ,name ,lambda-list ,arg-types ,return-type ,@body))))
 
 ;;; Since return types are not always checked, check manually.
 #+lparallel.with-debug
 (progn
-  (defmacro defun/type (name params arg-types return-type &body body)
+  (defmacro defun/type (name lambda-list arg-types return-type &body body)
     (setf return-type (constrain-return-type return-type))
     (with-parsed-body (body declares docstring)
       `(progn
          (declaim (ftype (function ,arg-types ,return-type) ,name))
-         (defun ,name ,params
+         (defun ,name ,lambda-list
            ,@(unsplice docstring)
            ,@declares
            ;; for a simple arg list, check types
-           ,@(when (not (has-lambda-keywords-p params))
+           ,@(when (not (intersection lambda-list lambda-list-keywords))
                (loop
                   :for type  :in arg-types
-                  :for param :in params
+                  :for param :in lambda-list
                   :collect `(check-type ,param ,type)))
            ;; for a simple values list, check types
-           ,(if (has-lambda-keywords-p (mklist return-type))
+           ,(if (intersection (mklist return-type) lambda-list-keywords)
                 `(progn ,@body)
                 (let* ((return-types (if (and (consp return-type)
                                               (eq 'values (car return-type)))
