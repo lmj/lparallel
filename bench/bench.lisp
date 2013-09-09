@@ -128,7 +128,7 @@ argument lists are applied successively.
 
 When benchmarks are complete, the rehearsals are discarded and the
 results are riffled for comparison."
-  (mapcar 'print-chunk
+  (mapc 'print-chunk
    (mapcar 'flatten
     (riffle num-fns
      (mapcar (curry 'nthcdr num-rehearsals)
