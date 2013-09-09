@@ -2,6 +2,15 @@
 lparallel Changes
 =================
 
+= 2.4.3
+
+* worked around ECL compiler bug (note the repository ECL is still
+  needed for bordeaux-threads, and ECL still has threading bugs)
+* removed sbcl-1.1.6 workaround; this version is now prohibited
+* ptree-lambda-list-keyword-error now reports all lambda list keywords
+* fixed unbound slot error during ptree-undefined-function-error
+  report when ptree-computed-p or call-ptree passed a nonexistent node
+
 = 2.4.2
 
 * printed kernel now shows :use-caller status
