@@ -33,6 +33,7 @@
 (import-now alexandria:simple-style-warning)
 
 (defun/type/inline midpoint (a b) (fixnum fixnum) fixnum
+  (declare #.*full-optimize*)
   (+ a (the fixnum (ash (the fixnum (- b a)) -1))))
 
 ;;;
