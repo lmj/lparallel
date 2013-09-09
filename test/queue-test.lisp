@@ -39,7 +39,7 @@
                              queue-empty-p
                              queue-count
                              peek-queue)
-  `(lp-base-test ,name
+  `(base-test ,name
      (let ((q (,make-queue)))
        (is (eq t (,queue-empty-p q)))
        (multiple-value-bind (a b) (,try-pop-queue q)
@@ -119,7 +119,7 @@
   :queue-count   vector-queue-count
   :peek-queue    peek-vector-queue)
 
-(lp-base-test vector-queue-blocking-test
+(base-test vector-queue-blocking-test
   (loop :for n :from 1 :to 10 :do
      (let ((queue (make-vector-queue n)))
        (repeat n
@@ -139,7 +139,7 @@
 
 (defmacro define-grind-queue (name
                               &key make-queue push-queue pop-queue queue-count)
-  `(lp-base-test ,name
+  `(base-test ,name
      (let ((obj-count *grind-queue-count*)
            (iter-count 2))
        (with-thread-count-check
@@ -216,7 +216,7 @@
     :pop-queue   lparallel.biased-queue:pop-biased-queue
     :queue-count lparallel.biased-queue:biased-queue-count)
 
-(lp-base-test fixed-capacity-queue-test
+(base-test fixed-capacity-queue-test
   (loop
      :for n :from 1 :to 10
      :do (let ((queue (make-queue :fixed-capacity n)))
@@ -235,7 +235,7 @@
                (sleep 0.1)
                (is (not (null pushedp))))))))
 
-(lp-base-test queue-initial-contents-test
+(base-test queue-initial-contents-test
   (let ((q (make-queue :initial-contents '(3 4 5))))
     (is (= 3 (pop-queue q)))
     (is (= 4 (pop-queue q)))

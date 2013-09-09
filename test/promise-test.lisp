@@ -30,7 +30,7 @@
 
 (in-package #:lparallel-test)
 
-(lp-test futures-test
+(full-test futures-test
   (let ((a (future 3))
         (b (future 4)))
     (is (= 7 (+ (force a) (force b)))))
@@ -49,7 +49,7 @@
     (is (eq nil (fulfill a 9)))
     (is (= 3 (force a)))))
 
-(lp-test promises-test
+(full-test promises-test
   (let ((a (promise))
         (b (promise)))
     (fulfill a 3)
@@ -60,7 +60,7 @@
     (is (eq nil (fulfill a 4)))
     (is (= 3 (force a)))))
 
-(lp-test fulfill-chain-test
+(full-test fulfill-chain-test
   (let ((a (promise))
         (b (promise)))
     (fulfill a (chain (future 5)))
@@ -77,13 +77,13 @@
     (is (eql 3 (force b)))
     (is (eql 3 (force a)))))
 
-(lp-test force-chain-test
+(full-test force-chain-test
   (let ((f (delay (chain (delay 3)))))
     (is (= 3 (force f))))
   (let ((f (delay (chain (delay (chain (delay 3)))))))
     (is (= 3 (force f)))))
 
-(lp-test nested-chain-test
+(full-test nested-chain-test
   (is (equal '(3 4 5)
              (multiple-value-list
               (force (chain (speculate (chain (speculate (values 3 4 5)))))))))
@@ -102,7 +102,7 @@
                (multiple-value-list
                 (force (chain (future (chain f)))))))))
 
-(lp-base-test speculations-test
+(base-test speculations-test
   (setf *memo* (make-queue))
   (with-new-kernel (2)
     (sleep 0.2)
@@ -115,7 +115,7 @@
     (is (eql 4 (pop-queue *memo*)))
     (is (eql 3 (pop-queue *memo*)))))
 
-(lp-test flood-test
+(full-test flood-test
   (let* ((a (promise))
          (futures (collect-n 100 (future (force a)))))
     (is (notany #'fulfilledp futures))
@@ -127,7 +127,7 @@
     (is (every (lambda (x) (= x 4)) (mapcar #'force futures)))))
 
 (defmacro define-force-test (defer)
-  `(lp-test ,(intern (concatenate
+  `(full-test ,(intern (concatenate
                       'string (string defer) (string '#:-force-test)))
      (let ((a (,defer (+ 3 4))))
        (is (= 7 (force a))))
@@ -152,7 +152,7 @@
 (define-force-test speculate)
 (define-force-test delay)
 
-(lp-test sequential-force-test
+(full-test sequential-force-test
   (repeat 100
     (let* ((a (future 3))
            (b (future (force a)))
@@ -162,7 +162,7 @@
       (is (= 3 (force e))))))
 
 (defmacro define-big-sequential ()
-  `(lp-test big-sequential-test
+  `(full-test big-sequential-test
      ,(loop
          :with vars := (collect-n 100 (gensym))
          :for (a b) :on vars
@@ -172,7 +172,7 @@
 
 (define-big-sequential)
 
-(lp-test future-recursion-test
+(full-test future-recursion-test
   (labels ((fib (n)
              (if (< n 2)
                  n
@@ -181,7 +181,7 @@
                    (+ (force f1) f2)))))
     (is (= 144 (fib 12)))))
 
-(lp-test multiple-value-test
+(full-test multiple-value-test
   (let ((x (promise)))
     (fulfill x (values 3 4 5))
     (multiple-value-bind (p q r) (force x)
@@ -201,7 +201,7 @@
       (is (= 4 q))
       (is (= 5 r)))))
 
-(lp-test future-restart-test
+(full-test future-restart-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-restart 'eleven))))
@@ -216,7 +216,7 @@
            (y (future (force x))))
       (is (eql 11 (force y))))))
 
-(lp-test speculation-restart-test
+(full-test speculation-restart-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-restart 'eleven))))
@@ -231,7 +231,7 @@
            (y (force x)))
       (is (eql 11 (force y))))))
 
-(lp-test future-store-value-test
+(full-test future-store-value-test
   (task-handler-bind ((error (lambda (e)
                                (invoke-restart 'transfer-error e))))
     (handler-bind ((foo-error (lambda (e)
@@ -241,7 +241,7 @@
         (sleep 0.1)
         (is (equal '(3 4) (multiple-value-list (force x))))))))
 
-(lp-base-test multi-future-store-value-test
+(base-test multi-future-store-value-test
   ;; verify STORE-VALUE is thread-safe
   (loop
      :for n :from 1 :to 64
@@ -269,7 +269,7 @@
                                :collect (receive-result channel))))
                (is (every #'= results (rest results))))))))
 
-(lp-base-test abort-future-test
+(base-test abort-future-test
   (handler-bind ((warning (lambda (w)
                             (when-let (r (find-restart 'muffle-warning w))
                               (invoke-restart r)))))
@@ -290,7 +290,7 @@
             (signals task-killed-error
               (force future))))))))
 
-(lp-base-test canceling-test
+(base-test canceling-test
   (with-new-kernel (2)
     (sleep 0.1)
     (let* ((a (promise))
@@ -313,7 +313,7 @@
         (sleep 0.2)
         (is (not (fulfilledp a)))))))
 
-(lp-base-test error-during-stealing-force-test
+(base-test error-during-stealing-force-test
   (with-new-kernel (2)
     ;; occupy workers
     (future (sleep 0.4))
@@ -338,7 +338,7 @@
       (is (= 1 call-count))
       (is (= 3 handle-count)))))
 
-(lp-base-test error-during-stealing-force-2-test
+(base-test error-during-stealing-force-2-test
   (with-new-kernel (2)
     ;; occupy workers
     (future (sleep 0.4))
@@ -353,7 +353,7 @@
                    (nine () 9))))))
       (is (eql 9 (force f))))))
 
-(lp-base-test non-promise-test
+(base-test non-promise-test
   (dolist (obj (list 3 4.0 'foo (cons nil nil)))
     (is (fulfilledp obj))
     (is (eql obj (force obj)))

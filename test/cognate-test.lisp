@@ -30,7 +30,7 @@
 
 (in-package #:lparallel-test)
 
-(lp-test pmap-into-test
+(full-test pmap-into-test
   (let ((a (list nil nil nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
     (is (equal '(15 17 19) a))
@@ -60,7 +60,7 @@
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equalp #(15) a))))
 
-(lp-test degenerate-pmaps-test
+(full-test degenerate-pmaps-test
   (is (eq (map  nil #'identity '(0 1 2 3))
           (pmap nil #'identity '(0 1 2 3))))
   (is (eq (map  nil 'identity '(0 1 2 3))
@@ -90,7 +90,7 @@
   (is (equal (mapl  'identity '(0 1 2 3))
              (pmapl 'identity :parts 4 '(0 1 2 3)))))
 
-(lp-test pmap-nil-test
+(full-test pmap-nil-test
   (loop
      :for n :in '(0 1 2 3 4 5 6 7 8 9 10 100 1000)
      :do (let ((a (loop :for x :from 0 :repeat n :collect x))
@@ -100,19 +100,19 @@
            (is (equal (sort (extract-queue q) #'<)
                       (loop :for x :from 0 :repeat n :collect (* 3 x)))))))
 
-(lp-test pmapcar-test
+(full-test pmapcar-test
   (is (equal '(15 17 19)
              (pmapcar '+ '(5 6 7) '(10 11 12))))
   (is (equal '(15 17 19)
              (pmapcar '+ :parts 3 '(5 6 7) '(10 11 12)))))
 
-(lp-test pmapcar-handles-sequences-test
+(full-test pmapcar-handles-sequences-test
   (is (equal (mapcar  '+ '(1 2 3) '(4 5 6))
              (pmapcar '+ '(1 2 3) #(4 5 6))))
   (is (equal (mapcar  '+ '(1 2 3) '(4 5 6))
              (pmapcar '+ :parts 3 '(1 2 3) #(4 5 6)))))
 
-(lp-test grind-pmap-test
+(full-test grind-pmap-test
   (flet ((f (x y z)
            (* x y z)))
     (let* ((lists (collect-n 3
@@ -157,11 +157,11 @@
       (is (equal (mapcon  (lambda (x) (list (car x))) (list 3 4 5 6 7 8))
                  (pmapcon (lambda (x) (list (car x))) (list 3 4 5 6 7 8)))))))
 
-(lp-test pmaplist-test
+(full-test pmaplist-test
   (is (equalp (maplist  #'vector '(a b c) '(1 2 3))
               (pmaplist #'vector '(a b c) '(1 2 3)))))
 
-(lp-test grind-pmaplist-test
+(full-test grind-pmaplist-test
   (let* ((lists (collect-n 2 (collect-n 100 (random 100))))
          (expected (apply #'maplist #'vector lists)))
     (is (equalp expected
@@ -181,7 +181,7 @@
                      #'cadr
                      (sort (extract-queue *memo*) '< :key #'caar))))))
 
-(lp-test preduce-partial-test
+(full-test preduce-partial-test
   (signals simple-error
     (preduce-partial #'+ #() :initial-value 0))
   (signals simple-error
@@ -199,7 +199,7 @@
   (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3)
               #(7 11 15))))
 
-(lp-test grind-preduce-test
+(full-test grind-preduce-test
   (is (= 3
          (reduce  (lambda () 3) nil)
          (preduce (lambda () 3) nil)))
@@ -299,7 +299,7 @@
       (is (equal (+ 9 16 25)
                  (pmap-reduce (lambda (x) (* x x)) #'+ '(3 4 5)))))))
 
-(lp-test grind-pevery-test
+(full-test grind-pevery-test
   (flet ((verify (&rest args)
            (loop
               :for (regular parallel) :in '((some     psome)
@@ -323,7 +323,7 @@
       (verify (lambda (x y) (< (+ x y)   0)) a b)
       (verify (lambda (x y) (> (+ x y)   0)) a b))))
 
-(lp-test parts-arg-test
+(full-test parts-arg-test
   (flet ((sq (x) (* x x)))
     (loop
        :for parts :from 1 :to 8
@@ -377,13 +377,13 @@
                (plet ((a 3)
                       (b (funcall *memo*)))
                  (assert (= 7 (+ a b))))))))
-     (lp-test ,test-name
+     (full-test ,test-name
        (,fn-name)
        (is (= 1 1)))))
 
 (define-plet-test plet-test plet-test-fn defun t)
 
-(lp-base-test plet-if-test
+(base-test plet-if-test
   (setf *memo* 0)
   (plet-if (plusp *memo*)
       ((a 3))
@@ -393,7 +393,7 @@
         ((a 3))
       (is (= 3 a)))))
 
-(lp-test plet-type-declaration-test
+(full-test plet-type-declaration-test
   (plet ((x 3))
     (declare (type t x))
     (is (= 3 x)))
@@ -426,7 +426,7 @@
 
 ;;; abcl has incomplete subtypep and no declaration-information
 #-abcl
-(lp-base-test plet-type-warning-test
+(base-test plet-type-warning-test
   (signals warning
     (macroexpand '(plet ((x 3))
                    (declare (fixnum a))
@@ -441,7 +441,7 @@
                    (declare (type fixnum b))
                    (is (= 3 x))))))
 
-(lp-test pand-por-test
+(full-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
   (is (null (pand 3 4 nil 5 6)))
   (is (null (pand nil 3 4 5 6)))
@@ -467,7 +467,7 @@
     (sleep 0.4)
     (is (null (pand (progn (sleep 0.2) 3) nil 4)))))
 
-(lp-test psort-test
+(full-test psort-test
   ;; abcl workarounds for worse-case sort bug
   (dolist (granularity '(nil 1 5 100))
     (dolist (size #-lparallel.with-green-threads '(1 5 10 100 10000)
@@ -547,7 +547,7 @@
         (is (equalp ( sort a #'>)
                     (psort b #'> :granularity granularity)))))))
 
-(lp-test premove-if-test
+(full-test premove-if-test
   (loop
      :for size :below 100
      :for where := (random 1.0)
@@ -555,7 +555,7 @@
      :do (is (equal (remove-if  (curry #'< where) source)
                     (premove-if (curry #'< where) source)))))
 
-(lp-test second-premove-if-test
+(full-test second-premove-if-test
   (loop
      :for (std par) :in '((remove-if-not premove-if-not)
                           (remove-if     premove-if))
@@ -578,7 +578,7 @@
                              (funcall par (curry #'< where) a
                                       :start 20 :end 77)))))))
 
-(lp-test premove-test
+(full-test premove-test
   (loop
      :for size :below 100
      :for where := (random 1.0)
@@ -618,7 +618,7 @@
 
 (define-condition foo-warning (warning) ())
 
-(lp-base-test worker-context-test
+(base-test worker-context-test
   (flet ((my-worker-context (fn)
            (handler-bind ((warning (lambda (e)
                                      (declare (ignore e))
@@ -636,7 +636,7 @@
                                '(3 3)))))
         (is (equal '(6 6) result))))))
 
-(lp-test cognate-handler-test
+(full-test cognate-handler-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-restart 'something-else 3))))
@@ -650,7 +650,7 @@
                               z)))
                         '(0 1))))))
 
-(lp-test pmap-handler-test
+(full-test pmap-handler-test
   (task-handler-bind ((foo-error
                        (lambda (e) (invoke-restart 'transfer-error e))))
     (signals foo-error
@@ -659,7 +659,7 @@
                  (error 'foo-error))
                '(3 4 5 6)))))
 
-(lp-test pmap-restart-test
+(full-test pmap-restart-test
   (task-handler-bind
       ((foo-error (lambda (e)
                     (declare (ignore e))
@@ -672,7 +672,7 @@
                               3)))
                         '(0 0))))))
 
-(lp-test pmap-into-bounds-test
+(full-test pmap-into-bounds-test
   (dotimes (i 3)
     (dotimes (j (1+ i))
       (let ((contents (collect-n i (random 1000))))
@@ -686,7 +686,7 @@
                 (is (equalp a b))
                 (is (equalp c d))))))))))
 
-(lp-test pmap-with-size-constraint-test
+(full-test pmap-with-size-constraint-test
   (is (equal '(2 11)
              (pmapcar '1+ :size 2 '(1 10 100 1000))))
   (is (equal '(2 11)
@@ -712,7 +712,7 @@
                             :size 2
                             '(1 10 100 1000)))))
 
-(lp-test pmap-into-list-test
+(full-test pmap-into-list-test
   (dotimes (m 10)
     (dotimes (n 10)
       (let* ((src (make-list m :initial-element 'src))
@@ -725,7 +725,7 @@
         (is (eq b res-b))
         (is (equal a b))))))
 
-(lp-test pmap-into-degenerate-input-test
+(full-test pmap-into-degenerate-input-test
   (is (equalp #()
               (map-into  (vector) (constantly 99))))
   (is (equalp #()
@@ -755,7 +755,7 @@
   (is (equal '(99 99 99 99)
              (pmap-into (list 1 2 3 4) (constantly 99) :size 4))))
 
-(lp-test pmaplist-into-degenerate-input-test
+(full-test pmaplist-into-degenerate-input-test
   (is (equal '()
              (pmaplist-into (list) (constantly 99))))
   (is (equal '(99 99)
@@ -767,7 +767,7 @@
   (is (equal '(99 99 99 99)
              (pmaplist-into (list 1 2 3 4) (constantly 99) :size 4))))
 
-(lp-test pfuncall-test
+(full-test pfuncall-test
   (is (= 7 (pfuncall '+ 3 4)))
   (let ((memo (make-queue)))
     (is (= 7 (pfuncall
@@ -777,7 +777,7 @@
     (sleep 0.3)
     (is (= 2 (queue-count memo)))))
 
-(lp-test pcount-if-test
+(full-test pcount-if-test
   (is (zerop (pcount-if 'non-function '())))
   (is (zerop (pcount-if 'non-function #())))
   (signals error
@@ -789,7 +789,7 @@
      :do (is (equal (count-if  (curry #'< where) source)
                     (pcount-if (curry #'< where) source)))))
 
-(lp-test second-pcount-if-test
+(full-test second-pcount-if-test
   (loop
      :for (std par) :in '((count-if-not pcount-if-not)
                           (count-if     pcount-if))
@@ -812,7 +812,7 @@
                              (funcall par (curry #'< where) a
                                       :start 20 :end 77)))))))
 
-(lp-test pcount-test
+(full-test pcount-test
   (loop
      :for size :from 1 :below 100
      :for where := (random 1.0)
@@ -850,7 +850,7 @@
                            :adjustable t
                            :initial-contents (list 3 4 x 4 9 x 2)))))))
 
-(lp-test pfind-if-test
+(full-test pfind-if-test
   (signals error (pfind-if 'non-function '()))
   (signals error (pfind-if 'non-function #()))
   (signals error (pfind-if 'non-function '() :start 2))
@@ -872,7 +872,7 @@
      :do (is (eql (find-if  (curry #'eql 999) source)
                   (pfind-if (curry #'eql 999) source)))))
 
-(lp-test second-pfind-if-test
+(full-test second-pfind-if-test
   (loop
      :for (std par) :in '((find-if pfind-if))
      :do (loop
@@ -896,7 +896,7 @@
                              (funcall par (curry #'eql target) a
                                       :start 20 :end 77)))))))
 
-(lp-test pfind-test
+(full-test pfind-test
   (signals error
     (pfind 3 '(3 3 3) :test #'eql :test-not #'eql))
   (loop
@@ -934,7 +934,7 @@
                           :initial-contents (list 3 4 x 4 9 x 2)))))))
 
 (defmacro define-pmap-into-edge-test (name decl)
-  `(lp-test ,name
+  `(full-test ,name
      ,@(unsplice decl)
      (is (equalp #(1 2 3)
                  (pmap-into (vector 9 9 9) 'identity (vector 1 2 3))))
@@ -970,7 +970,7 @@
 (define-pmap-into-edge-test
     pmap-into-closed-edge-test (declare (notinline pmap-into)))
 
-(lp-test pmap-compiler-macro-test
+(full-test pmap-compiler-macro-test
   (is (equalp #(1 2 3)
               (pmap 'vector 'identity (vector 1 2 3))))
   (is (equalp #(1 2 3)
@@ -984,7 +984,7 @@
   (is (equalp #(1 2 3)
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
 
-(lp-test pmap-compiler-macro-parts-test
+(full-test pmap-compiler-macro-parts-test
   (dotimes (parts 25)
     (let ((src (make-array
                 20 :initial-contents (loop :for i :below 20 :collect i)))
@@ -993,7 +993,7 @@
       (is (equalp src (pmap-into dst 'identity src)))
       (is (equalp src dst)))))
 
-(lp-test pmap-notinline-test
+(full-test pmap-notinline-test
   (declare (notinline pmap))
   (is (equalp #(1 2 3)
               (pmap 'vector 'identity (vector 1 2 3))))
@@ -1008,7 +1008,7 @@
   (is (equalp #(1 2 3)
               (pmap '(array fixnum (*)) 'identity (vector 1 2 3)))))
 
-(lp-test cognate-steal-test
+(full-test cognate-steal-test
   (let ((channel (make-channel)))
     (submit-task channel
                  (lambda ()
@@ -1035,7 +1035,7 @@
                            (psort b #'<)))))
     (is (apply #'equalp (receive-result channel)))))
 
-(lp-test pdotimes-test
+(full-test pdotimes-test
   (dotimes (n 100)
     (flet ((f (x) (* x x)))
       (let ((a (make-array n))
@@ -1065,7 +1065,7 @@
             (pdotimes (i n (* i i))
               (declare (ignorable i)))))))
 
-(lp-test pdotimes-second-test
+(full-test pdotimes-second-test
   (signals error
     (pdotimes (i 4.0)
       (declare (ignore i))))
@@ -1106,7 +1106,7 @@
       (push-queue i q))
     (is (equal '(0 1 2 3) (sort (extract-queue q) '<)))))
 
-(lp-test function-designators-test
+(full-test function-designators-test
   (is (eql (pcount 3 '(1 2 3) :test 'eql :key 'identity)
            ( count 3 '(1 2 3) :test 'eql :key 'identity)))
   (is (eql (pcount 3 '(1 2 3) :test #'eql :key #'identity)

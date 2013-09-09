@@ -30,7 +30,7 @@
 
 (in-package #:lparallel-test)
 
-(lp-base-test basic-threading-test
+(base-test basic-threading-test
   (let ((num-threads 10)
         (num-objects 1000)
         (num-iterations 5)
@@ -53,7 +53,7 @@
     (is (= 0 (queue-count from-workers)))
     (is (= 0 (queue-count to-workers)))))
 
-(lp-base-test thread-bindings-test
+(base-test thread-bindings-test
   (setf *memo* :main)
   (with-thread ()
     (setf *memo* :child))
@@ -67,7 +67,7 @@
   (is (eq :main *memo*)))
 
 #-lparallel.without-kill
-(lp-base-test destroy-thread-cleanup-test
+(base-test destroy-thread-cleanup-test
   (let* ((cleanedp nil)
          (thread (with-thread ()
                    (unwind-protect (sleep 999999)

@@ -52,7 +52,7 @@
         (assert (eq :inner (pop-queue queue)))))
 
 #-lparallel.with-green-threads
-(lp-base-test defpun-accept-test
+(base-test defpun-accept-test
   (with-new-kernel (3)
     (sleep 0.1)
     (defpun-accept)
@@ -80,7 +80,7 @@
     (assert (eq :outer (pop-queue queue)))))
 
 #-lparallel.with-green-threads
-(lp-base-test defpun-reject-test
+(base-test defpun-reject-test
   (with-new-kernel (2)
     (sleep 0.1)
     (defpun-reject)
@@ -107,7 +107,7 @@
                         (b (fib-plet-if (- n 2))))
         (+ a b))))
 
-(lp-test defpun-fib-test
+(full-test defpun-fib-test
   (loop
      :for n :from 1 :to 15
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))
@@ -135,14 +135,14 @@
                         (b (fib-plet-if/type (- n 2))))
         (+ a b))))
 
-(lp-test defpun/type-fib-test
+(full-test defpun/type-fib-test
   (loop
      :for n :from 1 :to 15
      :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
 
 ;;; redefinitions
 
-(lp-base-test redefined-defpun-test
+(base-test redefined-defpun-test
   (with-new-kernel (2)
     (setf *memo* 'foo)
     (handler-bind ((warning #'muffle-warning))
@@ -164,7 +164,7 @@
   (plet ((y (* x x)))
     (* x y)))
 
-(lp-test declaim-defpun-test
+(full-test declaim-defpun-test
   (is (= 81 (func2 3))))
 
 ;;; lambda list keywords
@@ -176,7 +176,7 @@
              (y (foo-append :left (rest left) :right right)))
         (cons x y))))
 
-(lp-test defpun-lambda-list-keywords-test
+(full-test defpun-lambda-list-keywords-test
   (is (equal '(1 2 3 4 5 6 7)
              (foo-append :left '(1 2 3) :right '(4 5 6 7))))
   (is (equal '(1 2 3)

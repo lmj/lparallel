@@ -30,26 +30,26 @@
 
 (in-package #:lparallel-test)
 
-(lp-test kernel-test
+(full-test kernel-test
   (let ((channel (make-channel)))
     (mapcar (lambda (x) (submit-task channel (lambda () (* x x))))
             (list 5 6 7 8))
     (is (equal (list 25 36 49 64)
                (sort (collect-n 4 (receive-result channel)) '<)))))
 
-(lp-test no-kernel-test
+(full-test no-kernel-test
   (let ((*kernel* nil))
     (signals no-kernel-error
       (submit-task (make-channel) (lambda ())))))
 
-(lp-base-test end-kernel-test
+(base-test end-kernel-test
   (repeat 10
     (loop
        :for n :from 1 :below 32
        :do (with-new-kernel (n)
              (is (= 1 1))))))
 
-(lp-test many-task-test
+(full-test many-task-test
   (let ((channel (make-channel)))
     (repeat 1000
       (submit-task channel (lambda ()))
@@ -69,7 +69,7 @@
       (is (null (receive-result channel))))))
 
 #-lparallel.without-kill
-(lp-base-test kill-during-end-kernel-test
+(base-test kill-during-end-kernel-test
   (let* ((*kernel* (make-kernel 2))
          (kernel *kernel*)
          (out *standard-output*)
@@ -102,7 +102,7 @@
       (is (eq t (peek-queue finished)))
       (is (not (null thread))))))
 
-(lp-test channel-capacity-test
+(full-test channel-capacity-test
   (let ((channel (make-channel :fixed-capacity 1)))
     (submit-task channel (lambda () 3))
     (submit-task channel (lambda () 4))
@@ -115,7 +115,7 @@
                              (receive-result channel))
                        #'<))))))
 
-(lp-test try-receive-test
+(full-test try-receive-test
   (let ((channel (make-channel)))
     (multiple-value-bind (a b) (try-receive-result channel)
       (is (null a))
@@ -129,7 +129,7 @@
       (is (null a))
       (is (null b)))))
 
-(lp-test kernel-client-error-test
+(full-test kernel-client-error-test
   (task-handler-bind ((client-error #'invoke-transfer-error))
     (let ((channel (make-channel)))
       (submit-task channel (lambda () (error 'client-error)))
@@ -152,7 +152,7 @@
       (signals foo-error
         (receive-result channel)))))
 
-(lp-test user-restart-test
+(full-test user-restart-test
   (task-handler-bind
       ((foo-error (lambda (e)
                     (declare (ignore e))
@@ -172,7 +172,7 @@
                                (eleven () 11))))
       (is (eql 11 (receive-result channel))))))
 
-(lp-test error-cascade-test
+(full-test error-cascade-test
   (task-handler-bind
       ((error (lambda (e)
                 (invoke-restart 'transfer-error e))))
@@ -185,7 +185,7 @@
         (signals foo-error
           (receive-result channel))))))
 
-(lp-base-test kernel-worker-context-test
+(base-test kernel-worker-context-test
   (with-new-kernel (2 :context (lambda (run)
                                  (let ((*memo* 9))
                                    (funcall run))))
@@ -195,7 +195,7 @@
       (is (eql 9 (receive-result channel)))
       (is (eql 7 *memo*)))))
 
-(lp-base-test kernel-binding-test
+(base-test kernel-binding-test
   (unwind-protect
        (progn
          (end-kernel)
@@ -215,7 +215,7 @@
       (is (eq :worker (receive-result channel)))
       (is (eq :main *memo*)))))
 
-(lp-base-test task-categories-test
+(base-test task-categories-test
   (with-new-kernel (2)
     (is (notany #'identity (task-categories-running)))
     (let ((channel (make-channel)))
@@ -242,7 +242,7 @@
       (sleep 0.2)
       (is (eql 2 (count :foo (task-categories-running)))))))
 
-(lp-base-test no-kernel-restart-test
+(base-test no-kernel-restart-test
   (let ((*kernel* nil))
     (unwind-protect
          (let ((flag nil))
@@ -258,7 +258,7 @@
              (is (eq :called flag))))
       (end-kernel))))
 
-(lp-base-test kernel-warnings-test
+(base-test kernel-warnings-test
   (let ((*error-output* (make-string-output-stream)))
     (with-new-kernel (3)
       (is (zerop (length (get-output-stream-string *error-output*))))
@@ -267,7 +267,7 @@
         (receive-result channel))
       (is (search "blah" (get-output-stream-string *error-output*))))))
 
-(lp-test handler-bind-test
+(full-test handler-bind-test
   (task-handler-bind
       ((foo-error (lambda  (e)
                     (declare (ignore e))
@@ -283,7 +283,7 @@
       (is (equal '(6 6 6)
                  (collect-n 3 (receive-result channel)))))))
 
-(lp-test aborted-worker-test
+(full-test aborted-worker-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-abort-thread))))
@@ -302,7 +302,7 @@
               #'lparallel.kernel::thread
               (lparallel.kernel::workers *kernel*))))
 
-(lp-base-test active-worker-replacement-test
+(base-test active-worker-replacement-test
   (with-thread-count-check
     (with-new-kernel (2)
       (is (all-workers-alive-p))
@@ -318,7 +318,7 @@
       (is (all-workers-alive-p)))))
 
 #-lparallel.without-kill
-(lp-base-test sleeping-worker-replacement-test
+(base-test sleeping-worker-replacement-test
   (with-thread-count-check
     (with-new-kernel (2 :bindings (list (cons '*error-output*
                                               (make-broadcast-stream))))
@@ -337,7 +337,7 @@
 
 (define-condition foo-condition () ())
 
-(lp-test non-error-condition-test
+(full-test non-error-condition-test
   (let ((result nil))
     (task-handler-bind ((foo-condition (lambda (c)
                                          (declare (ignore c))
@@ -349,7 +349,7 @@
     (is (eq :called result))))
 
 #-lparallel.without-kill
-(lp-base-test custom-kill-task-test
+(base-test custom-kill-task-test
   (with-thread-count-check
     (with-new-kernel (2)
       (let ((channel (make-channel)))
@@ -375,7 +375,7 @@
           (is (equal '(survived) regulars)))))))
 
 #-lparallel.without-kill
-(lp-base-test default-kill-task-test
+(base-test default-kill-task-test
   (with-thread-count-check
     (with-new-kernel (2)
       (let ((channel (make-channel)))
@@ -399,7 +399,7 @@
           (is (= 2 (length errors)))
           (is (equal '(survived) regulars)))))))
 
-(lp-base-test submit-timeout-test
+(base-test submit-timeout-test
   (with-new-kernel (2)
     (let ((channel (make-channel)))
       (submit-timeout channel 0.1 'timeout)
@@ -408,7 +408,7 @@
       (is (eq 'timeout (receive-result channel))))))
 
 #-lparallel.without-kill
-(lp-base-test cancel-timeout-test
+(base-test cancel-timeout-test
   (with-new-kernel (2)
     (let* ((channel (make-channel))
            (timeout (submit-timeout channel 999 'timeout)))
@@ -417,7 +417,7 @@
       (is (eq 'a (receive-result channel))))))
 
 #-lparallel.without-kill
-(lp-base-test kill-timeout-test
+(base-test kill-timeout-test
   (with-new-kernel (2)
     (let* ((channel (make-channel))
            (timeout (submit-timeout channel 999 'timeout)))
@@ -429,7 +429,7 @@
 
 (define-condition foo-condition-2 (condition) ())
 
-(lp-test signaling-after-signal-test
+(full-test signaling-after-signal-test
   (let ((q (make-queue)))
     (task-handler-bind ((foo-condition-2 (lambda (c)
                                            (declare (ignore c))
@@ -444,11 +444,11 @@
     (is (equal '(inner outer)
                (extract-queue q)))))
 
-(lp-test print-kernel-test
+(full-test print-kernel-test
   (is (plusp (length (with-output-to-string (s)
                        (print *kernel* s))))))
 
-(lp-base-test end-kernel-wait-test
+(base-test end-kernel-wait-test
   (with-thread-count-check
     (let ((*kernel* (make-kernel 3)))
       (unwind-protect
@@ -456,7 +456,7 @@
              (submit-task channel (lambda () (sleep 1))))
         (is (eql 3 (length (end-kernel :wait t))))))))
 
-(lp-base-test steal-work-test
+(base-test steal-work-test
   (with-new-kernel (2)
     (let ((channel (make-channel)))
       (submit-task channel (lambda () (sleep 0.4)))
@@ -481,7 +481,7 @@
                    *kernel*
                    lparallel.kernel::*worker*))))))
 
-(lp-base-test kernel-store-value-test
+(base-test kernel-store-value-test
   (unwind-protect
        (handler-bind ((no-kernel-error
                        (lambda (e)
@@ -494,7 +494,7 @@
     (end-kernel)))
 
 #-lparallel.without-kill
-(lp-base-test reject-kill-nil-test
+(base-test reject-kill-nil-test
   (with-new-kernel (2)
     (let ((channel (make-channel)))
       (submit-task channel (lambda ()
@@ -506,7 +506,7 @@
       (= 1 (kill-tasks :default)))))
 
 #-lparallel.without-kill
-(lp-test worker-suicide-test
+(full-test worker-suicide-test
   (let ((channel (make-channel)))
     (submit-task channel (lambda ()
                            (setf *error-output* (make-broadcast-stream))
@@ -521,13 +521,13 @@
     (signals task-killed-error
       (receive-result channel))))
 
-(lp-test submit-after-end-kernel-test
+(full-test submit-after-end-kernel-test
   (let ((channel (make-channel)))
     (end-kernel :wait t)
     (signals error
       (submit-task channel (lambda ())))))
 
-(lp-base-test double-end-kernel-test
+(base-test double-end-kernel-test
   (let* ((kernel (make-kernel 2))
          (*kernel* kernel))
     (end-kernel :wait t)
@@ -536,7 +536,7 @@
   ;; got here without an error
   (is (= 1 1)))
 
-(lp-base-test kernel-reader-test
+(base-test kernel-reader-test
   (setf *memo* nil)
   (let ((context (lambda (worker-loop)
                    (let ((*memo* 3))
@@ -560,19 +560,19 @@
 (defun non-funcalling-context (worker-loop)
   (declare (ignore worker-loop)))
 
-(lp-base-test context-error-test
+(base-test context-error-test
   (dolist (n '(1 2 4 8))
     (with-thread-count-check
       (signals kernel-creation-error
         (make-kernel n :context #'aborting-context)))))
 
-(lp-base-test non-funcalling-context-test
+(base-test non-funcalling-context-test
   (dolist (n '(1 2 4 8))
     (with-thread-count-check
       (signals kernel-creation-error
         (make-kernel n :context 'non-funcalling-context)))))
 
-(lp-base-test nonexistent-context-test
+(base-test nonexistent-context-test
   (with-thread-count-check
     (signals error
       (make-kernel 1 :context 'nonexistent-function))))

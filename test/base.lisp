@@ -56,7 +56,7 @@
           (progn ,@body)
        (end-kernel :wait t))))
 
-(defmacro lp-base-test (name &body body)
+(defmacro base-test (name &body body)
   `(progn
      (test ,name
        (format t "~&~a~%" ',name)
@@ -68,9 +68,9 @@
 
 (defvar *last-random-state* nil)
 
-(defmacro lp-test (name &body body)
+(defmacro full-test (name &body body)
   (with-gensyms (body-fn n)
-    `(lp-base-test ,name
+    `(base-test ,name
        (let ((*random-state* (make-random-state t)))
          (setf *last-random-state* (make-random-state *random-state*))
          (dolist (,n '(1 2 4 8 16))

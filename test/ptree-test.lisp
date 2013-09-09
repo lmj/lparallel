@@ -30,7 +30,7 @@
 
 (in-package #:lparallel-test)
 
-(lp-test basic-ptree-test
+(full-test basic-ptree-test
   (ptree ((a (b c) (- b c))
           (b ()    3)
           (c ()    4))
@@ -38,7 +38,7 @@
     (is (= b 3))
     (is (= c 4))))
 
-(lp-test basic-ptree-2-test
+(full-test basic-ptree-2-test
   (ptree ((area   (width height) (* width height))
           (width  (border)       (+ 7 (* 2 border)))
           (height (border)       (+ 5 (* 2 border)))
@@ -52,7 +52,7 @@
     (is (= 1
            border))))
 
-(lp-test basic-ptree-fn-test
+(full-test basic-ptree-fn-test
   (let ((tree (make-ptree)))
     (ptree-fn 'area   '(width height) (lambda (w h) (* w h))       tree)
     (ptree-fn 'width  '(border)       (lambda (b)   (+ 7 (* 2 b))) tree)
@@ -67,7 +67,7 @@
     (is (= 1
            (call-ptree 'border tree)))))
 
-(lp-test ptree-no-double-compute-test
+(full-test ptree-no-double-compute-test
   (let ((tree (make-ptree)))
     (setf *memo* 0)
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
@@ -79,17 +79,17 @@
     (is (= 5 (call-ptree 'x tree)))
     (is (= 1 *memo*))))
 
-(lp-test ptree-lone-fn-test
+(full-test ptree-lone-fn-test
   (ptree ((lone () 7))
     (is (= 7 lone))))
 
-(lp-test ptree-missing-node-test
+(full-test ptree-missing-node-test
   (let ((tree (make-ptree)))
     (ptree-fn 'f '(x) (lambda (x) (* x x)) tree)
     (signals ptree-undefined-function-error
       (call-ptree 'g tree))))
 
-(lp-test ptree-unknown-node-test
+(full-test ptree-unknown-node-test
   (let ((signaledp nil))
     (handler-case
         (task-handler-bind ((error #'invoke-transfer-error))
@@ -109,7 +109,7 @@
                        (sort (copy-list refs) #'string<)))))))
     (is (not (null signaledp)))))
 
-(lp-test missing-ptree-function-test
+(full-test missing-ptree-function-test
   (let ((tree (make-ptree)))
     (ptree-fn 'area   '(width height) (lambda (w h) (* w h))       tree)
     (ptree-fn 'width  '(border)       (lambda (b)   (+ 7 (* 2 b))) tree)
@@ -125,19 +125,19 @@
                      (locally (declare (notinline sort))
                        (sort (copy-list refs) #'string<)))))))))
 
-(lp-test ptree-redefinition-test
+(full-test ptree-redefinition-test
   (signals ptree-redefinition-error
     (let ((tree (make-ptree)))
       (ptree-fn 'foo () (lambda () 3) tree)
       (ptree-fn 'foo () (lambda () 4) tree))))
 
-(lp-test lambda-list-keywords-in-ptree-test
+(full-test lambda-list-keywords-in-ptree-test
   (signals ptree-lambda-list-keyword-error
     (eval '(ptree ((foo (x &optional y) (list x y))))))
   (signals ptree-lambda-list-keyword-error
     (eval '(ptree ((foo (x &REST y) (list x y)))))))
 
-(lp-test error-inside-ptree-function-test
+(full-test error-inside-ptree-function-test
   (let ((memo (make-queue)))
     (task-handler-bind ((foo-error (lambda (e)
                                      (push-queue e memo)
@@ -158,7 +158,7 @@
       :for ,var :from (first ,pair) :to (second ,pair)
       :do (progn ,@body)))
 
-(lp-test grind-ptree-test
+(full-test grind-ptree-test
   (let ((level-range '(1 5))
         (children-range '(1 5))
         (main-iterations 3)
@@ -185,7 +185,7 @@
               (generate-ptree num-levels num-children tree)
               (is (eql count (call-ptree root tree))))))))))
 
-(lp-base-test ptree-node-kernel-test
+(base-test ptree-node-kernel-test
   (let ((*ptree-node-kernel* (make-kernel 2)))
     (unwind-protect
          (with-new-kernel (1)
@@ -203,7 +203,7 @@
       (let ((*kernel* *ptree-node-kernel*))
         (end-kernel)))))
 
-(lp-test ptree-node-id-test
+(full-test ptree-node-id-test
   (let ((tree   (make-ptree))
         (area   (cons nil nil))
         (width  9999)
@@ -218,7 +218,7 @@
     (is (= 7  (call-ptree height tree)))
     (is (= 1  (call-ptree border tree)))))
 
-(lp-test ptree-basic-restart-test
+(full-test ptree-basic-restart-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-restart 'nine))))
@@ -227,7 +227,7 @@
                          (nine () 9))))
       (is (= 9 result)))))
 
-(lp-test ptree-restart-test
+(full-test ptree-restart-test
   (task-handler-bind ((foo-error (lambda (e)
                                    (declare (ignore e))
                                    (invoke-restart 'nine))))
@@ -248,7 +248,7 @@
       (is (= 3 width))
       (is (= 9 height)))))
 
-(lp-test ptree-transfer-error-test
+(full-test ptree-transfer-error-test
   (task-handler-bind ((foo-error #'invoke-transfer-error))
     (ptree ((area (width height) (* width height))
             (width () 3)
@@ -272,7 +272,7 @@
       (is (= 3 width)))))
 
 #-lparallel.without-kill
-(lp-base-test ptree-kill-test
+(base-test ptree-kill-test
   (let ((memo (make-queue))
         (tree (make-ptree)))
     (ptree-fn 'inf '() #'infinite-loop tree)
@@ -293,7 +293,7 @@
         (call-ptree 'inf tree)))))
 
 #-lparallel.without-kill
-(lp-base-test second-ptree-kill-test
+(base-test second-ptree-kill-test
   (let ((memo (make-queue))
         (tree (make-ptree)))
     (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
@@ -317,7 +317,7 @@
       (is (= 9 (call-ptree 'width tree))))))
 
 #-lparallel.without-kill
-(lp-base-test third-ptree-kill-test
+(base-test third-ptree-kill-test
   (let ((memo (make-queue))
         (tree (make-ptree)))
     (ptree-fn 'inf '(five)
@@ -343,7 +343,7 @@
         (call-ptree 'inf tree))
       (is (= 5 (call-ptree 'five tree))))))
 
-(lp-test clear-ptree-test
+(full-test clear-ptree-test
   (let ((tree (make-ptree))
         (count 0))
     (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
@@ -357,7 +357,7 @@
     (is (= 27 (call-ptree 'area tree)))
     (is (= 2 count))))
 
-(lp-test clear-ptree-errors-test
+(full-test clear-ptree-errors-test
   (task-handler-bind ((foo-error #'invoke-transfer-error))
     (let ((tree (make-ptree))
           (count 0)
@@ -384,7 +384,7 @@
       (is (= 27 (call-ptree 'area tree)))
       (is (= 2 count)))))
 
-(lp-base-test ptree-multi-error-test
+(base-test ptree-multi-error-test
   (with-new-kernel (2)
     (task-handler-bind ((foo-error #'invoke-transfer-error))
       (let ((timer-finish-p nil))
@@ -418,7 +418,7 @@
           (= 99 width)
           (is (identity timer-finish-p)))))))
 
-(lp-test ptree-query-test
+(full-test ptree-query-test
   (let ((tree (make-ptree)))
     (signals ptree-undefined-function-error
       (ptree-computed-p 'foo tree))
