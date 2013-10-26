@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.4.4
+
+* fixed certain (probably rare) complex uses of task-handler-bind
+* optimizations from smaller generated code size
+
 = 2.4.3
 
 * worked around ECL compiler bug (note the repository ECL is still
