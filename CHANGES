@@ -2,6 +2,12 @@
 lparallel Changes
 =================
 
+= 2.5.0
+
+* added :timeout option to try-pop-queue; this uses a new
+  bordeaux-threads feature if it is present, otherwise uses a
+  compatibility layer (with style warning)
+
 = 2.4.4
 
 * fixed certain (probably rare) complex uses of task-handler-bind
