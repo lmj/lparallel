@@ -80,9 +80,9 @@ This is a convenience function for use in `task-handler-bind'."
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
   (loop
-     :for (condition-type . handler) :in *client-handlers*
+     :for ((condition-type . handler) . rest) :on *client-handlers*
      :do (when (typep condition condition-type)
-           (let ((*client-handlers* (rest *client-handlers*)))
+           (let ((*client-handlers* rest))
              (handler-bind ((condition #'condition-handler))
                (funcall handler condition)))))
   (when (and (typep condition 'error)
