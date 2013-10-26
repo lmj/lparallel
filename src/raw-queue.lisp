@@ -36,14 +36,15 @@
 
 (deftype raw-queue-count () '(integer 0))
 
-(deftype raw-queue () '(cons list list))
-(defmacro head (queue) `(car ,queue))
-(defmacro tail (queue) `(cdr ,queue))
+(locally (declare #.*full-optimize*)
+  (defstruct (raw-queue (:conc-name nil)
+                        (:constructor %make-raw-queue (head tail)))
+    (head (error "no head") :type list)
+    (tail (error "no tail") :type list)))
 
-(defun/type/inline make-raw-queue (&optional initial-capacity)
-    (&optional raw-queue-count) raw-queue
+(defun/inline make-raw-queue (&optional initial-capacity)
   (declare (ignore initial-capacity))
-  (cons nil nil))
+  (%make-raw-queue nil nil))
 
 (defun/type push-raw-queue (value queue) (t raw-queue) t
   (declare #.*normal-optimize*)
