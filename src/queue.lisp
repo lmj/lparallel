@@ -137,11 +137,20 @@
   cons-queue-full-p/no-lock
   vector-queue-full-p/no-lock)
 
-(define-queue-fn try-pop-queue (queue)
+(defmacro define-try-pop-queue (name cons-name vector-name)
+  `(defun ,name (queue &key timeout)
+     (declare #.*normal-optimize*)
+     (unless timeout
+       (setf timeout 0))
+     (typecase queue
+       (cons-queue (,cons-name queue timeout))
+       (vector-queue (,vector-name queue timeout)))))
+
+(define-try-pop-queue try-pop-queue
   try-pop-cons-queue
   try-pop-vector-queue)
 
-(define-queue-fn try-pop-queue/no-lock (queue)
+(define-try-pop-queue try-pop-queue/no-lock
   try-pop-cons-queue/no-lock
   try-pop-vector-queue/no-lock)
 
@@ -176,12 +185,17 @@ If `queue' is empty, return (values nil nil).")
 If `queue' is empty, block until an element is available.")
 
 (setf (documentation 'try-pop-queue 'function)
-"Non-blocking version of `pop-queue'.
+"If `queue' is non-empty, remove the frontmost element from `queue'
+and return (values element t) where `element' is the element removed.
 
-If `queue' is non-empty, remove the frontmost element from `queue' and
-return (values element t) where `element' is the element removed.
+If `queue' is empty and `timeout' is given, then wait up to `timeout'
+seconds for the queue to become non-empty.
 
-If `queue' is empty, return (values nil nil).")
+If `queue' is empty and the timeout has expired, or if `queue' is
+empty and no `timeout' was given, return (values nil nil).
+
+Providing a non-positive value of `timeout' is equivalent to providing
+no timeout.")
 
 (setf (documentation 'queue-count 'function)
 "Return the number of elements in `queue'.")

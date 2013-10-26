@@ -37,7 +37,6 @@
             bordeaux-threads:release-lock)
 
 (alias-macro with-lock-held bordeaux-threads:with-lock-held)
-(alias-function condition-wait bordeaux-threads:condition-wait)
 (alias-function make-lock bordeaux-threads:make-lock)
 (alias-function make-condition-variable
                 bordeaux-threads:make-condition-variable)
@@ -120,6 +119,64 @@
 
 #-lparallel.with-green-threads
 (alias-function condition-notify-and-yield condition-notify)
+
+;;; Check for timeout parameter in bordeaux-threads:condition-wait.
+;;;
+;;; This could also be done by checking the asdf version of
+;;; bordeaux-threads, however the various asdf :before operations do
+;;; not appear to work correctly.
+(eval-when (:compile-toplevel :execute)
+  ;; use special to defeat compiler analysis
+  (defparameter *condition-wait* #'bordeaux-threads:condition-wait)
+
+  (flet ((has-condition-wait-timeout-p ()
+           (let* ((lock (bordeaux-threads:make-lock))
+                  (cvar (bordeaux-threads:make-condition-variable))
+                  (args `(,cvar ,lock :timeout 0.001)))
+             (bordeaux-threads:with-lock-held (lock)
+               (ignore-errors
+                 (apply *condition-wait* args)
+                 t)))))
+    (unless (has-condition-wait-timeout-p)
+      (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
+               *features*))))
+
+#+lparallel.without-bordeaux-threads-condition-wait-timeout
+(progn
+  (eval-when (:load-toplevel)
+    (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
+             *features*))
+
+  (eval-when (:compile-toplevel :load-toplevel :execute)
+    (alexandria:simple-style-warning
+     "Upgrading bordeaux-threads is recommended; using workaround."))
+
+  (defun condition-wait (cvar lock &key timeout)
+    (if timeout
+        (handler-case (bordeaux-threads:with-timeout (timeout)
+                        (bordeaux-threads:condition-wait cvar lock))
+          (bordeaux-threads:timeout ()))
+        (bordeaux-threads:condition-wait cvar lock))))
+
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
+(alias-function condition-wait bordeaux-threads:condition-wait)
+
+(defun/inline get-real-time-in-seconds ()
+  (/ (get-internal-real-time) internal-time-units-per-second))
+
+(defmacro condition-wait/track-state (cvar lock timeout)
+  "Helper macro for using condition-wait. Lazily creates the condition
+variable and tracks the timeout state progress."
+  (check-type cvar symbol)
+  (check-type lock symbol)
+  (check-type timeout symbol)
+  (with-gensyms (start)
+    `(let ((,start (get-real-time-in-seconds)))
+       (unless ,cvar
+         (setf ,cvar (make-condition-variable)))
+       (condition-wait ,cvar ,lock :timeout ,timeout)
+       (decf ,timeout (- (get-real-time-in-seconds)
+                         ,start)))))
 
 #+lparallel.with-cas
 (progn

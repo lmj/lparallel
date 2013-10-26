@@ -110,11 +110,14 @@
 (defun make-vector-queue* ()
   (make-vector-queue 20))
 
+(defun try-pop-vector-queue* (queue)
+  (try-pop-vector-queue queue 0))
+
 (define-queue-test vector-queue-test
   :make-queue    make-vector-queue*
   :push-queue    push-vector-queue
   :pop-queue     pop-vector-queue
-  :try-pop-queue try-pop-vector-queue
+  :try-pop-queue try-pop-vector-queue*
   :queue-empty-p vector-queue-empty-p
   :queue-count   vector-queue-count
   :peek-queue    peek-vector-queue)
@@ -261,4 +264,54 @@
     (is (queue-full-p q))
     (is (= 3 (pop-queue q)))
     (is (= 4 (pop-queue q)))
+    (is (queue-empty-p q))))
+
+;;; abcl's with-timeout doesn't seem to work; don't test workaround
+#-(and abcl lparallel.without-bordeaux-threads-condition-wait-timeout)
+(base-test queue-timeout-test
+  (dolist (q (list (make-queue) (make-queue :fixed-capacity 10)))
+    (multiple-value-bind (a b) (try-pop-queue q :timeout nil)
+      (is (null a))
+      (is (null b)))
+    (multiple-value-bind (a b) (try-pop-queue q :timeout 0)
+      (is (null a))
+      (is (null b)))
+    (multiple-value-bind (a b) (try-pop-queue q :timeout -999999)
+      (is (null a))
+      (is (null b)))
+    (multiple-value-bind (a b) (try-pop-queue q :timeout 0.2)
+      (is (null a))
+      (is (null b)))
+    (signals type-error
+      (try-pop-queue q :timeout "foo"))
+    (let ((flag nil))
+      (with-thread ()
+        (sleep 0.4)
+        (setf flag t))
+      (multiple-value-bind (a b) (try-pop-queue q :timeout 0.2)
+        (is (null a))
+        (is (null b))
+        (is (queue-empty-p q))
+        (is (null flag))
+        (sleep 0.4)
+        (is (eq t flag))))
+    (with-thread ()
+      (sleep 0.2)
+      (push-queue 99 q))
+    (multiple-value-bind (a b) (try-pop-queue q :timeout 0.4)
+      (is (= 99 a))
+      (is (identity b))
+      (is (queue-empty-p q)))
+    (push-queue 3 q)
+    (multiple-value-bind (a b) (try-pop-queue q :timeout -99999)
+      (is (= 3 a))
+      (is (identity b)))
+    (push-queue 4 q)
+    (multiple-value-bind (a b) (try-pop-queue q :timeout 0)
+      (is (= 4 a))
+      (is (identity b)))
+    (push-queue 5 q)
+    (multiple-value-bind (a b) (try-pop-queue q :timeout 0.2)
+      (is (= 5 a))
+      (is (identity b)))
     (is (queue-empty-p q))))

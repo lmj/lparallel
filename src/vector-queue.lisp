@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.vector-queue)
 
+(import-now lparallel.thread-util::condition-wait/track-state)
+
 ;;;; raw-queue
 
 (deftype raw-queue-count () `(integer 0 ,array-dimension-limit))
@@ -122,17 +124,35 @@
                           (setf notify-push (make-condition-variable)))
                       lock))))))))
 
-(defun/type try-pop-vector-queue (queue) (vector-queue) (values t boolean)
+(defun %try-pop-vector-queue/no-lock (queue timeout)
   (declare #.*normal-optimize*)
-  (with-vector-queue-slots (impl lock) queue
-    (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
-      (return-from try-pop-vector-queue (pop-raw-queue impl)))
-    (values nil nil)))
+  (with-vector-queue-slots (impl lock notify-push notify-pop) queue
+    (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
+            (cond (presentp
+                   (when notify-pop
+                     (condition-notify-and-yield notify-pop))
+                   (return (values value t)))
+                  ((plusp timeout)
+                   (condition-wait/track-state notify-push lock timeout))
+                  (t
+                   (return (values nil nil))))))))
 
-(defun/type/inline try-pop-vector-queue/no-lock (queue)
-    (vector-queue) (values t boolean)
+(defun try-pop-vector-queue (queue timeout)
   (declare #.*normal-optimize*)
-  (pop-raw-queue (impl queue)))
+  (if (plusp timeout)
+      (with-lock-held ((lock queue))
+        (%try-pop-vector-queue/no-lock queue timeout))
+      ;; optimization: don't lock if nothing is there
+      (with-vector-queue-slots (impl lock) queue
+        (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
+          (return-from try-pop-vector-queue (pop-raw-queue impl)))
+        (values nil nil))))
+
+(defun try-pop-vector-queue/no-lock (queue timeout)
+  (declare #.*normal-optimize*)
+  (if (plusp timeout)
+      (%try-pop-vector-queue/no-lock queue timeout)
+      (pop-raw-queue (impl queue))))
 
 (defmacro define-queue-fn (name arg-types raw return-type)
   `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock
