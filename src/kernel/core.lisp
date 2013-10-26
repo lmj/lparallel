@@ -325,7 +325,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
       Pass no arguments instead."))
   whole)
 
-(defmacro make-task-fn (&body body)
+(defmacro task-lambda (&body body)
   (with-gensyms (client-handlers body-fn)
     `(flet ((,body-fn () ,@body))
        (if *client-handlers*
@@ -344,7 +344,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
   (declare #.*full-optimize*)
   (let ((queue (channel-queue channel)))
     (make-task
-      (make-task-fn
+      (task-lambda
         (unwind-protect/ext
          ;; task handler already established inside worker threads
          :main  (push-queue (with-task-context (apply fn args)) queue)

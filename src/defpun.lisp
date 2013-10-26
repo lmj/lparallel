@@ -38,7 +38,7 @@
             lparallel.kernel::unwrap-result
             lparallel.kernel::wrap-error
             lparallel.kernel::make-task
-            lparallel.kernel::make-task-fn
+            lparallel.kernel::task-lambda
             lparallel.kernel::submit-raw-task
             lparallel.kernel::use-caller-p
             lparallel.kernel::steal-work
@@ -111,7 +111,7 @@
     future))
 
 (defmacro future (kernel &body body)
-  `(make-future ,kernel (make-task-fn ,@body)))
+  `(make-future ,kernel (task-lambda ,@body)))
 
 ;;;; declarationp
 

@@ -34,7 +34,7 @@
             lparallel.kernel::submit-raw-task
             lparallel.kernel::with-task-context
             lparallel.kernel::make-task
-            lparallel.kernel::make-task-fn
+            lparallel.kernel::task-lambda
             lparallel.kernel::wrapped-error
             lparallel.kernel::wrap-error
             lparallel.kernel::unwrap-result)
@@ -165,7 +165,7 @@
 
 (defun/type make-node-task (queue node) (queue node) t
   (declare #.*normal-optimize*)
-  (let ((compute (make-task-fn
+  (let ((compute (task-lambda
                    ;; avoid allocation from extent checks with safety 0 (sbcl)
                    (declare #.*full-optimize*)
                    (unwind-protect

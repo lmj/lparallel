@@ -31,7 +31,7 @@
 (in-package #:lparallel.promise)
 
 (import-now lparallel.kernel::unwrap-result
-            lparallel.kernel::make-task-fn
+            lparallel.kernel::task-lambda
             lparallel.kernel::make-task
             lparallel.kernel::task
             lparallel.kernel::call-with-task-handler
@@ -193,7 +193,7 @@ unknown at the time it is created."
 (defmacro future (&body body)
   "Create a future. A future is a promise which is fulfilled in
 parallel by the implicit progn `body'."
-  `(make-future (make-task-fn ,@body)))
+  `(make-future (task-lambda ,@body)))
 
 ;;;; speculate
 
