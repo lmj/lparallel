@@ -73,13 +73,12 @@
 
   (eval-when (:compile-toplevel :load-toplevel :execute)
     (alexandria:simple-style-warning
-     "Upgrading bordeaux-threads is recommended; using workaround."))
+     "Upgrade bordeaux-threads to enable timeout option with queue."))
 
   (defun condition-wait (cvar lock &key timeout)
     (if timeout
-        (handler-case (bordeaux-threads:with-timeout (timeout)
-                        (bordeaux-threads:condition-wait cvar lock))
-          (bordeaux-threads:timeout ()))
+        (error "Timeout option is not available in this older version of ~
+                bordeaux-threads.")
         (bordeaux-threads:condition-wait cvar lock))))
 
 #-lparallel.without-bordeaux-threads-condition-wait-timeout

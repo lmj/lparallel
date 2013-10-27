@@ -174,6 +174,7 @@
           (when presentp
             (return value)))))
 
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
 (defun try-pop-queue/wait/timeout (queue)
   (multiple-value-bind (value presentp) (try-pop-queue queue :timeout 9999)
     (assert presentp)
@@ -192,6 +193,7 @@
     :pop-queue   try-pop-queue/wait/no-timeout
     :queue-count queue-count)
 
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
 (define-grind-queue grind-queue-timeout-test
     :make-queue  make-queue
     :push-queue  push-queue
@@ -211,6 +213,7 @@
     :pop-queue   try-pop-queue/wait/no-timeout
     :queue-count queue-count)
 
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
 (define-grind-queue grind-fixed-capacity-queue-timeout-test
     :make-queue  make-fixed-capacity-queue
     :push-queue  push-queue
@@ -308,8 +311,7 @@
     (is (= 4 (pop-queue q)))
     (is (queue-empty-p q))))
 
-;;; abcl's with-timeout doesn't seem to work; don't test workaround
-#-(and abcl lparallel.without-bordeaux-threads-condition-wait-timeout)
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
 (base-test queue-timeout-test
   (dolist (q (list (make-queue) (make-queue :fixed-capacity 10)))
     (multiple-value-bind (a b) (try-pop-queue q :timeout nil)
