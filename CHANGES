@@ -2,11 +2,16 @@
 lparallel Changes
 =================
 
-= 2.5.0
+= 2.6.0
 
-* added :timeout option to try-pop-queue; this uses a new
-  bordeaux-threads feature if it is present, otherwise uses a
-  compatibility layer (with style warning)
+* added :timeout option to try-pop-queue and try-receive-result; this
+  requires the latest version of bordeaux-threads (older versions will
+  work as long as :timeout is not used)
+
+= 2.5.0 [rescinded]
+
+* this added a now-rescinded compatibility layer for the :timeout
+  option in try-pop-queue that caused a hard crash in ccl
 
 = 2.4.4
 
