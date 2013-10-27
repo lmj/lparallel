@@ -329,12 +329,12 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 (progn
   (defun/type task-dynamic-closure-xx (fn) (function) function
     (declare #.*full-optimize*)
-    (if *client-handlers*
-        (let ((client-handlers *client-handlers*))
+    (let ((client-handlers *client-handlers*))
+      (if client-handlers
           (lambda ()
             (let ((*client-handlers* client-handlers))
-              (funcall fn))))
-        fn))
+              (funcall fn)))
+          fn)))
 
   (defmacro task-lambda (&body body)
     `(task-dynamic-closure-xx (lambda () ,@body))))
@@ -343,12 +343,12 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 (defmacro task-lambda (&body body)
   (with-gensyms (body-fn client-handlers)
     `(flet ((,body-fn () ,@body))
-       (if *client-handlers*
-           (let ((,client-handlers *client-handlers*))
+       (let ((,client-handlers *client-handlers*))
+         (if ,client-handlers
              (lambda ()
                (let ((*client-handlers* ,client-handlers))
-                 (,body-fn))))
-           #',body-fn))))
+                 (,body-fn)))
+             #',body-fn)))))
 
 (defun/type/inline make-task (fn) (function) task
   (declare #.*full-optimize*)
