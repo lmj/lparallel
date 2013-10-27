@@ -43,6 +43,7 @@
             lparallel.kernel::use-caller-p
             lparallel.kernel::steal-work
             lparallel.kernel::call-with-task-handler
+            lparallel.kernel::with-task-context
             lparallel.kernel::limiter-accept-task-p
             lparallel.kernel::limiter-count
             lparallel.kernel::limiter-lock)
@@ -104,8 +105,9 @@
      (make-task
       (lambda ()
         (unwind-protect/ext
-         :main  (setf (result future) (call-with-task-handler
-                                       (future-fn future)))
+         ;; task handler has already been established
+         :main  (setf (result future) (with-task-context
+                                        (funcall (future-fn future))))
          :abort (setf (result future) (wrap-error 'task-killed-error)))))
      kernel)
     future))
@@ -410,13 +412,19 @@
                (and (accept-task-p/fast ,kernel) ,predicate)
                ,bindings ,body))
 
-(defun call-impl-in-worker (call-impl)
-  (if *worker*
-      (funcall call-impl)
-      (let ((channel (make-channel)))
-        (submit-task channel (lambda ()
-                               (multiple-value-list (funcall call-impl))))
-        (values-list (receive-result channel)))))
+(defun/type call-impl-fn (kernel impl) (kernel function) t
+  (declare #.*normal-optimize*)
+  (cond (*worker*
+         ;; handlers are already established; call directly
+         (funcall impl))
+        ((use-caller-p kernel)
+         ;; establish handlers for stealing in this non-worker thread
+         (call-with-task-handler impl))
+        (t
+         ;; not in a worker thread and not stealing; exec in a worker
+         (let ((channel (let ((*kernel* kernel)) (make-channel))))
+           (submit-task channel impl)
+           (receive-result channel)))))
 
 (defmacro define-defpun (defpun doc defun &rest types)
   `(defmacro ,defpun (name lambda-list ,@types &body body)
@@ -445,9 +453,7 @@
               (defun/wrapper ,name ,(unchecked-name name) ,lambda-list
                 ,@(unsplice docstring)
                 (let ((,kernel (check-kernel)))
-                  (if (use-caller-p ,kernel)
-                      (call-impl ,kernel)
-                      (call-impl-in-worker (lambda () (call-impl ,kernel))))))
+                  (call-impl-fn ,kernel (lambda () (call-impl ,kernel)))))
               (eval-when (:load-toplevel :execute)
                 (with-lock-held (*registration-lock*)
                   (register-fn ',name)))
