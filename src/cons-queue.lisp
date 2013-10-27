@@ -30,7 +30,9 @@
 
 (in-package #:lparallel.cons-queue)
 
-(import-now lparallel.thread-util::condition-wait/track-state)
+(import-now lparallel.thread-util::condition-wait/track-state
+            lparallel.thread-util::define-locking-fn
+            lparallel.thread-util::define-simple-locking-fn)
 
 (defslots cons-queue ()
   ((impl :reader impl                      :type raw-queue)
@@ -48,7 +50,7 @@
   (with-cons-queue-slots (impl cvar) queue
     (push-raw-queue object impl)
     (when cvar
-      (condition-notify-and-yield cvar)))
+      (condition-notify cvar)))
   nil)
 
 (define-locking-fn pop-cons-queue (queue) (cons-queue) t lock

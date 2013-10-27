@@ -93,7 +93,7 @@
   (with-scheduler-slots (wait-lock wait-cvar wait-count notify-count) scheduler
     (with-lock-predicate/wait wait-lock (plusp (counter-value wait-count))
       (incf notify-count)
-      (condition-notify-and-yield wait-cvar))))
+      (condition-notify wait-cvar))))
 
 (defun/type schedule-task (scheduler task priority) (scheduler
                                                      (or task null) t) t

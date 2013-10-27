@@ -35,6 +35,9 @@
 
 (in-package #:lparallel.biased-queue)
 
+(import-now lparallel.thread-util::define-locking-fn
+            lparallel.thread-util::define-simple-locking-fn)
+
 (defslots biased-queue ()
   ((lock :reader lock :initform (make-lock))
    (cvar :reader cvar :initform (make-condition-variable))
@@ -48,7 +51,7 @@
 (defmacro define-push-fn (name slot)
   `(define-simple-locking-fn ,name (object queue) (t biased-queue) null lock
      (push-raw-queue object (,slot queue))
-     (condition-notify-and-yield (cvar queue))
+     (condition-notify (cvar queue))
      nil))
 
 (define-push-fn push-biased-queue     high)

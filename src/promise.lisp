@@ -107,7 +107,7 @@ unknown at the time it is created."
          :main    (setf result (multiple-value-list (funcall client-fn)))
          :abort   (setf availablep t))
         (when cvar
-          (condition-notify-and-yield cvar))
+          (condition-notify cvar))
         (return t)))))
 
 (defun force-promise (promise)
@@ -116,7 +116,7 @@ unknown at the time it is created."
       (setf cvar (make-condition-variable)))
     (while (eq result +no-result+)
       (condition-wait cvar lock))
-    (condition-notify-and-yield cvar)))
+    (condition-notify cvar)))
 
 ;;;; plan
 

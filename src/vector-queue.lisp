@@ -30,7 +30,9 @@
 
 (in-package #:lparallel.vector-queue)
 
-(import-now lparallel.thread-util::condition-wait/track-state)
+(import-now lparallel.thread-util::condition-wait/track-state
+            lparallel.thread-util::define-locking-fn
+            lparallel.thread-util::define-simple-locking-fn)
 
 ;;;; raw-queue
 
@@ -102,7 +104,7 @@
       (loop (cond ((< (raw-queue-count impl) (raw-queue-capacity impl))
                    (push-raw-queue object impl)
                    (when notify-push
-                     (condition-notify-and-yield notify-push))
+                     (condition-notify notify-push))
                    (return))
                   (t
                    (condition-wait
@@ -116,7 +118,7 @@
       (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
               (cond (presentp
                      (when notify-pop
-                       (condition-notify-and-yield notify-pop))
+                       (condition-notify notify-pop))
                      (return value))
                     (t
                      (condition-wait
@@ -130,7 +132,7 @@
     (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
             (cond (presentp
                    (when notify-pop
-                     (condition-notify-and-yield notify-pop))
+                     (condition-notify notify-pop))
                    (return (values value t)))
                   ((plusp timeout)
                    (condition-wait/track-state notify-push lock timeout))
@@ -143,7 +145,7 @@
     (multiple-value-bind (value presentp) (pop-raw-queue impl)
       (cond (presentp
              (when notify-pop
-               (condition-notify-and-yield notify-pop))
+               (condition-notify notify-pop))
              (values value t))
             (t
              (values nil nil))))))

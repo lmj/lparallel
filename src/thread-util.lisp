@@ -32,9 +32,10 @@
 
 (import-now bordeaux-threads:*default-special-bindings*
             bordeaux-threads:make-thread
-            bordeaux-threads:condition-notify
             bordeaux-threads:acquire-lock
             bordeaux-threads:release-lock)
+
+;;;; aliases
 
 (alias-macro with-lock-held bordeaux-threads:with-lock-held)
 (alias-function make-lock bordeaux-threads:make-lock)
@@ -44,6 +45,94 @@
 (alias-function destroy-thread bordeaux-threads:destroy-thread)
 #+lparallel.with-green-threads
 (alias-function thread-yield bordeaux-threads:thread-yield)
+
+;;;; condition-wait
+
+;;; Check for timeout parameter in bordeaux-threads:condition-wait.
+(eval-when (:compile-toplevel :execute)
+  ;; use special to defeat compiler analysis
+  (defparameter *condition-wait* #'bordeaux-threads:condition-wait)
+
+  (flet ((has-condition-wait-timeout-p ()
+           (let* ((lock (bordeaux-threads:make-lock))
+                  (cvar (bordeaux-threads:make-condition-variable))
+                  (args `(,cvar ,lock :timeout 0.001)))
+             (bordeaux-threads:with-lock-held (lock)
+               (ignore-errors
+                 (apply *condition-wait* args)
+                 t)))))
+    (unless (has-condition-wait-timeout-p)
+      (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
+               *features*))))
+
+#+lparallel.without-bordeaux-threads-condition-wait-timeout
+(progn
+  (eval-when (:load-toplevel)
+    (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
+             *features*))
+
+  (eval-when (:compile-toplevel :load-toplevel :execute)
+    (alexandria:simple-style-warning
+     "Upgrading bordeaux-threads is recommended; using workaround."))
+
+  (defun condition-wait (cvar lock &key timeout)
+    (if timeout
+        (handler-case (bordeaux-threads:with-timeout (timeout)
+                        (bordeaux-threads:condition-wait cvar lock))
+          (bordeaux-threads:timeout ()))
+        (bordeaux-threads:condition-wait cvar lock))))
+
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
+(alias-function condition-wait bordeaux-threads:condition-wait)
+
+;;;; condition-notify
+
+#+lparallel.with-green-threads
+(defun condition-notify (cvar)
+  (bordeaux-threads:condition-notify cvar)
+  (thread-yield))
+
+#-lparallel.with-green-threads
+(alias-function condition-notify bordeaux-threads:condition-notify)
+
+;;;; cas and spin-lock
+
+#+lparallel.with-cas
+(progn
+  (defmacro cas (place old new &environment env)
+    (declare (ignorable env))
+    #+sbcl (progn
+             (assert (atom old))
+             ;; macroexpand is needed for sbcl-1.0.53 and older
+             `(eq ,old (sb-ext:compare-and-swap ,(macroexpand place env)
+                                                ,old ,new)))
+    #+ccl `(ccl::conditional-store ,place ,old ,new)
+    #+lispworks `(sys:compare-and-swap ,place ,old ,new))
+
+  #-(or sbcl ccl lispworks)
+  (error "cas not defined")
+
+  (progn
+    (defun make-spin-lock ()
+      nil)
+
+    (defmacro/once with-spin-lock-held (((access &once container)) &body body)
+      `(locally (declare #.*full-optimize*)
+         (unwind-protect/ext
+          :prepare (loop :until (cas (,access ,container) nil t))
+          :main (progn ,@body)
+          :cleanup (setf (,access ,container) nil))))))
+
+#-lparallel.with-cas
+(progn
+  (defun make-spin-lock ()
+    (make-lock))
+
+  (defmacro with-spin-lock-held (((access container)) &body body)
+    `(with-lock-held ((,access ,container))
+       ,@body)))
+
+;;;; general-purpose utilities
 
 #+clisp
 (defmacro with-abort-restart (&body body)
@@ -81,6 +170,24 @@
        (when ,predicate
          ,@body))))
 
+;;;; special-purpose utilities
+
+(defun/inline get-real-time-in-seconds ()
+  (/ (get-internal-real-time) internal-time-units-per-second))
+
+(defmacro condition-wait/track-state (cvar lock timeout)
+  "Helper macro for using condition-wait. Lazily creates the condition
+variable and tracks the timeout state progress."
+  (check-type cvar symbol)
+  (check-type lock symbol)
+  (check-type timeout symbol)
+  (with-gensyms (start)
+    `(let ((,start (get-real-time-in-seconds)))
+       (condition-wait (or ,cvar (setf ,cvar (make-condition-variable)))
+                       ,lock :timeout ,timeout)
+       (decf ,timeout (- (get-real-time-in-seconds)
+                         ,start)))))
+
 (defmacro define-locking-fn/base (name args arg-types return-type
                                   lock-reader
                                   defun/no-lock
@@ -111,104 +218,3 @@
        defun/inline nil nil
      (declare #.*normal-optimize*)
      ,@body))
-
-#+lparallel.with-green-threads
-(defun condition-notify-and-yield (cvar)
-  (condition-notify cvar)
-  (thread-yield))
-
-#-lparallel.with-green-threads
-(alias-function condition-notify-and-yield condition-notify)
-
-;;; Check for timeout parameter in bordeaux-threads:condition-wait.
-;;;
-;;; This could also be done by checking the asdf version of
-;;; bordeaux-threads, however the various asdf :before operations do
-;;; not appear to work correctly.
-(eval-when (:compile-toplevel :execute)
-  ;; use special to defeat compiler analysis
-  (defparameter *condition-wait* #'bordeaux-threads:condition-wait)
-
-  (flet ((has-condition-wait-timeout-p ()
-           (let* ((lock (bordeaux-threads:make-lock))
-                  (cvar (bordeaux-threads:make-condition-variable))
-                  (args `(,cvar ,lock :timeout 0.001)))
-             (bordeaux-threads:with-lock-held (lock)
-               (ignore-errors
-                 (apply *condition-wait* args)
-                 t)))))
-    (unless (has-condition-wait-timeout-p)
-      (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
-               *features*))))
-
-#+lparallel.without-bordeaux-threads-condition-wait-timeout
-(progn
-  (eval-when (:load-toplevel)
-    (pushnew :lparallel.without-bordeaux-threads-condition-wait-timeout
-             *features*))
-
-  (eval-when (:compile-toplevel :load-toplevel :execute)
-    (alexandria:simple-style-warning
-     "Upgrading bordeaux-threads is recommended; using workaround."))
-
-  (defun condition-wait (cvar lock &key timeout)
-    (if timeout
-        (handler-case (bordeaux-threads:with-timeout (timeout)
-                        (bordeaux-threads:condition-wait cvar lock))
-          (bordeaux-threads:timeout ()))
-        (bordeaux-threads:condition-wait cvar lock))))
-
-#-lparallel.without-bordeaux-threads-condition-wait-timeout
-(alias-function condition-wait bordeaux-threads:condition-wait)
-
-(defun/inline get-real-time-in-seconds ()
-  (/ (get-internal-real-time) internal-time-units-per-second))
-
-(defmacro condition-wait/track-state (cvar lock timeout)
-  "Helper macro for using condition-wait. Lazily creates the condition
-variable and tracks the timeout state progress."
-  (check-type cvar symbol)
-  (check-type lock symbol)
-  (check-type timeout symbol)
-  (with-gensyms (start)
-    `(let ((,start (get-real-time-in-seconds)))
-       (unless ,cvar
-         (setf ,cvar (make-condition-variable)))
-       (condition-wait ,cvar ,lock :timeout ,timeout)
-       (decf ,timeout (- (get-real-time-in-seconds)
-                         ,start)))))
-
-#+lparallel.with-cas
-(progn
-  (defmacro cas (place old new &environment env)
-    (declare (ignorable env))
-    #+sbcl (progn
-             (assert (atom old))
-             ;; macroexpand is needed for sbcl-1.0.53 and older
-             `(eq ,old (sb-ext:compare-and-swap ,(macroexpand place env)
-                                                ,old ,new)))
-    #+ccl `(ccl::conditional-store ,place ,old ,new)
-    #+lispworks `(sys:compare-and-swap ,place ,old ,new))
-
-  #-(or sbcl ccl lispworks)
-  (error "cas not defined")
-
-  (progn
-    (defun make-spin-lock ()
-      nil)
-
-    (defmacro/once with-spin-lock-held (((access &once container)) &body body)
-      `(locally (declare #.*full-optimize*)
-         (unwind-protect/ext
-          :prepare (loop :until (cas (,access ,container) nil t))
-          :main (progn ,@body)
-          :cleanup (setf (,access ,container) nil))))))
-
-#-lparallel.with-cas
-(progn
-  (defun make-spin-lock ()
-    (make-lock))
-
-  (defmacro with-spin-lock-held (((access container)) &body body)
-    `(with-lock-held ((,access ,container))
-       ,@body)))
