@@ -79,6 +79,9 @@
        (is (eq t (,queue-empty-p q)))
        (is (eq 0 (,queue-count q))))))
 
+(defun make-fixed-capacity-queue ()
+  (make-queue :fixed-capacity 20))
+
 (define-queue-test raw-queue-test
   :make-queue    make-raw-queue
   :push-queue    push-raw-queue
@@ -107,66 +110,74 @@
   :queue-count   spin-queue-count
   :peek-queue    peek-spin-queue)
 
-(defun make-vector-queue* ()
-  (make-vector-queue 20))
+(define-queue-test fixed-capacity-queue-test
+  :make-queue    make-fixed-capacity-queue
+  :push-queue    push-queue
+  :pop-queue     pop-queue
+  :try-pop-queue try-pop-queue
+  :queue-empty-p queue-empty-p
+  :queue-count   queue-count
+  :peek-queue    peek-queue)
 
-(defun try-pop-vector-queue* (queue)
-  (try-pop-vector-queue queue 0))
+#-lparallel.with-stealing-scheduler
+(define-queue-test biased-queue-test
+  :make-queue    lparallel.biased-queue:make-biased-queue
+  :push-queue    lparallel.biased-queue:push-biased-queue
+  :pop-queue     lparallel.biased-queue:pop-biased-queue
+  :try-pop-queue lparallel.biased-queue:try-pop-biased-queue
+  :queue-empty-p lparallel.biased-queue:biased-queue-empty-p
+  :queue-count   lparallel.biased-queue:biased-queue-count
+  :peek-queue    lparallel.biased-queue:peek-biased-queue)
 
-(define-queue-test vector-queue-test
-  :make-queue    make-vector-queue*
-  :push-queue    push-vector-queue
-  :pop-queue     pop-vector-queue
-  :try-pop-queue try-pop-vector-queue*
-  :queue-empty-p vector-queue-empty-p
-  :queue-count   vector-queue-count
-  :peek-queue    peek-vector-queue)
-
-(base-test vector-queue-blocking-test
-  (loop :for n :from 1 :to 10 :do
-     (let ((queue (make-vector-queue n)))
-       (repeat n
-         (push-vector-queue t queue))
-       (repeat 3
-         (let ((pushedp nil))
-           (with-thread ()
-             (push-vector-queue t queue)
-             (setf pushedp t))
-           (sleep 0.1)
-           (is (not pushedp))
-           (pop-vector-queue queue)
-           (sleep 0.1)
-           (is (not (null pushedp))))))))
-
-(defparameter *grind-queue-count* 100000)
+#-lparallel.with-stealing-scheduler
+(define-queue-test biased-queue-low-test
+  :make-queue    lparallel.biased-queue:make-biased-queue
+  :push-queue    lparallel.biased-queue:push-biased-queue/low
+  :pop-queue     lparallel.biased-queue:pop-biased-queue
+  :try-pop-queue lparallel.biased-queue:try-pop-biased-queue
+  :queue-empty-p lparallel.biased-queue:biased-queue-empty-p
+  :queue-count   lparallel.biased-queue:biased-queue-count
+  :peek-queue    lparallel.biased-queue:peek-biased-queue)
 
 (defmacro define-grind-queue (name
                               &key make-queue push-queue pop-queue queue-count)
   `(base-test ,name
-     (let ((obj-count *grind-queue-count*)
-           (iter-count 2))
+     (flet ((grind (producer-count consumer-count objects-per-producer)
+              (let ((data-queue (,make-queue))
+                    (done-queue (,make-queue)))
+                (repeat producer-count
+                  (with-thread ()
+                    (repeat objects-per-producer
+                      (,push-queue 'hello data-queue))
+                    (,push-queue t done-queue)))
+                (repeat consumer-count
+                  (with-thread ()
+                    (loop :until (eq :end (,pop-queue data-queue)))
+                    (,push-queue t done-queue)))
+                (repeat producer-count
+                  (,pop-queue done-queue))
+                (repeat consumer-count
+                  (,push-queue :end data-queue))
+                (repeat consumer-count
+                  (,pop-queue done-queue))
+                (is (= 0 (,queue-count data-queue))))))
        (with-thread-count-check
-         (dolist (thread-count '(1 2 3 4 8 16 32 64))
-           (let ((to-workers (,make-queue))
-                 (from-workers (,make-queue)))
-             (repeat thread-count
-               (with-thread (:name "grind-queue"
-                             :bindings `((*standard-output* .
-                                          ,*standard-output*)))
-                 (loop (let ((obj (,pop-queue to-workers)))
-                         (if obj
-                             (,push-queue obj from-workers)
-                             (return))))))
-             (repeat iter-count
-               (dotimes (i obj-count)
-                 (,push-queue 'hello to-workers))
-               (dotimes (i obj-count)
-                 (,pop-queue from-workers))
-               (is (zerop (,queue-count to-workers)))
-               (is (zerop (,queue-count from-workers))))
-             (repeat thread-count
-               (,push-queue nil to-workers))))
+         (let ((n 100000))
+           (grind 4 1 n)
+           (grind 1 4 n)
+           (grind 1 1 n)
+           (grind 4 4 n))
          (sleep 0.5)))))
+
+(defun try-pop-queue/wait/no-timeout (queue)
+  (loop (multiple-value-bind (value presentp) (try-pop-queue queue)
+          (when presentp
+            (return value)))))
+
+(defun try-pop-queue/wait/timeout (queue)
+  (multiple-value-bind (value presentp) (try-pop-queue queue :timeout 9999)
+    (assert presentp)
+    value))
 
 (define-grind-queue grind-queue-test
     :make-queue  make-queue
@@ -174,23 +185,37 @@
     :pop-queue   pop-queue
     :queue-count queue-count)
 
-(defun make-queue* ()
-  (make-queue :fixed-capacity *grind-queue-count*))
+#-lparallel.with-green-threads
+(define-grind-queue grind-queue-no-timeout-test
+    :make-queue  make-queue
+    :push-queue  push-queue
+    :pop-queue   try-pop-queue/wait/no-timeout
+    :queue-count queue-count)
+
+(define-grind-queue grind-queue-timeout-test
+    :make-queue  make-queue
+    :push-queue  push-queue
+    :pop-queue   try-pop-queue/wait/timeout
+    :queue-count queue-count)
 
 (define-grind-queue grind-fixed-capacity-queue-test
-    :make-queue  make-queue*
+    :make-queue  make-fixed-capacity-queue
     :push-queue  push-queue
     :pop-queue   pop-queue
     :queue-count queue-count)
 
-(defun make-vector-queue** ()
-  (make-vector-queue *grind-queue-count*))
+#-lparallel.with-green-threads
+(define-grind-queue grind-fixed-capacity-queue-no-timeout-test
+    :make-queue  make-fixed-capacity-queue
+    :push-queue  push-queue
+    :pop-queue   try-pop-queue/wait/no-timeout
+    :queue-count queue-count)
 
-(define-grind-queue grind-vector-queue-test
-    :make-queue  make-vector-queue**
-    :push-queue  push-vector-queue
-    :pop-queue   pop-vector-queue
-    :queue-count vector-queue-count)
+(define-grind-queue grind-fixed-capacity-queue-timeout-test
+    :make-queue  make-fixed-capacity-queue
+    :push-queue  push-queue
+    :pop-queue   try-pop-queue/wait/timeout
+    :queue-count queue-count)
 
 #+lparallel.with-stealing-scheduler
 (defun pop-spin-queue/wait (queue)
@@ -206,20 +231,20 @@
     :queue-count spin-queue-count)
 
 #-lparallel.with-stealing-scheduler
-(define-grind-queue grind-biased-queue-1-test
+(define-grind-queue grind-biased-queue-test
     :make-queue  lparallel.biased-queue:make-biased-queue
     :push-queue  lparallel.biased-queue:push-biased-queue
     :pop-queue   lparallel.biased-queue:pop-biased-queue
     :queue-count lparallel.biased-queue:biased-queue-count)
 
 #-lparallel.with-stealing-scheduler
-(define-grind-queue grind-biased-queue-2-test
+(define-grind-queue grind-biased-queue-low-test
     :make-queue  lparallel.biased-queue:make-biased-queue
     :push-queue  lparallel.biased-queue:push-biased-queue/low
     :pop-queue   lparallel.biased-queue:pop-biased-queue
     :queue-count lparallel.biased-queue:biased-queue-count)
 
-(base-test fixed-capacity-queue-test
+(base-test filled-queue-test
   (loop
      :for n :from 1 :to 3
      :do (let ((queue (make-queue :fixed-capacity n)))
