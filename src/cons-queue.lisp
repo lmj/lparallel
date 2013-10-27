@@ -61,7 +61,7 @@
                 (condition-wait (or cvar (setf cvar (make-condition-variable)))
                                 lock))))))
 
-(defun %try-pop-cons-queue/no-lock (queue timeout)
+(defun try-pop-cons-queue/no-lock/timeout (queue timeout)
   (declare #.*normal-optimize*)
   (with-cons-queue-slots (impl lock cvar) queue
     (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
@@ -72,22 +72,22 @@
                   (t
                    (return (values nil nil))))))))
 
+(defun try-pop-cons-queue/no-lock (queue timeout)
+  (declare #.*normal-optimize*)
+  (if (plusp timeout)
+      (try-pop-cons-queue/no-lock/timeout queue timeout)
+      (pop-raw-queue (impl queue))))
+
 (defun try-pop-cons-queue (queue timeout)
   (declare #.*normal-optimize*)
   (if (plusp timeout)
       (with-lock-held ((lock queue))
-        (%try-pop-cons-queue/no-lock queue timeout))
+        (try-pop-cons-queue/no-lock/timeout queue timeout))
       ;; optimization: don't lock if nothing is there
       (with-cons-queue-slots (impl lock) queue
         (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
           (return-from try-pop-cons-queue (pop-raw-queue impl)))
         (values nil nil))))
-
-(defun try-pop-cons-queue/no-lock (queue timeout)
-  (declare #.*normal-optimize*)
-  (if (plusp timeout)
-      (%try-pop-cons-queue/no-lock queue timeout)
-      (pop-raw-queue (impl queue))))
 
 (defmacro define-queue-fn (name arg-types raw return-type)
   `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock

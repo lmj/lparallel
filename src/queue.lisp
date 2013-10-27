@@ -78,10 +78,8 @@
   nil)
 
 (defmacro define-queue-fn (name params cons-name vector-name)
-  `(defun/inline ,name ,params
+  `(defun ,name ,params
      (declare #.*normal-optimize*)
-     ;; inferencing can lead to a deleted 'otherwise' clause
-     #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
      (typecase ,(car (last params))
        (cons-queue (,cons-name ,@params))
        (vector-queue (,vector-name ,@params))
@@ -144,7 +142,10 @@
        (setf timeout 0))
      (typecase queue
        (cons-queue (,cons-name queue timeout))
-       (vector-queue (,vector-name queue timeout)))))
+       (vector-queue (,vector-name queue timeout))
+       (otherwise (error 'type-error
+                         :datum queue
+                         :expected-type 'queue)))))
 
 (define-try-pop-queue try-pop-queue
   try-pop-cons-queue

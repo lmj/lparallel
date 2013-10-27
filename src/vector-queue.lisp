@@ -100,31 +100,29 @@
 
 (define-locking-fn push-vector-queue (object queue) (t vector-queue) null lock
   (with-vector-queue-slots (impl lock notify-push notify-pop) queue
-    (let ((impl impl))
-      (loop (cond ((< (raw-queue-count impl) (raw-queue-capacity impl))
-                   (push-raw-queue object impl)
-                   (when notify-push
-                     (condition-notify notify-push))
-                   (return))
-                  (t
-                   (condition-wait
-                    (or notify-pop
-                        (setf notify-pop (make-condition-variable)))
-                    lock)))))))
+    (loop (cond ((< (raw-queue-count impl) (raw-queue-capacity impl))
+                 (push-raw-queue object impl)
+                 (when notify-push
+                   (condition-notify notify-push))
+                 (return))
+                (t
+                 (condition-wait
+                  (or notify-pop
+                      (setf notify-pop (make-condition-variable)))
+                  lock))))))
 
 (define-locking-fn pop-vector-queue (queue) (vector-queue) t lock
   (with-vector-queue-slots (impl lock notify-push notify-pop) queue
-    (let ((impl impl))
-      (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
-              (cond (presentp
-                     (when notify-pop
-                       (condition-notify notify-pop))
-                     (return value))
-                    (t
-                     (condition-wait
-                      (or notify-push
-                          (setf notify-push (make-condition-variable)))
-                      lock))))))))
+    (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
+            (cond (presentp
+                   (when notify-pop
+                     (condition-notify notify-pop))
+                   (return value))
+                  (t
+                   (condition-wait
+                    (or notify-push
+                        (setf notify-push (make-condition-variable)))
+                    lock)))))))
 
 (defun try-pop-vector-queue/no-lock/timeout (queue timeout)
   (declare #.*normal-optimize*)
