@@ -124,7 +124,7 @@
                           (setf notify-push (make-condition-variable)))
                       lock))))))))
 
-(defun %try-pop-vector-queue/no-lock (queue timeout)
+(defun try-pop-vector-queue/no-lock/timeout (queue timeout)
   (declare #.*normal-optimize*)
   (with-vector-queue-slots (impl lock notify-push notify-pop) queue
     (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
@@ -137,22 +137,34 @@
                   (t
                    (return (values nil nil))))))))
 
+(defun try-pop-vector-queue/no-lock/no-timeout (queue)
+  (declare #.*normal-optimize*)
+  (with-vector-queue-slots (impl notify-pop) queue
+    (multiple-value-bind (value presentp) (pop-raw-queue impl)
+      (cond (presentp
+             (when notify-pop
+               (condition-notify-and-yield notify-pop))
+             (values value t))
+            (t
+             (values nil nil))))))
+
 (defun try-pop-vector-queue (queue timeout)
   (declare #.*normal-optimize*)
   (if (plusp timeout)
       (with-lock-held ((lock queue))
-        (%try-pop-vector-queue/no-lock queue timeout))
+        (try-pop-vector-queue/no-lock/timeout queue timeout))
       ;; optimization: don't lock if nothing is there
       (with-vector-queue-slots (impl lock) queue
         (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
-          (return-from try-pop-vector-queue (pop-raw-queue impl)))
+          (return-from try-pop-vector-queue
+            (try-pop-vector-queue/no-lock/no-timeout queue)))
         (values nil nil))))
 
 (defun try-pop-vector-queue/no-lock (queue timeout)
   (declare #.*normal-optimize*)
   (if (plusp timeout)
-      (%try-pop-vector-queue/no-lock queue timeout)
-      (pop-raw-queue (impl queue))))
+      (try-pop-vector-queue/no-lock/timeout queue timeout)
+      (try-pop-vector-queue/no-lock/no-timeout queue)))
 
 (defmacro define-queue-fn (name arg-types raw return-type)
   `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock

@@ -221,22 +221,39 @@
 
 (base-test fixed-capacity-queue-test
   (loop
-     :for n :from 1 :to 10
+     :for n :from 1 :to 3
      :do (let ((queue (make-queue :fixed-capacity n)))
            (repeat n
              (is (not (queue-full-p queue)))
-             (push-queue t queue))
+             (push-queue :x queue))
            (repeat 3
              (is (queue-full-p queue))
              (let ((pushedp nil))
                (with-thread ()
-                 (push-queue t queue)
+                 (push-queue :x queue)
                  (setf pushedp t))
-               (sleep 0.1)
-               (is (not pushedp))
-               (pop-queue queue)
-               (sleep 0.1)
-               (is (not (null pushedp))))))))
+               (sleep 0.2)
+               (is (null pushedp))
+               (is (eq :x (pop-queue queue)))
+               (sleep 0.2)
+               (is (eq t pushedp))))))
+  (loop
+     :for n :from 1 :to 3
+     :do (let ((queue (make-queue :fixed-capacity n)))
+           (repeat n
+             (is (not (queue-full-p queue)))
+             (push-queue :x queue))
+           (repeat 3
+             (is (queue-full-p queue))
+             (let ((pushedp nil))
+               (with-thread ()
+                 (push-queue :x queue)
+                 (setf pushedp t))
+               (sleep 0.2)
+               (is (null pushedp))
+               (is (equal '(:x t) (multiple-value-list (try-pop-queue queue))))
+               (sleep 0.2)
+               (is (eq t pushedp)))))))
 
 (base-test queue-initial-contents-test
   (let ((q (make-queue :initial-contents '(3 4 5))))
