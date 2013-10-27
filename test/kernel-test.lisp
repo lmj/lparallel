@@ -129,6 +129,21 @@
       (is (null a))
       (is (null b)))))
 
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
+(full-test try-receive-timeout-test
+  (let ((channel (make-channel)))
+    (multiple-value-bind (a b) (try-receive-result channel :timeout 0.1)
+      (is (null a))
+      (is (null b)))
+    (submit-task channel (lambda () 3))
+    (sleep 0.1)
+    (multiple-value-bind (a b) (try-receive-result channel :timeout 0.1)
+      (is (= 3 a))
+      (is (eq t b)))
+    (multiple-value-bind (a b) (try-receive-result channel :timeout 0.1)
+      (is (null a))
+      (is (null b)))))
+
 (full-test kernel-client-error-test
   (task-handler-bind ((client-error #'invoke-transfer-error))
     (let ((channel (make-channel)))

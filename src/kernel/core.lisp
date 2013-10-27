@@ -386,12 +386,13 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))
 
-(defun try-receive-result (channel)
+(defun try-receive-result (channel &key timeout)
   "Non-blocking version of `receive-result'.
 
 If a result is available then it is returned as the primary value
 in (values result t). Otherwise (values nil nil) is returned."
-  (multiple-value-bind (result presentp) (try-pop-queue (channel-queue channel))
+  (multiple-value-bind (result presentp)
+      (try-pop-queue (channel-queue channel) :timeout timeout)
     (if presentp
         (values (unwrap-result result) t)
         (values nil nil))))
