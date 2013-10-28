@@ -195,8 +195,8 @@ seconds for the queue to become non-empty.
 If `queue' is empty and the timeout has expired, or if `queue' is
 empty and no `timeout' was given, return (values nil nil).
 
-Providing a non-positive value of `timeout' is equivalent to providing
-no timeout.")
+Providing a nil or non-positive value of `timeout' is equivalent to
+providing no timeout.")
 
 (setf (documentation 'queue-count 'function)
 "Return the number of elements in `queue'.")
