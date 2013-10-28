@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.6.1
+
+* fixed multiple return values being discarded for functions defined
+  by defpun (this is a recent regression only present in 2.6.0)
+
 = 2.6.0
 
 * added :timeout option to try-pop-queue and try-receive-result; this
