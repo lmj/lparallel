@@ -189,3 +189,27 @@
              (foo-append :right nil)))
   (is (equal nil
              (foo-append))))
+
+;;; multiple values
+
+(defpun mv-foo-1 (x y)
+  (values x y))
+
+(defpun/type mv-foo-2 (x y) (fixnum fixnum) (values fixnum fixnum)
+  (values x y))
+
+(defpun mv-foo-3 (x y)
+  (mv-foo-1 x y))
+
+(defpun/type mv-foo-4 (x y) (fixnum fixnum) (values fixnum fixnum)
+  (mv-foo-2 x y))
+
+(defpun/type mv-foo-5 (x y) (fixnum fixnum) (values fixnum fixnum)
+  (mv-foo-3 x y))
+
+(full-test defpun-mv-test
+  (is (equal '(3 4) (multiple-value-list (mv-foo-1 3 4))))
+  (is (equal '(3 4) (multiple-value-list (mv-foo-2 3 4))))
+  (is (equal '(3 4) (multiple-value-list (mv-foo-3 3 4))))
+  (is (equal '(3 4) (multiple-value-list (mv-foo-4 3 4))))
+  (is (equal '(3 4) (multiple-value-list (mv-foo-5 3 4)))))

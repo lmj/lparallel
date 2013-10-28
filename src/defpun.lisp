@@ -412,7 +412,7 @@
                (and (accept-task-p/fast ,kernel) ,predicate)
                ,bindings ,body))
 
-(defun/type call-impl-fn (kernel impl) (kernel function) t
+(defun call-impl-fn (kernel impl)
   (declare #.*normal-optimize*)
   (cond (*worker*
          ;; handlers are already established; call directly
@@ -423,8 +423,9 @@
         (t
          ;; not in a worker thread and not stealing; exec in a worker
          (let ((channel (let ((*kernel* kernel)) (make-channel))))
-           (submit-task channel impl)
-           (receive-result channel)))))
+           (submit-task channel (lambda ()
+                                  (multiple-value-list (funcall impl))))
+           (values-list (receive-result channel))))))
 
 (defmacro define-defpun (defpun doc defun &rest types)
   `(defmacro ,defpun (name lambda-list ,@types &body body)
