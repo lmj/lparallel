@@ -387,10 +387,16 @@ will block until a result is received."
   (unwrap-result (pop-queue (channel-queue channel))))
 
 (defun try-receive-result (channel &key timeout)
-  "Non-blocking version of `receive-result'.
+  "If `channel' has a result then remove it and return (values result t).
 
-If a result is available then it is returned as the primary value
-in (values result t). Otherwise (values nil nil) is returned."
+If no result is available and `timeout' is given, then wait up to
+`timeout' seconds for a result.
+
+If the channel is empty and the timeout has expired, or if the channel
+is empty and no timeout was given, return (values nil nil).
+
+Providing a nil or non-positive value of `timeout' is equivalent to
+providing no timeout."
   (multiple-value-bind (result presentp)
       (try-pop-queue (channel-queue channel) :timeout timeout)
     (if presentp
