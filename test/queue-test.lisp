@@ -359,3 +359,18 @@
       (is (= 5 a))
       (is (identity b)))
     (is (queue-empty-p q))))
+
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
+(base-test queue-small-timeout-test
+  (dolist (q (list (make-queue) (make-queue :fixed-capacity 1)))
+    (dolist (use-float-p '(nil t))
+      (loop
+         :for e :from -3 :downto -20
+         :for timeout := (let ((value (expt 10 e)))
+                           (if use-float-p
+                               (float value)
+                               value))
+         :do (repeat 10
+               (multiple-value-bind (a b) (try-pop-queue q :timeout timeout)
+                 (is (null a))
+                 (is (null b))))))))

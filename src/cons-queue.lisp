@@ -30,9 +30,10 @@
 
 (in-package #:lparallel.cons-queue)
 
-(import-now lparallel.thread-util::condition-wait/track-state
-            lparallel.thread-util::define-locking-fn
-            lparallel.thread-util::define-simple-locking-fn)
+(import-now lparallel.thread-util::define-locking-fn
+            lparallel.thread-util::define-simple-locking-fn
+            lparallel.thread-util::with-countdown
+            lparallel.thread-util::time-remaining)
 
 (defslots cons-queue ()
   ((impl :reader impl                      :type raw-queue)
@@ -61,33 +62,45 @@
                 (condition-wait (or cvar (setf cvar (make-condition-variable)))
                                 lock))))))
 
+(defun %try-pop-cons-queue/no-lock/timeout (queue timeout)
+  ;; queue is empty and timeout is positive
+  (declare #.*normal-optimize*)
+  (with-countdown (timeout)
+    (with-cons-queue-slots (impl lock cvar) queue
+      (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
+              (when presentp
+                (return (values value t)))
+              (let ((time-remaining (time-remaining)))
+                (when (or (not (plusp time-remaining))
+                          (null (condition-wait
+                                 (or cvar (setf cvar (make-condition-variable)))
+                                 lock :timeout time-remaining)))
+                  (return (values nil nil)))))))))
+
 (defun try-pop-cons-queue/no-lock/timeout (queue timeout)
   (declare #.*normal-optimize*)
-  (with-cons-queue-slots (impl lock cvar) queue
-    (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
-            (cond (presentp
-                   (return (values value t)))
-                  ((plusp timeout)
-                   (condition-wait/track-state cvar lock timeout))
-                  (t
-                   (return (values nil nil))))))))
+  (with-cons-queue-slots (impl) queue
+    (if (raw-queue-empty-p impl)
+        (%try-pop-cons-queue/no-lock/timeout queue timeout)
+        (pop-raw-queue impl))))
+
+(defun try-pop-cons-queue (queue timeout)
+  (declare #.*normal-optimize*)
+  (with-cons-queue-slots (impl lock) queue
+    (cond ((plusp timeout)
+           (with-lock-held (lock)
+             (try-pop-cons-queue/no-lock/timeout queue timeout)))
+          (t
+           ;; optimization: don't lock if nothing is there
+           (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
+             (return-from try-pop-cons-queue (pop-raw-queue impl)))
+           (values nil nil)))))
 
 (defun try-pop-cons-queue/no-lock (queue timeout)
   (declare #.*normal-optimize*)
   (if (plusp timeout)
       (try-pop-cons-queue/no-lock/timeout queue timeout)
       (pop-raw-queue (impl queue))))
-
-(defun try-pop-cons-queue (queue timeout)
-  (declare #.*normal-optimize*)
-  (if (plusp timeout)
-      (with-lock-held ((lock queue))
-        (try-pop-cons-queue/no-lock/timeout queue timeout))
-      ;; optimization: don't lock if nothing is there
-      (with-cons-queue-slots (impl lock) queue
-        (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
-          (return-from try-pop-cons-queue (pop-raw-queue impl)))
-        (values nil nil))))
 
 (defmacro define-queue-fn (name arg-types raw return-type)
   `(define-simple-locking-fn ,name (queue) ,arg-types ,return-type lock

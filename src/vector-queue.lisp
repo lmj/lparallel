@@ -30,9 +30,10 @@
 
 (in-package #:lparallel.vector-queue)
 
-(import-now lparallel.thread-util::condition-wait/track-state
-            lparallel.thread-util::define-locking-fn
-            lparallel.thread-util::define-simple-locking-fn)
+(import-now lparallel.thread-util::define-locking-fn
+            lparallel.thread-util::define-simple-locking-fn
+            lparallel.thread-util::with-countdown
+            lparallel.thread-util::time-remaining)
 
 ;;;; raw-queue
 
@@ -124,18 +125,24 @@
                         (setf notify-push (make-condition-variable)))
                     lock)))))))
 
-(defun try-pop-vector-queue/no-lock/timeout (queue timeout)
+(defun %try-pop-vector-queue/no-lock/timeout (queue timeout)
+  ;; queue is empty and timeout is positive
   (declare #.*normal-optimize*)
-  (with-vector-queue-slots (impl lock notify-push notify-pop) queue
-    (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
-            (cond (presentp
-                   (when notify-pop
-                     (condition-notify notify-pop))
-                   (return (values value t)))
-                  ((plusp timeout)
-                   (condition-wait/track-state notify-push lock timeout))
-                  (t
-                   (return (values nil nil))))))))
+  (with-countdown (timeout)
+    (with-vector-queue-slots (impl lock notify-push notify-pop) queue
+      (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
+              (when presentp
+                (when notify-pop
+                  (condition-notify notify-pop))
+                (return (values value t)))
+              (let ((time-remaining (time-remaining)))
+                (when (or (not (plusp time-remaining))
+                          (null (condition-wait
+                                 (or notify-push
+                                     (setf notify-push
+                                           (make-condition-variable)))
+                                 lock :timeout time-remaining)))
+                  (return (values nil nil)))))))))
 
 (defun try-pop-vector-queue/no-lock/no-timeout (queue)
   (declare #.*normal-optimize*)
@@ -148,17 +155,25 @@
             (t
              (values nil nil))))))
 
+(defun try-pop-vector-queue/no-lock/timeout (queue timeout)
+  (declare #.*normal-optimize*)
+  (with-vector-queue-slots (impl) queue
+    (if (raw-queue-empty-p impl)
+        (%try-pop-vector-queue/no-lock/timeout queue timeout)
+        (try-pop-vector-queue/no-lock/no-timeout queue))))
+
 (defun try-pop-vector-queue (queue timeout)
   (declare #.*normal-optimize*)
-  (if (plusp timeout)
-      (with-lock-held ((lock queue))
-        (try-pop-vector-queue/no-lock/timeout queue timeout))
-      ;; optimization: don't lock if nothing is there
-      (with-vector-queue-slots (impl lock) queue
-        (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
-          (return-from try-pop-vector-queue
-            (try-pop-vector-queue/no-lock/no-timeout queue)))
-        (values nil nil))))
+  (with-vector-queue-slots (impl lock) queue
+    (cond ((plusp timeout)
+           (with-lock-held (lock)
+             (try-pop-vector-queue/no-lock/timeout queue timeout)))
+          (t
+           ;; optimization: don't lock if nothing is there
+           (with-lock-predicate/wait lock (not (raw-queue-empty-p impl))
+             (return-from try-pop-vector-queue
+               (try-pop-vector-queue/no-lock/no-timeout queue)))
+           (values nil nil)))))
 
 (defun try-pop-vector-queue/no-lock (queue timeout)
   (declare #.*normal-optimize*)
