@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 2.6.2
+
+* updated to the new bordeaux-threads timeout API -- fixes a hole in
+  the new queue timeout feature
+* fixed a corner case in pmap-into (when no input sequences are passed
+  and the result sequence has a fill pointer that is not at the end)
+
 = 2.6.1
 
 * fixed multiple return values being discarded for functions defined
