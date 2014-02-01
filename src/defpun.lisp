@@ -376,10 +376,10 @@
       (force future)
       (let ((worker *worker*))
         (loop
-           (when (fulfilledp future)
-             (return (force future)))
            #+lparallel.with-green-threads (thread-yield)
-           (steal-work kernel worker)))))
+           (steal-work kernel worker)
+           (when (fulfilledp future)
+             (return (force future)))))))
 
 (defmacro %%plet/fast (kernel predicate future-count bindings body)
   `(with-lock-predicate/wait*

@@ -129,6 +129,8 @@ control (or not)."
        ,@body))
 
   (defun %call-with-task-handler (fn)
+    (declare #.*full-optimize*)
+    (declare (type function fn))
     (let ((*handler-active-p* t)
           (*debugger-hook* (make-debugger-hook)))
       (handler-bind ((condition #'condition-handler))
@@ -136,8 +138,9 @@ control (or not)."
                          :report-function #'transfer-error-report))
           (funcall fn)))))
 
-  (defun/type call-with-task-handler (fn) (function) (values &rest t)
+  (defun call-with-task-handler (fn)
     (declare #.*full-optimize*)
+    (declare (type function fn))
     (with-task-context
       (if *handler-active-p*
           (funcall fn)
