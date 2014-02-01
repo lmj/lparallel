@@ -37,7 +37,6 @@
       (speed 3)
       (safety 1)
       (debug 1)
-      (space 0)
       (compilation-speed 0)))
 
   (defvar *full-optimize*
@@ -45,7 +44,6 @@
       (speed 3)
       (safety 0)
       (debug 0)
-      (space 0)
       (compilation-speed 0))))
 
 #+lparallel.with-debug
