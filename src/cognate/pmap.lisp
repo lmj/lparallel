@@ -120,31 +120,38 @@ manually."
 
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
   (multiple-value-bind (size parts-hint) (pop-options seqs)
-    (let* ((fn         (ensure-function fn))
-           (has-fill-p (and (arrayp result-seq)
-                            (array-has-fill-pointer-p result-seq)))
+    (let* ((fn (ensure-function fn))
+           (initial-fill-pointer (and (arrayp result-seq)
+                                      (array-has-fill-pointer-p result-seq)
+                                      (fill-pointer result-seq)))
            (parts-hint (get-parts-hint parts-hint))
-           (size       (or size
-                           (let ((limit (if has-fill-p
-                                            (array-total-size result-seq)
-                                            (length result-seq))))
-                             (if seqs
-                                 (min limit (find-min-length seqs))
-                                 limit)))))
-      (prog1
-          (if seqs
-              (pmap-into/parsed map-into result-seq fn seqs size parts-hint)
-              (pmap-into/parsed map-into
-                                result-seq
-                                (lambda (x)
-                                  (declare #.*normal-optimize*)
-                                  (declare (ignore x))
-                                  (funcall fn))
-                                (list result-seq)
-                                size
-                                parts-hint))
-        (when has-fill-p
-          (setf (fill-pointer result-seq) size))))))
+           (size (or size
+                     (let ((limit (if initial-fill-pointer
+                                      (array-total-size result-seq)
+                                      (length result-seq))))
+                       (if seqs
+                           (min limit (find-min-length seqs))
+                           limit)))))
+      (flet ((main ()
+               (if seqs
+                   (pmap-into/parsed map-into
+                                     result-seq fn seqs size parts-hint)
+                   (pmap-into/parsed map-into
+                                     result-seq
+                                     (lambda (x)
+                                       (declare #.*normal-optimize*)
+                                       (declare (ignore x))
+                                       (funcall fn))
+                                     (list result-seq)
+                                     size
+                                     parts-hint))))
+        (declare (dynamic-extent #'main))
+        (if initial-fill-pointer
+            (unwind-protect/ext
+             :prepare (setf (fill-pointer result-seq) size)
+             :main (main)
+             :abort (setf (fill-pointer result-seq) initial-fill-pointer))
+            (main))))))
 
 (defun pmap-into (result-sequence function &rest sequences)
   "Parallel version of `map-into'. Keyword arguments `parts' and
