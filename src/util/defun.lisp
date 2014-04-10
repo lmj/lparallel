@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.util)
 
+(import-now alexandria:ensure-list)
+
 (defun constrain-return-type (return-type)
   (if (and (consp return-type)
            (eq 'values (first return-type)))
@@ -92,7 +94,7 @@
                   :for param :in lambda-list
                   :collect `(check-type ,param ,type)))
            ;; for a simple values list, check types
-           ,(if (intersection (mklist return-type) lambda-list-keywords)
+           ,(if (intersection (ensure-list return-type) lambda-list-keywords)
                 `(progn ,@body)
                 (let* ((return-types (if (and (consp return-type)
                                               (eq 'values (car return-type)))

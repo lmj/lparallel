@@ -30,6 +30,8 @@
 
 (in-package #:lparallel.util)
 
+(import-now alexandria:ensure-list)
+
 (defmacro defpair (name supers (a b) &optional doc)
   "Define a cons type using defclass syntax.
 
@@ -49,8 +51,8 @@ error will be signaled."
   (when doc
     (unless (and (consp doc) (eq :documentation (car doc)))
       (error "Expected `:documentation' option in DEFPAIR, got ~a" doc)))
-  (setf a (mklist a))
-  (setf b (mklist b))
+  (setf a (ensure-list a))
+  (setf b (ensure-list b))
   (labels ((slot-name     (slot) (car slot))
            (slot-props    (slot) (cdr slot))
            (slot-initform (slot) (or (getf (slot-props slot) :initform)

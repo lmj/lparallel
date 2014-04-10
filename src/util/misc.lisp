@@ -55,9 +55,6 @@
   (alias-function ensure-function alexandria:ensure-function)
   (alias-function symbolicate alexandria:symbolicate))
 
-(defun mklist (x)
-  (if (listp x) x (list x)))
-
 (defun unsplice (form)
   (if form (list form) nil))
 
