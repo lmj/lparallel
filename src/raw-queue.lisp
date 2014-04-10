@@ -47,7 +47,7 @@
   (%make-raw-queue nil nil))
 
 (defun/type push-raw-queue (value queue) (t raw-queue) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (let ((new (cons value nil)))
     (if (head queue)
         (setf (cdr (tail queue)) new)
@@ -55,7 +55,7 @@
     (setf (tail queue) new)))
 
 (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (if (head queue)
       (let ((node (head queue)))
         (multiple-value-prog1 (values (car node) t)

@@ -64,7 +64,7 @@
 
 (defun %try-pop-cons-queue/no-lock/timeout (queue timeout)
   ;; queue is empty and timeout is positive
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-countdown (timeout)
     (with-cons-queue-slots (impl lock cvar) queue
       (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
@@ -78,14 +78,14 @@
                   (return (values nil nil)))))))))
 
 (defun try-pop-cons-queue/no-lock/timeout (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-cons-queue-slots (impl) queue
     (if (raw-queue-empty-p impl)
         (%try-pop-cons-queue/no-lock/timeout queue timeout)
         (pop-raw-queue impl))))
 
 (defun try-pop-cons-queue (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-cons-queue-slots (impl lock) queue
     (cond ((plusp timeout)
            (with-lock-held (lock)
@@ -97,7 +97,7 @@
            (values nil nil)))))
 
 (defun try-pop-cons-queue/no-lock (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (if (plusp timeout)
       (try-pop-cons-queue/no-lock/timeout queue timeout)
       (pop-raw-queue (impl queue))))

@@ -192,7 +192,7 @@
          ,@(unsplice return-type/no-lock)
          ,@body)
        (defun/type ,name ,args ,arg-types ,return-type
-         (declare #.*normal-optimize*)
+         (declare #.*full-optimize*)
          (with-lock-held ((,lock-reader ,(car (last args))))
            (,name/no-lock ,@args))))))
 
@@ -200,7 +200,7 @@
   `(define-locking-fn/base
        ,name ,args ,arg-types ,return-type ,lock
        defun/type ,arg-types ,return-type
-     (declare #.*normal-optimize*)
+     (declare #.*full-optimize*)
      ,@body))
 
 (defmacro define-simple-locking-fn (name args arg-types return-type lock
@@ -208,5 +208,5 @@
   `(define-locking-fn/base
        ,name ,args ,arg-types ,return-type ,lock
        defun/inline nil nil
-     (declare #.*normal-optimize*)
+     (declare #.*full-optimize*)
      ,@body))

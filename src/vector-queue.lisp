@@ -48,14 +48,14 @@
   (make-raw-queue-instance :data (make-array capacity)))
 
 (defun/type push-raw-queue (value queue) (t raw-queue) null
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-raw-queue-slots (data start count) queue
     (setf (svref data (mod (+ start count) (length data))) value)
     (incf count)
     nil))
 
 (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-raw-queue-slots (data start count) queue
     (let ((data data))
       (if (plusp count)
@@ -66,22 +66,22 @@
           (values nil nil)))))
 
 (defun/type peek-raw-queue (queue) (raw-queue) (values t boolean)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-raw-queue-slots (data start count) queue
     (if (plusp count)
         (values (svref data start) t)
         (values nil nil))))
 
 (defun/type/inline raw-queue-empty-p (queue) (raw-queue) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (zerop (raw-queue-count queue)))
 
 (defun/type/inline raw-queue-full-p (queue) (raw-queue) t
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (eql (raw-queue-count queue) (length (data queue))))
 
 (defun/type/inline raw-queue-capacity (queue) (raw-queue) raw-queue-count
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (length (data queue)))
 
 ;;;; vector-queue
@@ -127,7 +127,7 @@
 
 (defun %try-pop-vector-queue/no-lock/timeout (queue timeout)
   ;; queue is empty and timeout is positive
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-countdown (timeout)
     (with-vector-queue-slots (impl lock notify-push notify-pop) queue
       (loop (multiple-value-bind (value presentp) (pop-raw-queue impl)
@@ -145,7 +145,7 @@
                   (return (values nil nil)))))))))
 
 (defun try-pop-vector-queue/no-lock/no-timeout (queue)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-vector-queue-slots (impl notify-pop) queue
     (multiple-value-bind (value presentp) (pop-raw-queue impl)
       (cond (presentp
@@ -156,14 +156,14 @@
              (values nil nil))))))
 
 (defun try-pop-vector-queue/no-lock/timeout (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-vector-queue-slots (impl) queue
     (if (raw-queue-empty-p impl)
         (%try-pop-vector-queue/no-lock/timeout queue timeout)
         (try-pop-vector-queue/no-lock/no-timeout queue))))
 
 (defun try-pop-vector-queue (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (with-vector-queue-slots (impl lock) queue
     (cond ((plusp timeout)
            (with-lock-held (lock)
@@ -176,7 +176,7 @@
            (values nil nil)))))
 
 (defun try-pop-vector-queue/no-lock (queue timeout)
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (if (plusp timeout)
       (try-pop-vector-queue/no-lock/timeout queue timeout)
       (try-pop-vector-queue/no-lock/no-timeout queue)))
