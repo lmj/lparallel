@@ -115,17 +115,18 @@
                   :initarg :limiter-count
                   :type fixnum)))
 
-(defslots kernel (limiter)
-  ((scheduler    :reader scheduler    :type scheduler)
-   (workers      :reader workers      :type simple-vector)
-   (workers-lock)
-   (worker-info                       :type worker-info)
-   (use-caller-p :reader use-caller-p :type boolean)
-   (alivep       :reader alivep       :type boolean))
-  (:documentation
-   "The kernel encompasses the scheduling and execution of parallel
-   tasks using a pool of worker threads. All parallelism in lparallel
-   is done on top of the kernel."))
+(locally (declare #.*full-optimize*)
+  (defslots kernel (limiter)
+    ((scheduler    :reader scheduler    :type scheduler)
+     (workers      :reader workers      :type simple-vector)
+     (workers-lock)
+     (worker-info                       :type worker-info)
+     (use-caller-p :reader use-caller-p :type boolean)
+     (alivep       :reader alivep       :type boolean))
+    (:documentation
+     "The kernel encompasses the scheduling and execution of parallel
+     tasks using a pool of worker threads. All parallelism in lparallel
+     is done on top of the kernel.")))
 
 (defslots channel ()
   ((queue  :reader channel-queue  :type queue)

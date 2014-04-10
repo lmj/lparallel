@@ -120,12 +120,14 @@
   (labels ((try-pop (queue)
              (declare (type spin-queue queue))
              (with-pop-success task queue
-               (return-from next-task task)))
+               (return-from next-task task))
+             (values))
            (find-a-task ()
              (try-pop (tasks worker))
              (with-scheduler-slots (workers) scheduler
                (do-workers (worker workers (worker-index worker) nil)
-                 (try-pop (tasks worker)))))
+                 (try-pop (tasks worker))))
+             (values))
            (maybe-sleep ()
              (with-scheduler-slots (wait-cvar wait-lock wait-count
                                     notify-count low-priority-tasks) scheduler
@@ -138,7 +140,8 @@
                               :until   (plusp notify-count)
                               :do      (condition-wait wait-cvar wait-lock)
                               :finally (decf notify-count)))
-                :cleanup (dec-counter wait-count)))))
+                :cleanup (dec-counter wait-count)))
+             (values)))
     (declare (dynamic-extent #'try-pop #'find-a-task #'maybe-sleep))
     (with-scheduler-slots (spin-count) scheduler
       (loop

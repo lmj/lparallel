@@ -31,7 +31,7 @@
 (in-package #:lparallel.kernel)
 
 (defslots wrapped-error ()
-  ((condition :type condition))
+  ((value :type condition :reader wrapped-error-value))
   (:documentation
    "This is a container for transferring an error that occurs inside
    `call-with-task-handler' to the calling thread."))
@@ -40,19 +40,18 @@
   "Wrap an error. A non-error condition may also be wrapped, though it
 will still be signaled with `error'."
   (make-wrapped-error-instance
-   :condition (ctypecase condition
-                (symbol (make-condition condition))
-                (condition condition))))
+   :value (ctypecase condition
+            (symbol (make-condition condition))
+            (condition condition))))
 
 (defun unwrap-result (result)
   "In `receive-result', this is called on the stored task result. The
 user receives the return value of this function."
-  (declare #.*normal-optimize*)
+  (declare #.*full-optimize*)
   (typecase result
     (wrapped-error
      ;; A `wrapped-error' signals an error upon being unwrapped.
-     (with-wrapped-error-slots (condition) result
-       (error condition)))
+     (error (wrapped-error-value result)))
     (otherwise
      ;; Most objects unwrap to themselves.
      result)))
