@@ -2,6 +2,14 @@
 lparallel Changes
 =================
 
+= 2.7.0
+
+* added the ability to bind multiple values in `plet', e.g.
+    (plet ((x 1) ((y z) (values 2 3))) (+ x y z)) ;=> 6
+* added `slet' -- serial/non-parallel `let' with the same syntax as
+  `plet' for binding multiple values
+* various optimizations
+
 = 2.6.2
 
 * updated to the new bordeaux-threads timeout API -- fixes a hole in
