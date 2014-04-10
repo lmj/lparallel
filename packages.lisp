@@ -53,7 +53,8 @@
            #:defpair)
   (:export #:interact
            #:ensure-function
-           #:to-boolean)
+           #:to-boolean
+           #:partial-apply)
   (:export #:index)
   (:export #:*normal-optimize*
            #:*full-optimize*))

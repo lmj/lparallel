@@ -30,8 +30,7 @@
 
 (in-package #:lparallel-bench)
 
-(import-now alexandria:curry
-            alexandria:compose
+(import-now alexandria:compose
             alexandria:flatten)
 
 ;;;; helpers
@@ -45,7 +44,7 @@
 
 (defun groups-of (n list)
   (loop
-     :for pos :on list :by (curry 'nthcdr n)
+     :for pos :on list :by (partial-apply 'nthcdr n)
      :collect (subseq pos 0 n)))
 
 (defun identity-args (&rest args)
@@ -122,7 +121,7 @@ results are riffled for comparison."
   (mapc 'print-chunk
    (mapcar 'flatten
     (riffle num-fns
-     (mapcar (curry 'nthcdr num-rehearsals)
+     (mapcar (partial-apply 'nthcdr num-rehearsals)
       (groups-of num-trials
        (mapcar 'funcall
                (mapcar 'desc-fn specs)

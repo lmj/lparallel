@@ -30,8 +30,6 @@
 
 (in-package #:lparallel-test)
 
-(import-now alexandria:curry)
-
 (full-test pmap-into-test
   (let ((a (list nil nil nil)))
     (pmap-into a '+ '(5 6 7) '(10 11 12))
@@ -554,8 +552,8 @@
      :for size :below 100
      :for where := (random 1.0)
      :for source := (collect-n size (random 1.0))
-     :do (is (equal (remove-if  (curry #'< where) source)
-                    (premove-if (curry #'< where) source)))))
+     :do (is (equal (remove-if  (partial-apply #'< where) source)
+                    (premove-if (partial-apply #'< where) source)))))
 
 (full-test second-premove-if-test
   (loop
@@ -566,18 +564,18 @@
             :for where := (random 1.0)
             :for a := (make-random-list size)
             :for b := (make-random-vector size)
-            :do (is (equal (funcall std (curry #'< where) a)
-                           (funcall par (curry #'< where) a)))
-            :do (is (equalp (funcall std (curry #'< where) b)
-                            (funcall par (curry #'< where) b)))
+            :do (is (equal (funcall std (partial-apply #'< where) a)
+                           (funcall par (partial-apply #'< where) a)))
+            :do (is (equalp (funcall std (partial-apply #'< where) b)
+                            (funcall par (partial-apply #'< where) b)))
             :do (when (>= size 77)
-                  (is (equal (funcall std (curry #'< where) a
+                  (is (equal (funcall std (partial-apply #'< where) a
                                       :start 20)
-                             (funcall par (curry #'< where) a
+                             (funcall par (partial-apply #'< where) a
                                       :start 20)))
-                  (is (equal (funcall std (curry #'< where) a
+                  (is (equal (funcall std (partial-apply #'< where) a
                                       :start 20 :end 77)
-                             (funcall par (curry #'< where) a
+                             (funcall par (partial-apply #'< where) a
                                       :start 20 :end 77)))))))
 
 (full-test premove-test
@@ -788,8 +786,8 @@
      :for size :from 1 :below 100
      :for where := (random 1.0)
      :for source := (collect-n size (random 1.0))
-     :do (is (equal (count-if  (curry #'< where) source)
-                    (pcount-if (curry #'< where) source)))))
+     :do (is (equal (count-if  (partial-apply #'< where) source)
+                    (pcount-if (partial-apply #'< where) source)))))
 
 (full-test second-pcount-if-test
   (loop
@@ -800,18 +798,18 @@
             :for where := (random 1.0)
             :for a := (make-random-list size)
             :for b := (make-random-vector size)
-            :do (is (equal  (funcall std (curry #'< where) a)
-                            (funcall par (curry #'< where) a)))
-            :do (is (equalp (funcall std (curry #'< where) b)
-                            (funcall par (curry #'< where) b)))
+            :do (is (equal  (funcall std (partial-apply #'< where) a)
+                            (funcall par (partial-apply #'< where) a)))
+            :do (is (equalp (funcall std (partial-apply #'< where) b)
+                            (funcall par (partial-apply #'< where) b)))
             :do (when (>= size 77)
-                  (is (equal (funcall std (curry #'< where) a
+                  (is (equal (funcall std (partial-apply #'< where) a
                                       :start 20)
-                             (funcall par (curry #'< where) a
+                             (funcall par (partial-apply #'< where) a
                                       :start 20)))
-                  (is (equal (funcall std (curry #'< where) a
+                  (is (equal (funcall std (partial-apply #'< where) a
                                       :start 20 :end 77)
-                             (funcall par (curry #'< where) a
+                             (funcall par (partial-apply #'< where) a
                                       :start 20 :end 77)))))))
 
 (full-test pcount-test
@@ -871,8 +869,8 @@
      :for size :from 1 :below 100
      :for source := (collect-n size (random 1.0))
      :do (setf (elt source (random size)) 999)
-     :do (is (eql (find-if  (curry #'eql 999) source)
-                  (pfind-if (curry #'eql 999) source)))))
+     :do (is (eql (find-if  (partial-apply #'eql 999) source)
+                  (pfind-if (partial-apply #'eql 999) source)))))
 
 (full-test second-pfind-if-test
   (loop
@@ -884,18 +882,18 @@
             :for target := (let ((index (random size)))
                              (setf (elt a index) 99.0
                                    (elt b index) 99.0))
-            :do (is (equal  (funcall std (curry #'eql target) a)
-                            (funcall par (curry #'eql target) a)))
-            :do (is (equalp (funcall std (curry #'eql target) b)
-                            (funcall par (curry #'eql target) b)))
+            :do (is (equal  (funcall std (partial-apply #'eql target) a)
+                            (funcall par (partial-apply #'eql target) a)))
+            :do (is (equalp (funcall std (partial-apply #'eql target) b)
+                            (funcall par (partial-apply #'eql target) b)))
             :do (when (>= size 77)
-                  (is (equal (funcall std (curry #'eql target) a
+                  (is (equal (funcall std (partial-apply #'eql target) a
                                       :start 20)
-                             (funcall par (curry #'eql target) a
+                             (funcall par (partial-apply #'eql target) a
                                       :start 20)))
-                  (is (equal (funcall std (curry #'eql target) a
+                  (is (equal (funcall std (partial-apply #'eql target) a
                                       :start 20 :end 77)
-                             (funcall par (curry #'eql target) a
+                             (funcall par (partial-apply #'eql target) a
                                       :start 20 :end 77)))))))
 
 (full-test pfind-test

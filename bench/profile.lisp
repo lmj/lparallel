@@ -30,8 +30,6 @@
 
 (in-package #:lparallel-bench)
 
-(import-now alexandria:curry)
-
 ;;;; util
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -45,7 +43,7 @@
     (remove-if-not #'fboundp (home-symbols pkg)))
 
   (defun packages-passing (predicate)
-    (remove-if-not (curry predicate) (list-all-packages)))
+    (remove-if-not predicate (list-all-packages)))
 
   (defun home-functions-in-packages-passing (predicate)
     (reduce #'nconc (packages-passing predicate) :key #'home-functions))

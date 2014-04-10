@@ -53,7 +53,8 @@
   (alias-macro with-gensyms alexandria:with-gensyms)
   (alias-macro when-let alexandria:when-let)
   (alias-function ensure-function alexandria:ensure-function)
-  (alias-function symbolicate alexandria:symbolicate))
+  (alias-function symbolicate alexandria:symbolicate)
+  (alias-function partial-apply alexandria:curry))
 
 (defun unsplice (form)
   (if form (list form) nil))
