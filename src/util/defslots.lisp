@@ -30,25 +30,7 @@
 
 (in-package #:lparallel.util)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *defslots-doc*
-    "Define a thing with slots.
-
-A `defslots' form may expand to either a `defclass' form or a
-`defstruct' form. Thou art foolish to depend upon either.
-
-The syntax of `defslots' matches that of `defclass' with the following
-restrictions: at most one superclass is permitted; `:initform',
-`:type', and `:reader', are the only slot options allowed;
-`:documentation' is the only class option allowed.
-
-`(defslots foo ...)' defines the functions `make-foo-instance' and
-`with-foo-slots' which are like `make-instance' and `with-slots'
-respectively. `make-foo-instance' takes keyword arguments
-corresponding to slots of the same name.
-
-All slots must be initialized when an instance is created, else an
-error will be signaled."))
+(import-now alexandria:ensure-list)
 
 (defun plist-keys (plist)
   (loop
@@ -130,9 +112,7 @@ error will be signaled."))
                       :collect `(define-reader
                                     ,public ,private ,type ,struct)))))
 
-  (defmacro defslots (name supers slots &rest options)
-    #.*defslots-doc*
-    (parse-defslots supers slots options)
+  (defmacro %defslots (name supers slots options)
     (multiple-value-bind (constructor slots-macro-name conc-name package)
         (defslots-names name)
       `(progn
@@ -142,9 +122,7 @@ error will be signaled."))
          ',name))))
 
 #+lparallel.with-debug
-(defmacro defslots (name supers slots &rest options)
-  #.*defslots-doc*
-  (parse-defslots supers slots options)
+(defmacro %defslots (name supers slots options)
   (multiple-value-bind (constructor slots-macro-name) (defslots-names name)
     `(progn
        (defclass ,name ,supers
@@ -159,3 +137,25 @@ error will be signaled."))
        (defun ,constructor (&rest args)
          (apply #'make-instance ',name args))
        ',name)))
+
+(defmacro defslots (name supers slots &rest options)
+  "Define a thing with slots.
+
+A `defslots' form may expand to either a `defclass' form or a
+`defstruct' form. Thou art foolish to depend upon either.
+
+The syntax of `defslots' matches that of `defclass' with the following
+restrictions: at most one superclass is permitted; `:initform',
+`:type', and `:reader', are the only slot options allowed;
+`:documentation' is the only class option allowed.
+
+`(defslots foo ...)' defines the functions `make-foo-instance' and
+`with-foo-slots' which are like `make-instance' and `with-slots'
+respectively. `make-foo-instance' takes keyword arguments
+corresponding to slots of the same name.
+
+All slots must be initialized when an instance is created, else an
+error will be signaled."
+  (setf slots (mapcar #'ensure-list slots))
+  (parse-defslots supers slots options)
+  `(%defslots ,name ,supers ,slots ,options))
