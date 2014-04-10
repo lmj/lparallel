@@ -34,58 +34,6 @@
 
 (define-plet-test defpun-basic-test defpun-basic-test-fn defpun nil)
 
-(defpun defpun-accept ()
-  ;; use assert since this may execute in another thread
-  (let ((queue (make-queue)))
-    (plet ((outer (progn
-                    (sleep 0.6)
-                    (push-queue :outer queue))))
-      ;; placate warnings
-      (setf *memo* (lambda () outer))
-      (sleep 0.1)
-      (plet ((inner1 (sleep 0.4))
-             (inner2 (sleep 0.4)))
-        (setf *memo* inner1)
-        (setf *memo* inner2)
-        (push-queue :inner queue)))
-        ;; inner plet was parallelized
-        (assert (eq :inner (pop-queue queue)))))
-
-#-lparallel.with-green-threads
-(base-test defpun-accept-test
-  (with-new-kernel (3)
-    (sleep 0.1)
-    (defpun-accept)
-    (is (= 1 1))))
-
-(defpun defpun-reject ()
-  ;; use assert since this may execute in another thread
-  (let ((queue (make-queue)))
-    (plet ((outer1 (progn
-                     (sleep 0.4)
-                     (push-queue :outer queue)))
-           (outer2 (progn
-                     (sleep 0.4)
-                     (push-queue :outer queue))))
-      ;; placate warnings
-      (setf *memo* (lambda () outer1))
-      (setf *memo* (lambda () outer2))
-      (sleep 0.1)
-      (plet ((inner1 (sleep 0.2))
-             (inner2 (sleep 0.2)))
-        (setf *memo* inner1)
-        (setf *memo* inner2)
-        (push-queue :inner queue)))
-    ;; inner plet was not parallelized
-    (assert (eq :outer (pop-queue queue)))))
-
-#-lparallel.with-green-threads
-(base-test defpun-reject-test
-  (with-new-kernel (2)
-    (sleep 0.1)
-    (defpun-reject)
-    (is (= 1 1))))
-
 (defun fib-let (n)
   (if (< n 2)
       n
@@ -109,7 +57,8 @@
 
 (full-test defpun-fib-test
   (loop
-     :for n :from 1 :to 15
+     :for n :from 1 :to #+lparallel.with-green-threads 5
+                        #-lparallel.with-green-threads 15
      :do (is (= (fib-let n) (fib-plet n) (fib-plet-if n)))))
 
 ;;; typed
@@ -137,7 +86,8 @@
 
 (full-test defpun/type-fib-test
   (loop
-     :for n :from 1 :to 15
+     :for n :from 1 :to #+lparallel.with-green-threads 5
+                        #-lparallel.with-green-threads 15
      :do (is (= (fib-let/type n) (fib-plet/type n) (fib-plet-if/type n)))))
 
 ;;; redefinitions
@@ -213,3 +163,63 @@
   (is (equal '(3 4) (multiple-value-list (mv-foo-3 3 4))))
   (is (equal '(3 4) (multiple-value-list (mv-foo-4 3 4))))
   (is (equal '(3 4) (multiple-value-list (mv-foo-5 3 4)))))
+
+(defpun defpun-mv-plet-1 ()
+  (plet (((a b) (floor 5 2))
+         (c 9)
+         d
+         (e)
+         ((f g h) (values 6 7 8)))
+    (declare (type fixnum b c g))
+    (list a b c d e f g h)))
+
+(defpun defpun-mv-plet-2 ()
+  (plet (a (b) ((c)) d (e))
+    (declare (type null d))
+    (declare (null c))
+    (list a b c d e)))
+
+(full-test defpun-mv-plet-test
+  (is (equal '(2 1 9 nil nil 6 7 8) (defpun-mv-plet-1)))
+  (is (equal '(nil nil nil nil nil) (defpun-mv-plet-2))))
+
+(defpun defpun-handling-1 ()
+  (plet ((a 3)
+         (b 4)
+         (c (restart-case (error 'foo-error)
+              (four () 5))))
+    (+ a b c)))
+
+(defpun defpun-handling-2 ()
+  (plet ((c (restart-case (error 'foo-error)
+              (four () 5)))
+         (a 3)
+         (b 4))
+    (+ a b c)))
+
+(defpun defpun-handling-3 ()
+  (error 'foo-error))
+
+(defpun defpun-handling-4 (n)
+  (if (< n 2)
+      (error 'foo-error)
+      (plet ((a (defpun-handling-4 (- n 1)))
+             (b (defpun-handling-4 (- n 2))))
+        (+ a b))))
+
+(full-test defpun-handling-test
+  (repeat 100
+    (task-handler-bind ((foo-error (lambda (e)
+                                     (declare (ignore e))
+                                     (invoke-restart 'four))))
+      (is (= 12 (defpun-handling-1)))
+      (is (= 12 (defpun-handling-2))))
+    (task-handler-bind ((foo-error #'invoke-transfer-error))
+      (signals foo-error
+        (defpun-handling-1))
+      (signals foo-error
+        (defpun-handling-2))
+      (signals foo-error
+        (defpun-handling-3))
+      (signals foo-error
+        (defpun-handling-4 10)))))

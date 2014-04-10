@@ -291,19 +291,27 @@
            #:fulfilledp
            #:chain))
 
+(defpackage #:lparallel.slet
+  (:documentation "(private) Serial let.")
+  (:use #:cl
+        #:lparallel.util)
+  (:export #:slet))
+
 (defpackage #:lparallel.defpun
   (:documentation "Fine-grained parallelism.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.kernel
-        #:lparallel.thread-util)
+        #:lparallel.thread-util
+        #:lparallel.slet)
   (:export #:defpun
            #:defpun*
            #:defpun/type
            #:defpun/type*
            #:declaim-defpun
            #:plet
-           #:plet-if))
+           #:plet-if
+           #:slet))
 
 (defpackage #:lparallel.cognate
   (:documentation
@@ -313,7 +321,8 @@
         #:lparallel.kernel
         #:lparallel.kernel-util
         #:lparallel.promise
-        #:lparallel.defpun)
+        #:lparallel.defpun
+        #:lparallel.slet)
   (:export #:pand
            #:pcount
            #:pcount-if
@@ -346,7 +355,8 @@
            #:premove-if-not
            #:psome
            #:psort
-           #:psort*))
+           #:psort*
+           #:slet))
 
 ;;; Avoid polluting CL-USER by choosing names in CL.
 (macrolet

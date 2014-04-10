@@ -39,7 +39,7 @@
          (not lparallel.with-debug))
   (pushnew :lparallel.with-cas *features*)
 
-  ;; defpun uses a cltl2 feature
+  ;; plet uses a cltl2 feature
   #+(or sbcl ccl lispworks allegro)
   (progn
     (pushnew :lparallel.with-cltl2 *features*)
@@ -117,6 +117,7 @@ See http://lparallel.org for documentation and examples.
                                     (:file "kernel-util")
                                     (:file "promise")
                                     (:file "ptree")
+                                    (:file "slet")
                                     (:file "defpun")
                                     (:module "cognate"
                                      :serial t

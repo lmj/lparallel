@@ -400,6 +400,13 @@
   (plet ((x 3))
     (declare (fixnum x))
     (is (= 3 x)))
+  (plet (((x) 3))
+    (declare (fixnum x))
+    (is (= 3 x)))
+  (plet (((x y) (values 3 4)))
+    (declare (type fixnum x y))
+    (is (= 3 x))
+    (is (= 4 y)))
   (plet ((x 3))
     (declare (fixnum x))
     (declare (integer x))
@@ -423,23 +430,6 @@
     (declare (fixnum x)
              (type null y))
     (is (equal '(3 nil) (list x y)))))
-
-;;; abcl has incomplete subtypep and no declaration-information
-#-abcl
-(base-test plet-type-warning-test
-  (signals warning
-    (macroexpand '(plet ((x 3))
-                   (declare (fixnum a))
-                   (is (= 3 x)))))
-  (signals warning
-    (macroexpand '(plet ((x 3))
-                   (declare (type fixnum a))
-                   (is (= 3 x)))))
-  (signals warning
-    (macroexpand '(plet ((x 3))
-                   (declare (fixnum a))
-                   (declare (type fixnum b))
-                   (is (= 3 x))))))
 
 (full-test pand-por-test
   (is (null (pand 3 4 5 6 nil)))
@@ -1260,3 +1250,54 @@
               ( sort (vector 1 3 2) '<)))
   (is (equalp (psort (vector 1 3 2) #'<)
               ( sort (vector 1 3 2) #'<))))
+
+(base-test slet-test
+  (let ((z 0))
+    (slet ((a (incf z)) (b (incf z)))
+      (is (= 1 a))
+      (is (= 2 b))))
+  (let ((z 0))
+    (slet (((a) (incf z)) (b (incf z)))
+      (is (= 1 a))
+      (is (= 2 b))))
+  (let ((z 0))
+    (slet ((a (incf z))
+           ((b c) (values (incf z) (incf z)))
+           (d (incf z))
+           ((e f g) (values (incf z) (incf z) (incf z))))
+      (is (equal '(1 2 3 4 5 6 7) (list a b c d e f g)))))
+  (slet (a (b) ((c)) d (e))
+    (declare (type null d c))
+    (is (equal '(nil nil nil nil nil) (list a b c d e))))
+  (signals unbound-variable
+    (funcall (handler-bind ((warning #'muffle-warning))
+               (compile nil '(lambda ()
+                              (slet ((a 3)
+                                     (b (1+ a)))
+                                (list a b))))))))
+
+(full-test plet-multiple-value-test
+  (plet ((a 1) (b 2))
+    (is (= 1 a))
+    (is (= 2 b)))
+  (plet (((a) 1) (b 2))
+    (is (= 1 a))
+    (is (= 2 b)))
+  (plet ((a 1)
+         ((b c) (values 2 3))
+         (d 4)
+         ((e f g) (values 5 6 7)))
+    (is (equal '(1 2 3 4 5 6 7) (list a b c d e f g))))
+  (plet ((a) b)
+    (is (null a))
+    (is (null b)))
+  (plet (((a b)))
+    (is (null a))
+    (is (null b)))
+  (signals error
+    (task-handler-bind ((error #'invoke-transfer-error))
+      (funcall (handler-bind ((warning #'muffle-warning))
+                 (compile nil '(lambda ()
+                                (plet ((a 3)
+                                       (b (1+ a)))
+                                  (list a b)))))))))

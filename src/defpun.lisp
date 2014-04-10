@@ -1,4 +1,4 @@
-;;; Copyright (c) 2011-2012, James M. Lawrence. All rights reserved.
+;;; Copyright (c) 2014, James M. Lawrence. All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
@@ -32,220 +32,23 @@
 
 (import-now alexandria:simple-style-warning
             lparallel.util::symbolicate/package
+            lparallel.slet::make-binding-data
+            lparallel.slet::parse-bindings
             lparallel.kernel::*worker*
             lparallel.kernel::*make-limiter-data*
             lparallel.kernel::kernel
-            lparallel.kernel::unwrap-result
-            lparallel.kernel::wrap-error
-            lparallel.kernel::make-task
-            lparallel.kernel::task-lambda
-            lparallel.kernel::submit-raw-task
             lparallel.kernel::use-caller-p
-            lparallel.kernel::steal-work
+            lparallel.kernel::unwrap-result
             lparallel.kernel::call-with-task-handler
-            lparallel.kernel::with-task-context
             lparallel.kernel::limiter-accept-task-p
             lparallel.kernel::limiter-count
-            lparallel.kernel::limiter-lock)
-
-;;;; util
-
-(defmacro with-lock-predicate/wait*
-    (&key lock predicate1 predicate2 succeed/lock succeed/no-lock fail)
-  (with-gensyms (top fail-tag)
-    `(block ,top
-       (tagbody
-          (when ,predicate1
-            (with-spin-lock-held (,lock)
-              (if ,predicate2
-                  ,succeed/lock
-                  (go ,fail-tag)))
-            (return-from ,top ,succeed/no-lock))
-        ,fail-tag
-          (return-from ,top ,fail)))))
-
-(defmacro defun/wrapper (wrapper-name impl-name lambda-list &body body)
-  (with-gensyms (args kernel)
-    (multiple-value-bind (wrapper-lambda-list expansion)
-        (if (intersection lambda-list lambda-list-keywords)
-            (values `(&rest ,args)
-                    ``(apply (function ,',impl-name) ,,kernel ,',args))
-            (values lambda-list
-                    ``(,',impl-name ,,kernel ,@',lambda-list)))
-      `(defun ,wrapper-name ,wrapper-lambda-list
-         (macrolet ((call-impl (,kernel) ,expansion))
-           ,@body)))))
-
-;;;; lightweight futures
-
-(defconstant +no-result+ 'no-result)
-
-(deftype future () 'cons)
-
-(defmacro result (future)
-  `(car (the future ,future)))
-
-(defmacro future-fn (future)
-  `(the function (cdr (the future ,future))))
-
-(defmacro %make-future (fn)
-  `(cons +no-result+ ,fn))
-
-(defmacro fulfilledp (future)
-  `(not (eq (result ,future) +no-result+)))
-
-(defmacro force (future)
-  `(locally (declare #.*full-optimize*)
-     (unwrap-result (result ,future))))
-
-(defun/type make-future (kernel fn) (kernel function) future
-  (declare #.*full-optimize*)
-  (let ((future (%make-future fn)))
-    (submit-raw-task
-     (make-task
-      (lambda ()
-        (unwind-protect/ext
-         ;; task handler has already been established
-         :main  (setf (result future) (with-task-context
-                                        (funcall (future-fn future))))
-         :abort (setf (result future) (wrap-error 'task-killed-error)))))
-     kernel)
-    future))
-
-(defmacro future (kernel &body body)
-  `(make-future ,kernel (task-lambda ,@body)))
-
-;;;; declarationp
-
-;;; `declaration-information' resolves the ambiguity between types and
-;;; custom declares -- (declare (type foo x)) may be abbreviated as
-;;; (declare (foo x)).
-#+lparallel.with-cltl2
-(progn
-  #-(or sbcl ccl lispworks allegro)
-  (eval-when (:compile-toplevel :load-toplevel :execute)
-    (error "cltl2 not (yet?) enabled for this implementation."))
-
-  (defun declaration-information (decl env)
-    (#+sbcl sb-cltl2:declaration-information
-     #+ccl ccl:declaration-information
-     #+lispworks hcl:declaration-information
-     #+allegro sys:declaration-information
-     decl env))
-
-  (defun custom-declaration-p (form env)
-    (member form (declaration-information 'declaration env))))
-
-;;; When `declaration-information' is not available use `subtypep'
-;;; instead. On implementations that have a weak `subtypep', a deftype
-;;; that expands to a compound type might not be recognized as a type.
-;;; There's no way to solve this portably. The user can avoid this
-;;; problem by using the literal `type' declaration instead of
-;;; omitting `type' as shortcut.
-#-lparallel.with-cltl2
-(progn
-  (defun known-type-p (symbol)
-    (ignore-errors (nth-value 1 (subtypep symbol nil))))
-
-  (defun custom-declaration-p (form env)
-    (declare (ignore env))
-    (typecase form
-      (symbol (not (known-type-p form))))))
-
-(defparameter *standard-declaration-identifiers*
-  '(dynamic-extent  ignore     optimize
-    ftype           inline     special
-    ignorable       notinline  type))
-
-(defun declarationp (form env)
-  (or (member form *standard-declaration-identifiers*)
-      (custom-declaration-p form env)))
-
-;;;; future-let
-
-;;; Terminology:
-;;;
-;;; declares: ((DECLARE FOO BAR) (DECLARE BAZ))
-;;; corresponding declaration specifiers (decl-specs): (FOO BAR BAZ)
-
-(defun zip-repeat (fn list object)
-  (mapcar (lambda (elem) (funcall fn elem object)) list))
-
-(defun decl-spec->typed-vars (decl-spec env)
-  (destructuring-bind (head &rest list) decl-spec
-    (cond ((eq head 'type)
-           (destructuring-bind (type &rest vars) list
-             (zip-repeat #'cons vars type)))
-          ((declarationp head env)
-           nil)
-          (t
-           ;; (foo x) shorthand for (type foo x)
-           (zip-repeat #'cons list head)))))
-
-(defun decl-specs->typed-vars (decl-specs env)
-  (loop
-     :for decl-spec :in decl-specs
-     :if (decl-spec->typed-vars decl-spec env) :append it :into typed-vars
-     :else :collect decl-spec :into non-type-decl-specs
-     :finally (return (values typed-vars non-type-decl-specs))))
-
-(defun declares->decl-specs (declares)
-  (loop
-     :for (first . rest) :in declares
-     :do (assert (eq 'declare first))
-     :append rest))
-
-(defun declares->typed-vars (declares env)
-  (decl-specs->typed-vars (declares->decl-specs declares) env))
-
-(defun bindings->vars (bindings)
-  (mapcar (lambda (binding)
-            (etypecase binding
-              (cons (first binding))
-              (symbol binding)))
-          bindings))
-
-(defun unknown-typed-vars (typed-vars bindings)
-  (set-difference (mapcar #'car typed-vars) (bindings->vars bindings)))
-
-(defun pairp (form)
-  (and (consp form) (eql (length form) 2)))
-
-(defun lookup-all (item alist &key (test #'eql))
-  (loop
-     :for (x . y) :in alist
-     :when (funcall test x item) :collect y))
-
-(defmacro with-parsed-let-args ((pairs non-pairs syms) bindings &body body)
-  (check-type bindings symbol)
-  `(let* ((,pairs     (remove-if-not #'pairp ,bindings))
-          (,non-pairs (remove-if     #'pairp ,bindings))
-          (,syms      (loop
-                         :for (name nil) :in ,pairs
-                         :collect (gensym (symbol-name name)))))
-     ,@body))
-
-(defmacro future-let (&key kernel future force bindings body &environment env)
-  (with-parsed-body (body declares)
-    (with-parsed-let-args (pairs non-pairs syms) bindings
-      (multiple-value-bind (typed-vars non-type-decl-specs)
-          (declares->typed-vars declares env)
-        (when-let (vars (unknown-typed-vars typed-vars bindings))
-          (warn "In type declaration for `plet', unrecognized: ~{~s ~^~}" vars))
-        `(symbol-macrolet
-             ,(loop
-                 :for sym :in syms
-                 :for (name nil) :in pairs
-                 :for force-form := `(,force ,@(unsplice kernel) ,sym)
-                 :for types := (lookup-all name typed-vars)
-                 :collect `(,name (the (and ,@types) ,force-form)))
-           (let (,@(loop
-                      :for sym :in syms
-                      :for (nil form) :in pairs
-                      :collect `(,sym (,future ,@(unsplice kernel) ,form)))
-                 ,@non-pairs)
-             (declare ,@non-type-decl-specs)
-             ,@body))))))
+            lparallel.kernel::limiter-lock
+            lparallel.kernel::submit-raw-task
+            lparallel.kernel::make-task
+            lparallel.kernel::task-lambda
+            lparallel.kernel::wrapped-error
+            lparallel.kernel::with-task-context
+            lparallel.kernel::steal-work)
 
 ;;;; function registration
 
@@ -326,17 +129,13 @@
   (with-lock-held (*registration-lock*)
     (setf *registered-names* (set-difference *registered-names* names))))
 
-;;;; defpun
+;;;; limiter
 
 ;;; New tasks are accepted when limiter-count is positive. Creating a
 ;;; task decrements limiter-count; finishing a task increments it.
 
-;;; Using (1+ thread-count) as the initial value of limiter-count puts
-;;; task production just barely ahead of consumption. Experimentally
-;;; this appears to be optimal, however other hardware or lisp
-;;; implementations may produce different results.
 (defun initial-limiter-count (thread-count)
-  (1+ thread-count))
+  (+ thread-count 1))
 
 (defun make-limiter-data (thread-count)
   (list :limiter-accept-task-p t
@@ -345,7 +144,7 @@
 
 (setf *make-limiter-data* 'make-limiter-data)
 
-(defmacro accept-task-p/fast (kernel)
+(defmacro accept-task-p (kernel)
   (check-type kernel symbol)
   `(locally (declare #.*full-optimize*)
      (limiter-accept-task-p (the kernel ,kernel))))
@@ -363,69 +162,177 @@
     (update-limiter-count/no-lock kernel delta))
   nil)
 
-(defmacro future/fast (kernel &body body)
-  `(future ,kernel
-     (unwind-protect
-          (progn ,@body)
-       (locally (declare #.*full-optimize*)
-         (update-limiter-count (the kernel ,kernel) 1)))))
+;;;; plet
 
-(defun/type force/fast (kernel future) (kernel future) t
-  (declare #.*full-optimize*)
-  (if (fulfilledp future)
-      (force future)
-      (let ((worker *worker*))
-        (loop
-           #+lparallel.with-green-threads (thread-yield)
-           (steal-work kernel worker)
-           (when (fulfilledp future)
-             (return (force future)))))))
+(defconstant +no-result+ 'no-result)
 
-(defmacro %%plet/fast (kernel predicate future-count bindings body)
-  `(with-lock-predicate/wait*
+(defmacro msetq (vars form)
+  (if (= 1 (length vars))
+      `(setq ,(first vars) ,form)
+      `(multiple-value-setq ,vars ,form)))
+
+(defun client-vars (binding-data)
+  (reduce #'append binding-data :key #'first))
+
+(defun temp-vars (binding-data)
+  (reduce #'append binding-data :key #'second))
+
+(defun primary-temp-vars (binding-data)
+  (loop
+     :for (nil temp-vars nil) :in binding-data
+     :collect (first temp-vars)))
+
+(defmacro with-temp-bindings (here-binding-datum spawn-binding-data &body body)
+  `(let (,@(temp-vars (list here-binding-datum))
+         ,@(loop
+              :for var :in (temp-vars spawn-binding-data)
+              :collect `(,var +no-result+)))
+     ,@body))
+
+(defmacro with-client-bindings (binding-data null-bindings &body body)
+  `(let (,@null-bindings
+         ,@(mapcar #'list
+                   (client-vars binding-data)
+                   (temp-vars binding-data)))
+     ,@body))
+
+(defmacro spawn (kernel temp-vars form)
+  (check-type kernel symbol)
+  `(submit-raw-task
+    (make-task
+     (task-lambda
+       ;; task handler already established
+       (unwind-protect (msetq ,temp-vars (with-task-context ,form))
+         (locally (declare #.*full-optimize*)
+           (update-limiter-count (the kernel ,kernel) 1)))
+       (values)))
+    ,kernel))
+
+(defmacro spawn-tasks (kernel spawn-binding-data)
+  (check-type kernel symbol)
+  `(progn
+     ,@(loop
+          :for (nil temp-vars form) :in spawn-binding-data
+          :collect `(spawn ,kernel ,temp-vars ,form))))
+
+(defmacro exec-task (here-binding-datum)
+  (destructuring-bind (client-vars temp-vars form) here-binding-datum
+    (declare (ignore client-vars))
+    `(msetq ,temp-vars ,form)))
+
+(defmacro sync (kernel spawn-binding-data)
+  (check-type kernel symbol)
+  ;; reverse to check last spawn first
+  (let ((temp-vars (reverse (temp-vars spawn-binding-data))))
+    `(locally (declare #.*full-optimize*)
+       (loop
+          :with worker := *worker*
+          :while (or ,@(loop
+                          :for temp-var :in temp-vars
+                          :collect `(eq ,temp-var +no-result+)))
+          :do (progn
+                #+lparallel.with-green-threads (thread-yield)
+                (steal-work (the kernel ,kernel) worker))))))
+
+(defmacro scan-for-errors (binding-data)
+  ;; a wrapped error would only appear as the primary return value
+  `(locally (declare #.*full-optimize*)
+     ,@(loop
+          :for temp-var :in (primary-temp-vars binding-data)
+          :collect `(when (typep ,temp-var 'wrapped-error)
+                      (unwrap-result ,temp-var)))))
+
+(defmacro %%%%plet (kernel bindings body)
+  (multiple-value-bind (binding-data null-bindings) (make-binding-data bindings)
+    (destructuring-bind
+          (here-binding-datum &rest spawn-binding-data) binding-data
+      `(with-temp-bindings ,here-binding-datum ,spawn-binding-data
+         (spawn-tasks ,kernel ,spawn-binding-data)
+         (exec-task ,here-binding-datum)
+         (sync ,kernel ,spawn-binding-data)
+         (scan-for-errors ,spawn-binding-data)
+         (with-client-bindings ,binding-data ,null-bindings
+           ,@body)))))
+
+(defmacro with-lock-predicates (&key lock predicate1 predicate2
+                                succeed/lock succeed/no-lock fail)
+  (with-gensyms (top fail-tag)
+    `(block ,top
+       (tagbody
+          (when ,predicate1
+            (with-spin-lock-held (,lock)
+              (if ,predicate2
+                  ,succeed/lock
+                  (go ,fail-tag)))
+            (return-from ,top ,succeed/no-lock))
+        ,fail-tag
+          (return-from ,top ,fail)))))
+
+(defmacro %%%plet (kernel predicate spawn-count bindings body)
+  ;; Putting the body code into a shared dynamic-extent function
+  ;; caused some slowdown, so reluctantly duplicate the body.
+  `(with-lock-predicates
        :lock            (limiter-lock (the kernel ,kernel))
        :predicate1      ,predicate
-       :predicate2      (accept-task-p/fast ,kernel)
-       :succeed/lock    (update-limiter-count/no-lock ,kernel ,(- future-count))
-       :succeed/no-lock (future-let :kernel ,kernel
-                                    :future future/fast
-                                    :force force/fast
-                                    :bindings ,bindings
-                                    :body ,body)
-       :fail            (let ,bindings ,@body)))
+       :predicate2      (accept-task-p ,kernel)
+       :succeed/lock    (update-limiter-count/no-lock ,kernel ,(- spawn-count))
+       :succeed/no-lock (%%%%plet ,kernel ,bindings ,body)
+       :fail            (slet ,bindings ,@body)))
 
-(defmacro %plet/fast (kernel predicate bindings body)
-  (with-parsed-let-args (pairs non-pairs syms) bindings
-    (declare (ignore non-pairs syms))
-    (if pairs
-        `(%%plet/fast ,kernel ,predicate ,(length pairs) ,bindings ,body)
-        `(let ,bindings ,@body))))
+(defmacro %%plet (kernel predicate bindings body)
+  (let ((spawn-count (- (length (parse-bindings bindings)) 1)))
+    (if (plusp spawn-count)
+        `(%%%plet ,kernel ,predicate ,spawn-count ,bindings ,body)
+        `(slet ,bindings ,@body))))
 
-(defmacro plet/fast (kernel bindings &body body)
-  `(%plet/fast ,kernel
-               (accept-task-p/fast ,kernel)
-               ,bindings
-               ,body))
+(defmacro %plet (kernel bindings &body body)
+  `(%%plet ,kernel
+           (accept-task-p ,kernel)
+           ,bindings
+           ,body))
 
-(defmacro plet-if/fast (kernel predicate bindings &body body)
-  `(%plet/fast ,kernel
-               (and (accept-task-p/fast ,kernel) ,predicate)
-               ,bindings ,body))
+(defmacro %plet-if (kernel predicate bindings &body body)
+  `(%%plet ,kernel
+           (and (accept-task-p ,kernel) ,predicate)
+           ,bindings
+           ,body))
+
+;;;; defpun
+
+(defmacro defun/wrapper (wrapper-name impl-name lambda-list &body body)
+  (with-gensyms (args kernel)
+    (multiple-value-bind (wrapper-lambda-list expansion)
+        (if (intersection lambda-list lambda-list-keywords)
+            (values `(&rest ,args)
+                    ``(apply (function ,',impl-name) ,,kernel ,',args))
+            (values lambda-list
+                    ``(,',impl-name ,,kernel ,@',lambda-list)))
+      `(defun ,wrapper-name ,wrapper-lambda-list
+         (macrolet ((call-impl (,kernel) ,expansion))
+           ,@body)))))
+
+(defun call-with-toplevel-handler (fn)
+  (declare #.*full-optimize*)
+  (declare (type function fn))
+  (let* ((results (multiple-value-list (call-with-task-handler fn)))
+         (first (first results)))
+    (when (typep first 'wrapped-error)
+      (unwrap-result first))
+    (values-list results)))
+
+(defun call-inside-worker (kernel fn)
+  (declare #.*full-optimize*)
+  (declare (type function fn))
+  (let ((channel (let ((*kernel* kernel)) (make-channel))))
+    (submit-task channel (lambda () (multiple-value-list (funcall fn))))
+    (values-list (receive-result channel))))
 
 (defun call-impl-fn (kernel impl)
-  (declare #.*normal-optimize*)
-  (cond (*worker*
-         ;; handlers are already established; call directly
-         (funcall impl))
-        ((use-caller-p kernel)
-         ;; establish handlers for stealing in this non-worker thread
-         (call-with-task-handler impl))
-        (t
-         ;; not in a worker thread and not stealing; exec in a worker
-         (let ((channel (let ((*kernel* kernel)) (make-channel))))
-           (submit-task channel (lambda ()
-                                  (multiple-value-list (funcall impl))))
-           (values-list (receive-result channel))))))
+  (declare #.*full-optimize*)
+  (declare (type function impl))
+  (if (or *worker* (use-caller-p kernel))
+      (call-with-toplevel-handler impl)
+      (call-inside-worker kernel impl)))
 
 (defmacro define-defpun (defpun doc defun &rest types)
   `(defmacro ,defpun (name lambda-list ,@types &body body)
@@ -444,11 +351,9 @@
                 ,@declares
                 (declare (ignorable ,kernel))
                 (macrolet ((plet (bindings &body body)
-                             `(plet/fast ,',kernel ,bindings
-                                ,@body))
+                             `(%plet ,',kernel ,bindings ,@body))
                            (plet-if (predicate bindings &body body)
-                             `(plet-if/fast ,',kernel ,predicate ,bindings
-                                ,@body))
+                             `(%plet-if ,',kernel ,predicate ,bindings ,@body))
                            ,@(registered-macrolets kernel))
                   ,@body))
               (defun/wrapper ,name ,(unchecked-name name) ,lambda-list

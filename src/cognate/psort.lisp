@@ -77,25 +77,25 @@
                 `(let ((left-size (the fixnum (- j lo))))
                    (declare (type fixnum left-size))
                    (if (> left-size ,gran)
-                       (plet ((result ,left))
-                         ,right
-                         result)
+                       (plet ((left-result ,left)
+                              (right-result ,right))
+                         (declare (ignore left-result right-result)))
                        (let ((right-size (the fixnum
                                            (1+ (the fixnum (- hi i))))))
                          (declare (type fixnum right-size))
                          (if (> right-size ,gran)
-                             (plet ((result ,right))
-                               ,left
-                               result)
+                             (plet ((right-result ,right)
+                                    (left-result ,left))
+                               (declare (ignore left-result right-result)))
                              (cond ((< left-size right-size)
                                     ,left
                                     ,right)
                                    (t
                                     ,right
                                     ,left))))))
-                `(plet ((result ,left))
-                   ,right
-                   result)))))
+                `(plet ((right-result ,right)
+                        (left-result ,left))
+                   (declare (ignore right-result left-result)))))))
      nil))
 
 (defmacro define-quicksort-fns ()
