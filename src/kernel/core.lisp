@@ -352,7 +352,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 
 (defun/type/inline make-task (fn) (function) task
   (declare #.*full-optimize*)
-  (make-task-instance :category *task-category* :fn fn))
+  (make-task-instance fn *task-category*))
 
 (defun/type make-channeled-task (channel fn args) (channel function list) t
   ;; avoid allocation from extent checks with safety 0 (sbcl)

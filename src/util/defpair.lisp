@@ -75,15 +75,7 @@ error will be signaled."
     `(progn
        (deftype ,name () `(cons ,',(slot-type a)
                                 ,',(slot-type b)))
-
-       (defun/type/inline ,(symbolicate '#:make- name '#:-instance)
-           (&key (,(slot-name a) ,(slot-initform a))
-                 (,(slot-name b) ,(slot-initform b)))
-           (&key (,(slot-initarg a) ,(slot-type a))
-                 (,(slot-initarg b) ,(slot-type b)))
-           ,name
-         (cons ,(slot-name a) ,(slot-name b)))
-
+       (alias-function ,(symbolicate '#:make- name '#:-instance) cons)
        ,@(loop
             :for slot :in `(,a ,b)
             :for fn   :in '(car cdr)
