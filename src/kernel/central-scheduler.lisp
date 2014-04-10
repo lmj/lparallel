@@ -37,11 +37,12 @@
   (make-biased-queue))
 
 (defun/type schedule-task (scheduler task priority)
-    (scheduler (or task null) t) t
+    (scheduler (or task null) t) #-ecl (values) #+ecl null
   (declare #.*normal-optimize*)
   (ccase priority
     (:default (push-biased-queue     task scheduler))
-    (:low     (push-biased-queue/low task scheduler))))
+    (:low     (push-biased-queue/low task scheduler)))
+  #-ecl (values) #+ecl nil)
 
 (defun/inline next-task (scheduler worker)
   (declare (ignore worker))

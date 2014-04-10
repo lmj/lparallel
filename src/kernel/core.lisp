@@ -366,11 +366,13 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
          ;; the task handler handles everything; unwind means thread kill
          :abort (push-queue (wrap-error 'task-killed-error) queue))))))
 
-(defun/type/inline submit-raw-task (task kernel) (task kernel) t
+(defun/type/inline submit-raw-task (task kernel)
+    (task kernel) #-ecl (values) #+ecl null
   (declare #.*normal-optimize*)
   (unless (alivep kernel)
     (error "Attempted to submit a task to an ended kernel."))
-  (schedule-task (scheduler kernel) task *task-priority*))
+  (schedule-task (scheduler kernel) task *task-priority*)
+  #-ecl (values) #+ecl nil)
 
 (defun submit-task (channel function &rest args)
   "Submit a task through `channel' to the kernel stored in `channel'."

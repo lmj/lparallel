@@ -47,12 +47,12 @@
 (defun make-raw-queue (capacity)
   (make-raw-queue-instance :data (make-array capacity)))
 
-(defun/type push-raw-queue (value queue) (t raw-queue) null
+(defun/type push-raw-queue (value queue) (t raw-queue) #-ecl (values) #+ecl null
   (declare #.*full-optimize*)
   (with-raw-queue-slots (data start count) queue
     (setf (svref data (mod (+ start count) (length data))) value)
-    (incf count)
-    nil))
+    (incf count))
+  #-ecl (values) #+ecl nil)
 
 (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
   (declare #.*full-optimize*)
@@ -99,7 +99,8 @@
   `(with-lock-held ((lock ,queue))
      ,@body))
 
-(define-locking-fn push-vector-queue (object queue) (t vector-queue) null lock
+(define-locking-fn push-vector-queue (object queue)
+    (t vector-queue) #-ecl (values) #+ecl null lock
   (with-vector-queue-slots (impl lock notify-push notify-pop) queue
     (loop (cond ((< (raw-queue-count impl) (raw-queue-capacity impl))
                  (push-raw-queue object impl)
@@ -110,7 +111,8 @@
                  (condition-wait
                   (or notify-pop
                       (setf notify-pop (make-condition-variable)))
-                  lock))))))
+                  lock)))))
+  #-ecl (values) #+ecl nil)
 
 (define-locking-fn pop-vector-queue (queue) (vector-queue) t lock
   (with-vector-queue-slots (impl lock notify-push notify-pop) queue

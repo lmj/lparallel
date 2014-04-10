@@ -79,14 +79,16 @@
 (defun make-scheduler (workers spin-count)
   (make-scheduler-instance :workers workers :spin-count spin-count))
 
-(defun/type/inline push-to-random-worker (task scheduler) (task scheduler) t
+(defun/type/inline push-to-random-worker (task scheduler)
+    (task scheduler) #-ecl (values) #+ecl null
   ;; Decrease random-index without caring about simultaneous changes.
   ;; The actual value of random-index does not matter as long as it
   ;; remains somewhat well-distributed.
   (declare #.*full-optimize*)
   (with-scheduler-slots (workers random-index) scheduler
     (push-spin-queue
-     task (tasks (svref workers (mod-decf random-index (length workers)))))))
+     task (tasks (svref workers (mod-decf random-index (length workers))))))
+  #-ecl (values) #+ecl nil)
 
 (defun/type maybe-wake-a-worker (scheduler) (scheduler) t
   (declare #.*full-optimize*)
