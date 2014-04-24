@@ -100,13 +100,15 @@ not present then no docstring is parsed."
   `(loop :repeat ,n :do (progn ,@body)))
 
 (defmacro dosequence ((var sequence &optional return) &body body)
-  `(block nil
-     (map nil (lambda (,var) ,@body) ,sequence)
-     ,@(if return
-           `((let ((,var nil))
-               (declare (ignorable ,var))
-               ,return))
-           nil)))
+  (with-gensyms (body-fn)
+    `(block nil
+       (flet ((,body-fn (,var) ,@body))
+         (declare (dynamic-extent #',body-fn))
+         (map nil #',body-fn ,sequence)
+         ,@(unsplice (when return
+                       `(let ((,var nil))
+                          (declare (ignorable ,var))
+                          ,return)))))))
 
 (defmacro unwind-protect/ext (&key prepare main cleanup abort)
   "Extended `unwind-protect'.
