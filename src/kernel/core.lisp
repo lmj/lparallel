@@ -325,21 +325,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
       Pass no arguments instead."))
   whole)
 
-#-lparallel.with-expanded-tasks
-(progn
-  (defun/type task-dynamic-closure-xx (fn) (function) function
-    (declare #.*full-optimize*)
-    (let ((client-handlers *client-handlers*))
-      (if client-handlers
-          (lambda ()
-            (let ((*client-handlers* client-handlers))
-              (funcall fn)))
-          fn)))
-
-  (defmacro task-lambda (&body body)
-    `(task-dynamic-closure-xx (lambda () ,@body))))
-
-#+lparallel.with-expanded-tasks
+#-lparallel.without-task-handling
 (defmacro task-lambda (&body body)
   (with-gensyms (body-fn client-handlers)
     `(flet ((,body-fn () ,@body))
@@ -349,6 +335,10 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
                (let ((*client-handlers* ,client-handlers))
                  (,body-fn)))
              #',body-fn)))))
+
+#+lparallel.without-task-handling
+(defmacro task-lambda (&body body)
+  `(lambda () ,@body))
 
 (defun/type/inline make-task (fn) (function) task
   (declare #.*full-optimize*)
