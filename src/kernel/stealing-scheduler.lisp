@@ -59,20 +59,24 @@
        (declare (type fixnum ,left))
        (loop
           (when (zerop ,left)
-            (return))
+            (return (values)))
           (decf ,left)
           ,@body))))
 
-(defmacro do-indexes ((var size-form start from-start-p) &body body)
-  (with-gensyms (size)
-    `(let ((,var (the index ,start))
-           (,size (the index ,size-form)))
-       (declare (type index ,var ,size))
-       (repeat/fixnum ,size
-         ,(let ((next `(mod-incf ,var ,size)))
-            (if from-start-p
-                `(progn ,@body ,next)
-                `(progn ,next ,@body)))))))
+(defmacro do-indexes ((index-var size home-index from-home-index-p) &body body)
+  ;; size is positive
+  (with-gensyms (size-var home-index-var)
+    `(let ((,index-var (the index ,home-index))
+           (,size-var (the index ,size))
+           (,home-index-var (the index ,home-index)))
+       (declare (type index ,index-var ,size-var ,home-index-var))
+       (loop
+          ,(let ((next `(mod-incf ,index-var ,size-var)))
+             (if from-home-index-p
+                 `(progn ,@body ,next)
+                 `(progn ,next ,@body)))
+          (when (= ,index-var ,home-index-var)
+            (return (values)))))))
 
 ;;;; scheduler
 
@@ -90,32 +94,38 @@
      task (tasks (svref workers (mod-decf random-index (length workers))))))
   #-ecl (values) #+ecl nil)
 
-(defun/type maybe-wake-a-worker (scheduler) (scheduler) t
+(defun/type maybe-wake-a-worker (scheduler)
+    (scheduler) #-ecl (values) #+ecl null
   (declare #.*full-optimize*)
   (with-scheduler-slots (wait-lock wait-cvar wait-count notify-count) scheduler
     (with-lock-predicate/wait wait-lock (plusp (counter-value wait-count))
       (incf notify-count)
-      (condition-notify wait-cvar))))
+      (condition-notify wait-cvar)))
+  #-ecl (values) #+ecl nil)
 
-(defun/type schedule-task (scheduler task priority) (scheduler
-                                                     (or task null) t) t
+(defun/type schedule-task (scheduler task priority)
+    (scheduler (or task null) t) #-ecl (values) #+ecl null
   (declare #.*full-optimize*)
   (ccase priority
     (:low     (with-scheduler-slots (low-priority-tasks) scheduler
                 (push-spin-queue task low-priority-tasks)))
     (:default (push-to-random-worker task scheduler)))
-  (maybe-wake-a-worker scheduler))
+  (maybe-wake-a-worker scheduler)
+  #-ecl (values) #+ecl nil)
 
-(defmacro do-workers ((worker-var workers start-index from-start-p)
+(defmacro do-workers ((worker-var workers home-index from-home-index-p)
                       &body body)
-  (with-gensyms (worker-index)
-    `(do-indexes (,worker-index
-                  (length (the simple-vector ,workers))
-                  ,start-index
-                  ,from-start-p)
-       (let ((,worker-var (svref (the simple-vector ,workers) ,worker-index)))
-         (declare (type worker ,worker-var))
-         ,@body))))
+  (with-gensyms (workers-var index-var)
+    `(let ((,workers-var ,workers))
+       (declare (type simple-vector ,workers-var))
+       (do-indexes (,index-var
+                    (length (the simple-vector ,workers-var))
+                    ,home-index
+                    ,from-home-index-p)
+         (let ((,worker-var (svref (the simple-vector ,workers-var)
+                                   ,index-var)))
+           (declare (type worker ,worker-var))
+           ,@body)))))
 
 (defun/type next-task (scheduler worker) (scheduler worker) (or task null)
   (declare #.*full-optimize*)
@@ -124,8 +134,7 @@
              (with-pop-success task queue
                (return-from next-task task))
              (values))
-           (find-a-task ()
-             (try-pop (tasks worker))
+           (try-pop-all ()
              (with-scheduler-slots (workers) scheduler
                (do-workers (worker workers (worker-index worker) nil)
                  (try-pop (tasks worker))))
@@ -144,12 +153,13 @@
                               :finally (decf notify-count)))
                 :cleanup (dec-counter wait-count)))
              (values)))
-    (declare (dynamic-extent #'try-pop #'find-a-task #'maybe-sleep))
+    (declare (dynamic-extent #'try-pop #'try-pop-all #'maybe-sleep))
     (with-scheduler-slots (spin-count) scheduler
       (loop
-         (find-a-task)
+         (try-pop (tasks worker))
+         (try-pop-all)
          (repeat/fixnum spin-count
-           (find-a-task))
+           (try-pop-all))
          (maybe-sleep)))))
 
 (defun/type steal-task (scheduler) (scheduler) (or task null)
