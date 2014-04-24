@@ -2,6 +2,12 @@
 lparallel Changes
 =================
 
+= 2.7.1
+
+* when the stealing scheduler is enabled (default on SBCL only), fix
+  stealing when *task-priority* is :low -- affected defpun and some
+  cognates when called from inside a worker thread
+
 = 2.7.0
 
 * added the ability to bind multiple values in `plet', e.g.
