@@ -35,7 +35,8 @@
      (import ',symbols)))
 
 (import-now alexandria:format-symbol
-            alexandria:parse-body)
+            alexandria:parse-body
+            alexandria:array-index)
 
 (defmacro alias-function (alias orig)
   `(progn
@@ -142,4 +143,4 @@ not present then no docstring is parsed."
               (abort nil)
               (t nil)))))
 
-(deftype index () `(integer 0 ,array-dimension-limit))
+(deftype index () 'array-index)
