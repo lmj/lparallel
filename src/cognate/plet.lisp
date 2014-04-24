@@ -260,7 +260,7 @@ same as those of a regular `let' form.
   `(%plet ,bindings ,body))
 
 (defmacro plet-if (predicate bindings &body body)
-  "The syntax of `plet-if' matches that of `let' except for the
+  "The syntax of `plet-if' matches that of `plet' except for the
 addition of the `predicate' form.
 
 If `predicate' evaluates to true, the behavior is the same as `plet'.
