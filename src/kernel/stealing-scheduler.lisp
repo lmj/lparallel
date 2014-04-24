@@ -155,12 +155,19 @@
 (defun/type steal-task (scheduler) (scheduler) (or task null)
   (declare #.*full-optimize*)
   (with-scheduler-slots (workers random-index low-priority-tasks) scheduler
-    ;; Start with the worker that has the most recently submitted task
-    ;; (approximately) and advance rightward.
-    (do-workers (worker workers random-index t)
-      (with-pop-success task (tasks worker)
-        (if task
-            (return-from steal-task task)
-            ;; don't steal nil, the end condition flag
-            (push-spin-queue task low-priority-tasks)))))
+    (let ((low-priority-tasks low-priority-tasks))
+      (flet ((try-pop (tasks)
+               (declare (type spin-queue tasks low-priority-tasks))
+               (with-pop-success task tasks
+                 (when task
+                   (return-from steal-task task))
+                 ;; don't steal nil, the end condition flag
+                 (push-spin-queue task low-priority-tasks))
+               (values)))
+        (declare (dynamic-extent #'try-pop))
+        ;; Start with the worker that has the most recently submitted
+        ;; task (approximately) and advance rightward.
+        (do-workers (worker workers random-index t)
+          (try-pop (tasks worker)))
+        (try-pop low-priority-tasks))))
   nil)

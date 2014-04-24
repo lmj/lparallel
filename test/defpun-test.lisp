@@ -223,3 +223,10 @@
         (defpun-handling-3))
       (signals foo-error
         (defpun-handling-4 10)))))
+
+(full-test defpun-priority-test
+  (let ((*task-priority* :low))
+    (repeat 10
+      (let ((n #+lparallel.with-green-threads 5
+               #-lparallel.with-green-threads 25))
+        (is (= (fib-let n) (fib-plet n)))))))

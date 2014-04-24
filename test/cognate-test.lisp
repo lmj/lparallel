@@ -1041,6 +1041,35 @@
                            (psort b #'<)))))
     (is (apply #'equalp (receive-result channel)))))
 
+(base-test cognate-steal-priority-test
+  (with-new-kernel (2)
+    (let ((channel (make-channel))
+          (flag nil))
+      (with-thread ()
+        (sleep 1.5)
+        (setf flag t))
+      (submit-task channel
+                   (lambda ()
+                     (pmap nil #'sleep '(1 1))))
+      (receive-result channel)
+      (is (eq nil flag))
+      (sleep 1)
+      (is (eq t flag))))
+  (with-new-kernel (2)
+    (let ((channel (make-channel))
+          (flag nil))
+      (with-thread ()
+        (sleep 1.5)
+        (setf flag t))
+      (submit-task channel
+                   (lambda ()
+                     (let ((*task-priority* :low))
+                       (pmap nil #'sleep '(1 1)))))
+      (receive-result channel)
+      (is (eq nil flag))
+      (sleep 1)
+      (is (eq t flag)))))
+
 (full-test pdotimes-test
   (dotimes (n 100)
     (flet ((f (x) (* x x)))
