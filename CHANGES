@@ -2,6 +2,13 @@
 lparallel Changes
 =================
 
+= 2.7.2
+
+* deprecated `submit-timeout' and `cancel-timeout'; use the new
+  `:timeout' option in `try-receive-result' which is enabled with the
+  latest bordeaux-threads.
+* removed eos dependency in lparallel-test
+
 = 2.7.1
 
 * when the stealing scheduler is enabled (default on SBCL only), fix
