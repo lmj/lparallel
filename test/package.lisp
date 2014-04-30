@@ -28,37 +28,26 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.util)
-
-(defmacro defmacro/once (name params &body body)
-  "Like `defmacro' except that params which are immediately preceded
-by `&once' are passed to a `once-only' call which surrounds `body'."
-  (labels ((once-keyword-p (obj)
-             (and (symbolp obj) (equalp (symbol-name obj) "&once")))
-           (remove-once-keywords (params)
-             (mapcar (lambda (x) (if (consp x) (remove-once-keywords x) x))
-                     (remove-if #'once-keyword-p params)))
-           (grab-once-param (list)
-             (let ((target (first list)))
-               (when (or (null list)
-                         (consp target)
-                         (find target lambda-list-keywords)
-                         (once-keyword-p target))
-                 (error "`&once' without parameter in ~a" name))
-               target))
-           (find-once-params (params)
-             (mapcon (lambda (cell)
-                       (destructuring-bind (elem &rest rest) cell
-                         (cond ((consp elem)
-                                (find-once-params elem))
-                               ((once-keyword-p elem)
-                                (list (grab-once-param rest)))
-                               (t
-                                nil))))
-                     params)))
-    (with-parsed-body (body declares docstring)
-      `(defmacro ,name ,(remove-once-keywords params)
-         ,@(unsplice docstring)
-         ,@declares
-         (once-only ,(find-once-params params)
-           ,@body)))))
+(defpackage #:lparallel-test
+  (:documentation
+   "Test suite for lparallel.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.raw-queue
+        #:lparallel.queue
+        #:lparallel.vector-queue
+        #:lparallel.kernel
+        #:lparallel.cognate
+        #:lparallel.defpun
+        #:lparallel.promise
+        #:lparallel.ptree)
+  (:export #:execute)
+  (:import-from #-lparallel-test.with-simple-framework #:eos
+                #+lparallel-test.with-simple-framework #:lparallel-test.1am
+                #:is
+                #:signals
+                #:test
+                #:run!
+                #:debug!
+                #:in-suite*))

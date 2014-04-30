@@ -28,16 +28,32 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.promise)
+(defpackage #:lparallel.promise
+  (:documentation
+   "Promises and futures.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.kernel)
+  (:export #:promise
+           #:future
+           #:speculate
+           #:delay
+           #:force
+           #:fulfill
+           #:fulfilledp
+           #:chain)
+  (:import-from #:lparallel.kernel
+                #:unwrap-result
+                #:task-lambda
+                #:make-task
+                #:task
+                #:call-with-task-handler
+                #:submit-raw-task
+                #:wrap-error
+                #:wrapped-error))
 
-(import-now lparallel.kernel::unwrap-result
-            lparallel.kernel::task-lambda
-            lparallel.kernel::make-task
-            lparallel.kernel::task
-            lparallel.kernel::call-with-task-handler
-            lparallel.kernel::submit-raw-task
-            lparallel.kernel::wrap-error
-            lparallel.kernel::wrapped-error)
+(in-package #:lparallel.promise)
 
 ;;;; classes
 

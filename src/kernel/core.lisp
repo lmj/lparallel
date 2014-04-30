@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(import-now alexandria:simple-style-warning)
-
 #-lparallel.without-task-categories
 (defun/type exec-task/worker (task worker) (task worker) t
   ;; already inside call-with-task-handler

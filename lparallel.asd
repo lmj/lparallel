@@ -78,14 +78,14 @@ See http://lparallel.org for documentation and examples.
   :depends-on (:alexandria
                :bordeaux-threads)
   :serial t
-  :components               ((:file "packages")
-                             (:module "src"
+  :components               ((:module "src"
                               :serial t
                               :components
 		                   ((:module "util"
                                      :serial t
                                      :components
-                                             ((:file "config")
+                                             ((:file "package")
+                                              (:file "config")
                                               (:file "misc")
                                               (:file "defmacro")
                                               (:file "defun")
@@ -101,12 +101,14 @@ See http://lparallel.org for documentation and examples.
 #+lparallel.with-stealing-scheduler (:module "spin-queue"
                                      :serial t
                                      :components
-#+lparallel.with-cas                         ((:file "cas-spin-queue"))
-#-lparallel.with-cas                         ((:file "default-spin-queue")))
+                                             ((:file "package")
+#+lparallel.with-cas                          (:file "cas-spin-queue")
+#-lparallel.with-cas                          (:file "default-spin-queue")))
                                     (:module "kernel"
                                      :serial t
                                      :components
-                                             ((:file "specials")
+                                             ((:file "package")
+                                              (:file "specials")
                                               (:file "handling")
                                               (:file "classes")
 #-lparallel.with-stealing-scheduler           (:file "central-scheduler")
@@ -122,7 +124,8 @@ See http://lparallel.org for documentation and examples.
                                     (:module "cognate"
                                      :serial t
                                      :components
-                                             ((:file "util")
+                                             ((:file "package")
+                                              (:file "util")
                                               (:file "option")
                                               (:file "subdivide")
                                               (:file "pandor")
@@ -135,7 +138,8 @@ See http://lparallel.org for documentation and examples.
                                               (:file "premove")
                                               (:file "pfind")
                                               (:file "pcount")
-                                              (:file "psort")))))))
+                                              (:file "psort")))
+                                    (:file "package")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))
@@ -145,3 +149,8 @@ See http://lparallel.org for documentation and examples.
 (defmethod perform :after ((o load-op) (c (eql (find-system :lparallel))))
   (declare (ignore o c))
   (pushnew :lparallel *features*))
+
+;;; svref problem in sbcl-1.1.6
+#+sbcl
+(when (string= "1.1.6" (lisp-implementation-version))
+  (error "Sorry, cannot use lparallel with SBCL 1.1.6; any version but that."))

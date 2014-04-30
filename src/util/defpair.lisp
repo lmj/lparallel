@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.util)
 
-(import-now alexandria:ensure-list)
-
 (defmacro defpair (name supers (a b) &optional doc)
   "Define a cons type using defclass syntax.
 

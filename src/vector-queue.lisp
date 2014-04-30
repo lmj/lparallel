@@ -28,12 +28,30 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.vector-queue)
+(defpackage #:lparallel.vector-queue
+  (:documentation
+   "(private) Blocking fixed-capacity queue.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util)
+  (:export #:vector-queue
+           #:make-vector-queue
+           #:push-vector-queue    #:push-vector-queue/no-lock
+           #:pop-vector-queue     #:pop-vector-queue/no-lock
+           #:peek-vector-queue    #:peek-vector-queue/no-lock
+           #:vector-queue-count   #:vector-queue-count/no-lock
+           #:vector-queue-empty-p #:vector-queue-empty-p/no-lock
+           #:vector-queue-full-p  #:vector-queue-full-p/no-lock
+           #:try-pop-vector-queue #:try-pop-vector-queue/no-lock
+           #:with-locked-vector-queue
+           #:vector-queue-capacity)
+  (:import-from #:lparallel.thread-util
+                #:define-locking-fn
+                #:define-simple-locking-fn
+                #:with-countdown
+                #:time-remaining))
 
-(import-now lparallel.thread-util::define-locking-fn
-            lparallel.thread-util::define-simple-locking-fn
-            lparallel.thread-util::with-countdown
-            lparallel.thread-util::time-remaining)
+(in-package #:lparallel.vector-queue)
 
 ;;;; raw-queue
 

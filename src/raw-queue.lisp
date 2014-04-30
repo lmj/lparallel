@@ -32,6 +32,19 @@
 ;;; raw-queue -- raw data structure
 ;;;
 
+(defpackage #:lparallel.raw-queue
+  (:documentation
+   "(private) Raw queue data structure.")
+  (:use #:cl
+        #:lparallel.util)
+  (:export #:raw-queue
+           #:make-raw-queue
+           #:push-raw-queue
+           #:pop-raw-queue
+           #:peek-raw-queue
+           #:raw-queue-count
+           #:raw-queue-empty-p))
+
 (in-package #:lparallel.raw-queue)
 
 (deftype raw-queue-count () '(integer 0))

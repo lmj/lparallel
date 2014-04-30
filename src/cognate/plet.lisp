@@ -37,8 +37,6 @@
 
 (in-package #:lparallel.cognate)
 
-(import-now lparallel.slet::parse-bindings)
-
 ;;;; declarationp
 
 ;;; `declaration-information' resolves the ambiguity between types and

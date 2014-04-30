@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.cognate)
 
-(import-now alexandria:remove-from-plist)
-
 (defmacro with-pfind-context (sequence start end parts &body body)
   (with-gensyms (top result)
     `(block ,top

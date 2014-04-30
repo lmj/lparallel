@@ -28,11 +28,29 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.kernel-util)
+(defpackage #:lparallel.kernel-util
+  (:documentation
+   "(semi-private) Abstracts some common patterns for submitting and
+   receiving tasks. This probably won't change, but no guarantees.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.kernel
+        #:lparallel.queue)
+  (:export #:with-submit-counted
+           #:submit-counted
+           #:receive-counted)
+  (:export #:with-submit-indexed
+           #:submit-indexed
+           #:receive-indexed)
+  (:export #:with-submit-cancelable
+           #:submit-cancelable
+           #:receive-cancelables)
+  (:import-from #:lparallel.kernel
+                #:*worker*
+                #:steal-work
+                #:channel-kernel))
 
-(import-now lparallel.kernel::*worker*
-            lparallel.kernel::steal-work
-            lparallel.kernel::channel-kernel)
+(in-package #:lparallel.kernel-util)
 
 (defun steal-until-receive-result (channel worker fn)
   (declare #.*normal-optimize*)

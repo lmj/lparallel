@@ -35,9 +35,28 @@
 ;;; measurably faster than a resizable vector queue even with
 ;;; pre-allocation.
 
-(in-package #:lparallel.queue)
+(defpackage #:lparallel.queue
+  (:documentation
+   "Blocking FIFO queue for communication between threads.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.cons-queue
+        #:lparallel.vector-queue)
+  (:export #:queue
+           #:make-queue
+           #:push-queue    #:push-queue/no-lock
+           #:pop-queue     #:pop-queue/no-lock
+           #:peek-queue    #:peek-queue/no-lock
+           #:queue-count   #:queue-count/no-lock
+           #:queue-empty-p #:queue-empty-p/no-lock
+           #:queue-full-p  #:queue-full-p/no-lock
+           #:try-pop-queue #:try-pop-queue/no-lock
+           #:with-locked-queue)
+  (:import-from #:alexandria
+                #:simple-style-warning))
 
-(import-now alexandria:simple-style-warning)
+(in-package #:lparallel.queue)
 
 (deftype queue () '(or cons-queue vector-queue))
 

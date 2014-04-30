@@ -28,23 +28,41 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+(defpackage #:lparallel.thread-util
+  (:documentation
+   "(private) Thread utilities.")
+  (:use #:cl
+        #:lparallel.util)
+  (:export #:with-thread
+           #:with-lock-predicate/wait
+           #:with-lock-predicate/no-wait
+           #:condition-notify
+           #:cas
+           #:make-spin-lock
+           #:with-spin-lock-held)
+  (:export #:make-lock
+           #:make-condition-variable
+           #:with-lock-held
+           #:condition-wait
+           #:destroy-thread
+           #:current-thread)
+  #+lparallel.with-green-threads
+  (:export #:thread-yield)
+  (:import-from #:bordeaux-threads
+                #:*default-special-bindings*
+                #:make-thread
+                #:make-condition-variable
+                #:current-thread
+                #:destroy-thread
+                #:make-lock
+                #:acquire-lock
+                #:release-lock
+                #:with-lock-held)
+  #+lparallel.with-green-threads
+  (:import-from #:bordeaux-threads
+                #:thread-yield))
+
 (in-package #:lparallel.thread-util)
-
-(import-now bordeaux-threads:*default-special-bindings*
-            bordeaux-threads:make-thread
-            bordeaux-threads:acquire-lock
-            bordeaux-threads:release-lock)
-
-;;;; aliases
-
-(alias-macro with-lock-held bordeaux-threads:with-lock-held)
-(alias-function make-lock bordeaux-threads:make-lock)
-(alias-function make-condition-variable
-                bordeaux-threads:make-condition-variable)
-(alias-function current-thread bordeaux-threads:current-thread)
-(alias-function destroy-thread bordeaux-threads:destroy-thread)
-#+lparallel.with-green-threads
-(alias-function thread-yield bordeaux-threads:thread-yield)
 
 ;;;; condition-wait
 

@@ -28,6 +28,18 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+(defpackage #:lparallel.counter
+  (:documentation
+   "(private) Atomic counter.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util)
+  (:export #:counter
+           #:make-counter
+           #:inc-counter
+           #:dec-counter
+           #:counter-value))
+
 (in-package #:lparallel.counter)
 
 ;;; Atomic counters modeled after SBCL, i.e., operations return the

@@ -30,9 +30,6 @@
 
 (in-package #:lparallel-bench)
 
-(import-now alexandria:compose
-            alexandria:flatten)
-
 ;;;; helpers
 
 (defmacro collecting1 (&body body)

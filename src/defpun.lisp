@@ -28,27 +28,46 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.defpun)
+(defpackage #:lparallel.defpun
+  (:documentation "Fine-grained parallelism.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.kernel
+        #:lparallel.thread-util
+        #:lparallel.slet)
+  (:export #:defpun
+           #:defpun*
+           #:defpun/type
+           #:defpun/type*
+           #:declaim-defpun
+           #:plet
+           #:plet-if
+           #:slet)
+  (:import-from #:alexandria
+                #:simple-style-warning)
+  (:import-from #:lparallel.util
+                #:symbolicate/package)
+  (:import-from #:lparallel.slet
+                #:make-binding-data
+                #:parse-bindings)
+  (:import-from #:lparallel.kernel
+                #:*worker*
+                #:*make-limiter-data*
+                #:kernel
+                #:use-caller-p
+                #:unwrap-result
+                #:call-with-task-handler
+                #:limiter-accept-task-p
+                #:limiter-count
+                #:limiter-lock
+                #:submit-raw-task
+                #:make-task
+                #:task-lambda
+                #:wrapped-error
+                #:with-task-context
+                #:steal-work))
 
-(import-now alexandria:simple-style-warning
-            lparallel.util::symbolicate/package
-            lparallel.slet::make-binding-data
-            lparallel.slet::parse-bindings
-            lparallel.kernel::*worker*
-            lparallel.kernel::*make-limiter-data*
-            lparallel.kernel::kernel
-            lparallel.kernel::use-caller-p
-            lparallel.kernel::unwrap-result
-            lparallel.kernel::call-with-task-handler
-            lparallel.kernel::limiter-accept-task-p
-            lparallel.kernel::limiter-count
-            lparallel.kernel::limiter-lock
-            lparallel.kernel::submit-raw-task
-            lparallel.kernel::make-task
-            lparallel.kernel::task-lambda
-            lparallel.kernel::wrapped-error
-            lparallel.kernel::with-task-context
-            lparallel.kernel::steal-work)
+(in-package #:lparallel.defpun)
 
 ;;;; function registration
 

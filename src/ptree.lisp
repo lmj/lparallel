@@ -28,16 +28,38 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.ptree)
+(defpackage #:lparallel.ptree
+  (:documentation
+   "A ptree is a computation represented by a tree together with
+   functionality to execute the tree in parallel.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.kernel
+        #:lparallel.queue)
+  (:export #:ptree
+           #:ptree-fn
+           #:make-ptree
+           #:check-ptree
+           #:call-ptree
+           #:ptree-computed-p
+           #:clear-ptree
+           #:clear-ptree-errors
+           #:*ptree-node-kernel*)
+  (:export #:ptree-undefined-function-error
+           #:ptree-lambda-list-keyword-error
+           #:ptree-redefinition-error)
+  (:import-from #:lparallel.kernel
+                #:kernel
+                #:submit-raw-task
+                #:with-task-context
+                #:make-task
+                #:task-lambda
+                #:wrapped-error
+                #:wrap-error
+                #:unwrap-result))
 
-(import-now lparallel.kernel::kernel
-            lparallel.kernel::submit-raw-task
-            lparallel.kernel::with-task-context
-            lparallel.kernel::make-task
-            lparallel.kernel::task-lambda
-            lparallel.kernel::wrapped-error
-            lparallel.kernel::wrap-error
-            lparallel.kernel::unwrap-result)
+(in-package #:lparallel.ptree)
 
 ;;;; errors
 

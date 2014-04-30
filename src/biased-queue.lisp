@@ -33,10 +33,29 @@
 ;;; insertion and removal.
 ;;;
 
-(in-package #:lparallel.biased-queue)
+(defpackage #:lparallel.biased-queue
+  (:documentation
+   "(private) Blocking two-tiered priority queue.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.raw-queue)
+  (:export #:biased-queue
+           #:make-biased-queue
+           #:push-biased-queue     #:push-biased-queue/no-lock
+           #:push-biased-queue/low #:push-biased-queue/low/no-lock
+           #:pop-biased-queue      #:pop-biased-queue/no-lock
+           #:peek-biased-queue     #:peek-biased-queue/no-lock
+           #:biased-queue-empty-p  #:biased-queue-empty-p/no-lock
+           #:try-pop-biased-queue  #:try-pop-biased-queue/no-lock
+           #:pop-biased-queue      #:pop-biased-queue/no-lock
+           #:biased-queue-count    #:biased-queue-count/no-lock
+           #:with-locked-biased-queue)
+  (:import-from #:lparallel.thread-util
+                #:define-locking-fn
+                #:define-simple-locking-fn))
 
-(import-now lparallel.thread-util::define-locking-fn
-            lparallel.thread-util::define-simple-locking-fn)
+(in-package #:lparallel.biased-queue)
 
 (defslots biased-queue ()
   ((lock :reader lock :initform (make-lock))

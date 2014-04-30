@@ -1,4 +1,4 @@
-;;; Copyright (c) 2011-2012, James M. Lawrence. All rights reserved.
+;;; Copyright (c) 2014, James M. Lawrence. All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
@@ -28,28 +28,16 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defsystem :lparallel-test
-  :description "Test suite for lparallel."
-  :licence "BSD"
-  :author "James M. Lawrence <llmjjmll@gmail.com>"
-  :depends-on (:lparallel
-               #-lparallel-test.with-simple-framework
-               :eos)
-  :serial t
-  :components ((:module "test"
-                :serial t
-                :components (#+lparallel-test.with-simple-framework
-                             (:file "1am")
-                             (:file "package")
-                             (:file "base")
-                             (:file "thread-util-test")
-                             (:file "queue-test")
-                             (:file "kernel-test")
-                             (:file "cognate-test")
-                             (:file "promise-test")
-                             (:file "defpun-test")
-                             (:file "ptree-test")))))
-
-(defmethod perform ((o test-op) (c (eql (find-system :lparallel-test))))
-  (declare (ignore o c))
-  (funcall (intern (string '#:execute) :lparallel-test)))
+(defpackage #:lparallel.spin-queue
+  (:documentation
+   "(private) Thread-safe FIFO queue which spins instead of locks.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util)
+  (:export #:spin-queue
+           #:make-spin-queue
+           #:push-spin-queue
+           #:pop-spin-queue
+           #:peek-spin-queue
+           #:spin-queue-count
+           #:spin-queue-empty-p))

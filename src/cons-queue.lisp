@@ -28,12 +28,29 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.cons-queue)
+(defpackage #:lparallel.cons-queue
+  (:documentation
+   "(private) Blocking infinite-capacity queue.")
+  (:use #:cl
+        #:lparallel.util
+        #:lparallel.thread-util
+        #:lparallel.raw-queue)
+  (:export #:cons-queue
+           #:make-cons-queue
+           #:push-cons-queue    #:push-cons-queue/no-lock
+           #:pop-cons-queue     #:pop-cons-queue/no-lock
+           #:peek-cons-queue    #:peek-cons-queue/no-lock
+           #:cons-queue-count   #:cons-queue-count/no-lock
+           #:cons-queue-empty-p #:cons-queue-empty-p/no-lock
+           #:try-pop-cons-queue #:try-pop-cons-queue/no-lock
+           #:with-locked-cons-queue)
+  (:import-from #:lparallel.thread-util
+                #:define-locking-fn
+                #:define-simple-locking-fn
+                #:with-countdown
+                #:time-remaining))
 
-(import-now lparallel.thread-util::define-locking-fn
-            lparallel.thread-util::define-simple-locking-fn
-            lparallel.thread-util::with-countdown
-            lparallel.thread-util::time-remaining)
+(in-package #:lparallel.cons-queue)
 
 (defslots cons-queue ()
   ((impl :reader impl                      :type raw-queue)

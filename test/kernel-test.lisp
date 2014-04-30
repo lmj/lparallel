@@ -629,3 +629,28 @@
   (with-thread-count-check
     (signals error
       (make-kernel 1 :context 'nonexistent-function))))
+
+;;;; check for messed up imports
+
+(defun packages-matching (string)
+  (remove-if-not (lambda (package)
+                   (search string (package-name package) :test #'equalp))
+                 (list-all-packages)))
+
+(defun assert-internal-symbols-not-imported (&key own-packages
+                                             third-party-packages)
+  (let ((third-party-packages (mapcar #'find-package third-party-packages)))
+    (dolist (own-package own-packages)
+      (do-symbols (symbol own-package)
+        (when-let (third-party-package (find (symbol-package symbol)
+                                             third-party-packages))
+          (when (eq :internal (nth-value 1 (find-symbol (symbol-name symbol)
+                                                        third-party-package)))
+            (error "Internal symbol ~s was imported into ~a."
+                   symbol (package-name own-package))))))))
+
+(base-test package-test
+  (assert-internal-symbols-not-imported
+   :own-packages (packages-matching "lparallel")
+   :third-party-packages '(#:alexandria #:bordeaux-threads))
+  (is t))

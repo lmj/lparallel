@@ -1,4 +1,4 @@
-;;; Copyright (c) 2011-2012, James M. Lawrence. All rights reserved.
+;;; Copyright (c) 2014, James M. Lawrence. All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
@@ -28,19 +28,46 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lparallel-test
+(defpackage #:lparallel.kernel
   (:documentation
-   "Test suite for lparallel.")
+   "Encompasses the scheduling and execution of parallel tasks using a
+   pool of worker threads. All parallelism in lparallel is done on top
+   of the kernel.")
   (:use #:cl
         #:lparallel.util
         #:lparallel.thread-util
-        #:lparallel.raw-queue
         #:lparallel.queue
-        #:lparallel.vector-queue
-        #:lparallel.spin-queue
-        #:lparallel.kernel
-        #:lparallel.cognate
-        #:lparallel.defpun
-        #:lparallel.promise
-        #:lparallel.ptree)
-  (:export #:execute))
+        #-lparallel.with-stealing-scheduler #:lparallel.biased-queue
+        #+lparallel.with-stealing-scheduler #:lparallel.counter
+        #+lparallel.with-stealing-scheduler #:lparallel.spin-queue)
+  (:export #:make-kernel
+           #:check-kernel
+           #:end-kernel
+           #:kernel-worker-count
+           #:kernel-bindings
+           #:kernel-name
+           #:kernel-context)
+  (:export #:make-channel
+           #:submit-task
+           #:submit-timeout
+           #:cancel-timeout
+           #:receive-result
+           #:try-receive-result
+           #:do-fast-receives
+           #:kill-tasks
+           #:task-handler-bind
+           #:task-categories-running
+           #:invoke-transfer-error)
+  (:export #:*kernel*
+           #:*kernel-spin-count*
+           #:*task-category*
+           #:*task-priority*
+           #:*debug-tasks-p*)
+  (:export #:kernel
+           #:channel
+           #:transfer-error
+           #:no-kernel-error
+           #:kernel-creation-error
+           #:task-killed-error)
+  (:import-from #:alexandria
+                #:simple-style-warning))

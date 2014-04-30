@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.util)
 
-(import-now alexandria:ensure-list)
-
 (defun constrain-return-type (return-type)
   (if (and (consp return-type)
            (eq 'values (first return-type)))

@@ -30,14 +30,6 @@
 
 (in-package #:lparallel.util)
 
-(defmacro import-now (&rest symbols)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (import ',symbols)))
-
-(import-now alexandria:format-symbol
-            alexandria:parse-body
-            alexandria:array-index)
-
 (defmacro alias-function (alias orig)
   `(progn
      (setf (symbol-function ',alias) #',orig)
@@ -49,13 +41,6 @@
   `(progn
      (setf (macro-function ',alias) (macro-function ',orig))
      ',alias))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (alias-macro with-gensyms alexandria:with-gensyms)
-  (alias-macro when-let alexandria:when-let)
-  (alias-function ensure-function alexandria:ensure-function)
-  (alias-function symbolicate alexandria:symbolicate)
-  (alias-function partial-apply alexandria:curry))
 
 (defun unsplice (form)
   (if form (list form) nil))
@@ -146,3 +131,5 @@ not present then no docstring is parsed."
               (t nil)))))
 
 (deftype index () 'array-index)
+
+(alias-function partial-apply curry)

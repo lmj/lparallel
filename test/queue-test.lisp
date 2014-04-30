@@ -102,13 +102,13 @@
 
 #+lparallel.with-stealing-scheduler
 (define-queue-test spin-queue-test
-  :make-queue    make-spin-queue
-  :push-queue    push-spin-queue
-  :pop-queue     pop-spin-queue
-  :try-pop-queue pop-spin-queue
-  :queue-empty-p spin-queue-empty-p
-  :queue-count   spin-queue-count
-  :peek-queue    peek-spin-queue)
+  :make-queue    lparallel.spin-queue:make-spin-queue
+  :push-queue    lparallel.spin-queue:push-spin-queue
+  :pop-queue     lparallel.spin-queue:pop-spin-queue
+  :try-pop-queue lparallel.spin-queue:pop-spin-queue
+  :queue-empty-p lparallel.spin-queue:spin-queue-empty-p
+  :queue-count   lparallel.spin-queue:spin-queue-count
+  :peek-queue    lparallel.spin-queue:peek-spin-queue)
 
 (define-queue-test fixed-capacity-queue-test
   :make-queue    make-fixed-capacity-queue
@@ -222,16 +222,17 @@
 
 #+lparallel.with-stealing-scheduler
 (defun pop-spin-queue/wait (queue)
-  (loop (multiple-value-bind (item presentp) (pop-spin-queue queue)
+  (loop (multiple-value-bind
+              (item presentp) (lparallel.spin-queue:pop-spin-queue queue)
           (when presentp
             (return item)))))
 
 #+lparallel.with-stealing-scheduler
 (define-grind-queue grind-spin-queue-test
-    :make-queue  make-spin-queue
-    :push-queue  push-spin-queue
+    :make-queue  lparallel.spin-queue:make-spin-queue
+    :push-queue  lparallel.spin-queue:push-spin-queue
     :pop-queue   pop-spin-queue/wait
-    :queue-count spin-queue-count)
+    :queue-count lparallel.spin-queue:spin-queue-count)
 
 #-lparallel.with-stealing-scheduler
 (define-grind-queue grind-biased-queue-test

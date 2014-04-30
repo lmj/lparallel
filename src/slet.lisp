@@ -28,9 +28,15 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lparallel.slet)
+(defpackage #:lparallel.slet
+  (:documentation "(private) Serial let.")
+  (:use #:cl
+        #:lparallel.util)
+  (:export #:slet)
+  (:import-from #:alexandria
+                #:ensure-list))
 
-(import-now alexandria:ensure-list)
+(in-package #:lparallel.slet)
 
 (defun parse-bindings (bindings)
   (let ((mv-bindings nil)

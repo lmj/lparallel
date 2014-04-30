@@ -30,8 +30,6 @@
 
 (in-package #:lparallel-bench)
 
-(import-now trivial-garbage:gc)
-
 (defparameter *trials* 12)
 
 (defparameter *rehearsals* 8)

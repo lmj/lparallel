@@ -35,9 +35,9 @@
   :depends-on (:lparallel
                :trivial-garbage)
   :serial t
-  :components ((:file "packages-bench")
-               (:module "bench"
+  :components ((:module "bench"
                 :serial t
-                :components ((:file "bench")
+                :components ((:file "package")
+                             (:file "bench")
                              (:file "suite")
                              #+sbcl (:file "profile")))))

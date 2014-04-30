@@ -1,4 +1,4 @@
-;;; Copyright (c) 2011-2012, James M. Lawrence. All rights reserved.
+;;; Copyright (c) 2014, James M. Lawrence. All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
@@ -28,19 +28,52 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lparallel-bench
+(defpackage #:lparallel.cognate
   (:documentation
-   "Benchmarks for lparallel.")
+   "Parallelized versions of some Common Lisp functions.")
   (:use #:cl
         #:lparallel.util
-        #:lparallel.cognate
+        #:lparallel.kernel
+        #:lparallel.kernel-util
+        #:lparallel.promise
         #:lparallel.defpun
-        #:lparallel.kernel)
-  (:export #:execute
-           #+sbcl #:profile
-           #+sbcl #:stat-profile)
-  (:export #:with-temp-kernel
-           #:with-wall-time))
-
-#+sbcl
-(require :sb-sprof)
+        #:lparallel.slet)
+  (:export #:pand
+           #:pcount
+           #:pcount-if
+           #:pcount-if-not
+           #:pdotimes
+           #:pevery
+           #:pfind
+           #:pfind-if
+           #:pfind-if-not
+           #:pfuncall
+           #:plet
+           #:plet-if
+           #:pmap
+           #:pmapc
+           #:pmapcan
+           #:pmapcar
+           #:pmapcon
+           #:pmap-into
+           #:pmapl
+           #:pmaplist
+           #:pmaplist-into
+           #:pmap-reduce
+           #:pnotany
+           #:pnotevery
+           #:por
+           #:preduce
+           #:preduce-partial
+           #:premove
+           #:premove-if
+           #:premove-if-not
+           #:psome
+           #:psort
+           #:psort*
+           #:slet)
+  (:import-from #:alexandria
+                #:remove-from-plist
+                #:simple-style-warning)
+  (:import-from #:lparallel.slet
+                #:parse-bindings))

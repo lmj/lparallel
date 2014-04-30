@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.util)
 
-(import-now alexandria:ensure-list)
-
 (defun plist-keys (plist)
   (loop
      :for x :in plist :by #'cddr
