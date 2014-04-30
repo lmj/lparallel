@@ -30,27 +30,17 @@
 
 (in-package #:lparallel-test)
 
-(in-suite* :lparallel)
+(alias-function execute run)
 
-(alias-function execute run!)
+(alias-macro base-test test)
+
+(defvar *last-random-state* nil)
 
 (defmacro with-new-kernel ((&rest args) &body body)
   `(let ((*kernel* (make-kernel ,@args)))
      (unwind-protect
           (progn ,@body)
        (end-kernel :wait t))))
-
-(defmacro base-test (name &body body)
-  `(progn
-     (test ,name
-       (format t "~&~a~%" ',name)
-       (finish-output)
-       ,@body)
-     #-lparallel-test.with-simple-framework
-     (defun ,name ()
-       (debug! ',name))))
-
-(defvar *last-random-state* nil)
 
 (defmacro full-test (name &body body)
   (with-gensyms (body-fn n)

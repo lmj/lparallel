@@ -32,14 +32,11 @@
   :description "Test suite for lparallel."
   :licence "BSD"
   :author "James M. Lawrence <llmjjmll@gmail.com>"
-  :depends-on (:lparallel
-               #-lparallel-test.with-simple-framework
-               :eos)
+  :depends-on (:lparallel)
   :serial t
   :components ((:module "test"
                 :serial t
-                :components (#+lparallel-test.with-simple-framework
-                             (:file "1am")
+                :components ((:file "1am")
                              (:file "package")
                              (:file "base")
                              (:file "thread-util-test")

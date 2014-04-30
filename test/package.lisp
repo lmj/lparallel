@@ -41,13 +41,6 @@
         #:lparallel.cognate
         #:lparallel.defpun
         #:lparallel.promise
-        #:lparallel.ptree)
-  (:export #:execute)
-  (:import-from #-lparallel-test.with-simple-framework #:eos
-                #+lparallel-test.with-simple-framework #:lparallel-test.1am
-                #:is
-                #:signals
-                #:test
-                #:run!
-                #:debug!
-                #:in-suite*))
+        #:lparallel.ptree
+        #:lparallel-test.1am)
+  (:export #:execute))
