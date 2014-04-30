@@ -43,7 +43,10 @@
 The difference is that `submit-timeout' does not occupy a worker
 thread.
 
-A timeout object is returned, which may be passed to `cancel-timeout'."
+A timeout object is returned, which may be passed to `cancel-timeout'.
+
+`submit-timeout' and `cancel-timeout' are deprecated; use the new
+`:timeout' option in `try-receive-result'."
   (let ((timeout (make-timeout-instance
                   :canceled-result 'not-canceled :thread nil))
         (pushedp nil))
@@ -76,10 +79,28 @@ At most one call to `cancel-timeout' will succeed; others will be
 ignored. If the timeout has expired on its own then `cancel-timeout'
 will have no effect.
 
-`cancel-timeout' is not available in ABCL."
+`cancel-timeout' is not available in ABCL.
+
+`submit-timeout' and `cancel-timeout' are deprecated; use the new
+`:timeout' option in `try-receive-result'."
   (with-timeout-slots (canceled-result thread lock) timeout
     ;; ensure that only one cancel succeeds
     (with-lock-predicate/wait lock (eq canceled-result 'not-canceled)
       (setf canceled-result timeout-result)
       (destroy-thread thread)))
   nil)
+
+(defun deprecated-timeout ()
+  (simple-style-warning
+   "`submit-timeout' and `cancel-timeout' are deprecated; use the new~%~
+   `:timeout' option in `try-receive-result'."))
+
+(define-compiler-macro submit-timeout (&whole whole &rest args)
+  (declare (ignore args))
+  (deprecated-timeout)
+  whole)
+
+(define-compiler-macro cancel-timeout (&whole whole &rest args)
+  (declare (ignore args))
+  (deprecated-timeout)
+  whole)

@@ -455,6 +455,7 @@
 (base-test submit-timeout-test
   (with-new-kernel (2)
     (let ((channel (make-channel)))
+      (declare (notinline submit-timeout))
       (submit-timeout channel 0.1 'timeout)
       (submit-task channel (lambda () 3))
       (is (eql 3 (receive-result channel)))
@@ -463,22 +464,24 @@
 #-lparallel.without-kill
 (base-test cancel-timeout-test
   (with-new-kernel (2)
-    (let* ((channel (make-channel))
-           (timeout (submit-timeout channel 999 'timeout)))
-      (sleep 0.2)
-      (cancel-timeout timeout 'a)
-      (is (eq 'a (receive-result channel))))))
+    (locally (declare (notinline submit-timeout cancel-timeout))
+      (let* ((channel (make-channel))
+             (timeout (submit-timeout channel 999 'timeout)))
+        (sleep 0.2)
+        (cancel-timeout timeout 'a)
+        (is (eq 'a (receive-result channel)))))))
 
 #-lparallel.without-kill
 (base-test kill-timeout-test
   (with-new-kernel (2)
-    (let* ((channel (make-channel))
-           (timeout (submit-timeout channel 999 'timeout)))
-      (sleep 0.2)
-      (lparallel.kernel::with-timeout-slots (lparallel.kernel::thread) timeout
-        (destroy-thread lparallel.kernel::thread))
-      (signals task-killed-error
-        (receive-result channel)))))
+    (locally (declare (notinline submit-timeout))
+      (let* ((channel (make-channel))
+             (timeout (submit-timeout channel 999 'timeout)))
+        (sleep 0.2)
+        (lparallel.kernel::with-timeout-slots (lparallel.kernel::thread) timeout
+          (destroy-thread lparallel.kernel::thread))
+        (signals task-killed-error
+          (receive-result channel))))))
 
 (define-condition foo-condition-2 (condition) ())
 
