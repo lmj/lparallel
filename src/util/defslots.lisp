@@ -98,7 +98,8 @@
 
   (defmacro define-reader (public private type struct)
     `(progn
-       (declaim (ftype (function (,struct) ,(or type t)) ,public))
+       (declaim (ftype (function (,struct) (values ,(or type t) &optional))
+                       ,public))
        (alias-function ,public ,private)))
 
   (defmacro define-readers (struct conc-name slots)

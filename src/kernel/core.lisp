@@ -299,10 +299,9 @@ MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
   (%kernel-worker-count (check-kernel)))
 
 (defun %make-channel (&key fixed-capacity)
-  (let ((kernel (check-kernel)))
-    (make-channel-instance
-     :kernel kernel
-     :queue (make-queue :fixed-capacity fixed-capacity))))
+  (make-channel-instance
+   :kernel (check-kernel)
+   :queue (make-queue :fixed-capacity fixed-capacity)))
 
 (defun make-channel (&rest args)
   "Create a channel for submitting and receiving tasks. The current
@@ -329,6 +328,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 (defmacro task-lambda (&body body)
   (with-gensyms (body-fn client-handlers)
     `(flet ((,body-fn () ,@body))
+       (declare #.*full-optimize*)
        (let ((,client-handlers *client-handlers*))
          (if ,client-handlers
              (lambda ()
@@ -340,6 +340,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 (defmacro task-lambda (&body body)
   `(lambda () ,@body))
 
+#-lparallel.without-task-categories
 (defun/type/inline make-task (fn) (function) task
   (declare #.*full-optimize*)
   (make-task-instance fn *task-category*))

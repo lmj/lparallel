@@ -30,8 +30,6 @@
 
 (in-package #:lparallel.kernel)
 
-(alias-function biased-queue-lock lparallel.biased-queue::lock)
-
 (defun make-scheduler (workers spin-count)
   (declare (ignore workers spin-count))
   (make-biased-queue))
@@ -51,7 +49,7 @@
 (defun/type steal-task (scheduler) (scheduler) (or task null)
   (declare #.*normal-optimize*)
   (with-lock-predicate/wait
-      (biased-queue-lock scheduler)
+      (lparallel.biased-queue::lock scheduler)
       (not (biased-queue-empty-p/no-lock scheduler))
     ;; don't steal nil, the end condition flag
     (when (peek-biased-queue/no-lock scheduler)

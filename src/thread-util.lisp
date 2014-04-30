@@ -106,16 +106,15 @@
   #-(or sbcl ccl lispworks)
   (error "cas not defined")
 
-  (progn
-    (defun make-spin-lock ()
-      nil)
+  (defun make-spin-lock ()
+    nil)
 
-    (defmacro/once with-spin-lock-held (((access &once container)) &body body)
-      `(locally (declare #.*full-optimize*)
-         (unwind-protect/ext
-          :prepare (loop :until (cas (,access ,container) nil t))
-          :main (progn ,@body)
-          :cleanup (setf (,access ,container) nil))))))
+  (defmacro/once with-spin-lock-held (((access &once container)) &body body)
+    `(locally (declare #.*full-optimize*)
+       (unwind-protect/ext
+        :prepare (loop :until (cas (,access ,container) nil t))
+        :main (progn ,@body)
+        :cleanup (setf (,access ,container) nil)))))
 
 #-lparallel.with-cas
 (progn

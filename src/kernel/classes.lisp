@@ -148,7 +148,5 @@
 #+lparallel.without-task-categories
 (progn
   (deftype task () 'function)
-  (defun/inline make-task-instance (fn category)
-    (declare (ignore category))
-    fn)
+  (defmacro make-task (fn) fn)
   (defmacro task-fn (x) x))
