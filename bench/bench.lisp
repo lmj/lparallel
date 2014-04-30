@@ -58,6 +58,12 @@
 
 ;;;; wall time
 
+#-sbcl
+(progn
+  (alias-function get-time get-internal-real-time)
+  (defun time-interval (start end)
+    (- end start)))
+
 #+sbcl
 (progn
   (defun get-time ()
@@ -69,21 +75,11 @@
     (- (to-microseconds end)
        (to-microseconds start))))
 
-#-sbcl
-(progn
-  (alias-function get-time get-internal-real-time)
-  (defun time-interval (start end)
-    (- end start)))
-
-(defmacro with-wall-time (&body body)
-  (with-gensyms (start end)
-    `(let ((,start (get-time)))
-       (values (progn ,@body)
-               (let ((,end (get-time)))
-                 (time-interval ,start ,end))))))
-
 (defun wall-time (fn args)
-  (second (multiple-value-list (with-wall-time (apply fn args)))))
+  (let ((start (get-time)))
+    (apply fn args)
+    (let ((end (get-time)))
+      (time-interval start end))))
 
 ;;;; bench
 

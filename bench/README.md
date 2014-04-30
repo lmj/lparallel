@@ -2,8 +2,7 @@
 You may need to unthrottle your CPUs in order to see significant
 speedup.
 
-Unthrottling on Linux
-=====================
+### Unthrottling on Linux
 
 First run
 
@@ -23,8 +22,7 @@ setting was "ondemand" then
 
     $ sudo sh governor.sh ondemand
 
-Hyperthreading
-==============
+### Hyperthreading
 
 Hyperthreading may or may not negatively impact benchmarks.
 
