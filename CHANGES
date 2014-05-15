@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.7.3
+
+* when the stealing scheduler is enabled (default on SBCL), fixed
+  compiling on non-x86oid SBCL (by Stas Boukarev)
+
 = 2.7.2
 
 * deprecated `submit-timeout' and `cancel-timeout'; use the new
