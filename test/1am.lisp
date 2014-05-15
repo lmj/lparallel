@@ -65,15 +65,16 @@
      (passed)))
 
 (defun check-signals (expected fn)
-  (flet ((failed (got)
-           (error "Expected to signal ~s, but got ~a." expected got)))
-    (handler-case (progn
-                    (funcall fn)
-                    (failed "nothing"))
-      (condition (condition)
-        (if (typep condition expected)
-            (passed)
-            (failed (type-of condition)))))))
+  (declare (optimize (speed 0) (safety 3) (debug 3)))
+  (flet ((handler (condition)
+           (when (typep condition expected)
+             (passed)
+             (return-from check-signals))
+           (error "Expected to signal ~s, but got ~s:~%~a"
+                  expected (type-of condition) condition)))
+    (handler-bind ((condition #'handler))
+      (funcall fn)))
+  (error "Expected to signal ~s, but got nothing." expected))
 
 (defmacro signals (condition &body body)
   `(check-signals ',condition (lambda () ,@body)))
