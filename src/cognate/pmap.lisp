@@ -119,7 +119,7 @@ manually."
   result-seq)
 
 (defun pmap-into/unparsed (map-into result-seq fn seqs)
-  (multiple-value-bind (size parts-hint) (pop-options seqs)
+  (multiple-value-bind (seqs size parts-hint) (%parse-options seqs)
     (let* ((fn (ensure-function fn))
            (initial-fill-pointer (and (arrayp result-seq)
                                       (array-has-fill-pointer-p result-seq)

@@ -38,30 +38,24 @@
          (kernel-worker-count))))
 
 (defmacro pop-plist (list)
-  (check-type list symbol)
   `(loop
-      :while (keywordp (car ,list))
+      :while (keywordp (first ,list))
       :collect (pop ,list)
       :collect (pop ,list)))
 
-(defmacro pop-keyword-args (list &rest keys)
-  (check-type list symbol)
-  (with-gensyms (plist)
-    `(when-let (,plist (pop-plist ,list))
-       (destructuring-bind (&key ,@keys) ,plist
-         (values ,@keys)))))
+(defun %parse-options (args)
+  (destructuring-bind (&key size parts) (pop-plist args)
+    (values args size parts)))
 
-(defmacro pop-options (list)
-  `(pop-keyword-args ,list size parts))
+(defun parse-options (args)
+  (multiple-value-bind (seqs size parts) (%parse-options args)
+    (unless seqs
+      (error "Input sequence(s) for parallelization not found."))
+    (unless size
+      (setf size (find-min-length seqs)))
+    (setf parts (get-parts-hint parts))
+    (values seqs size parts)))
 
-(defmacro with-parsed-options ((seqs size parts-hint) &body body)
-  (check-type seqs symbol)
-  (check-type size symbol)
-  (check-type parts-hint symbol)
-  `(multiple-value-bind (,size ,parts-hint) (pop-options ,seqs)
-     (unless ,seqs
-       (error "Input sequence(s) for parallelization not found."))
-     (unless ,size
-       (setf ,size (find-min-length ,seqs)))
-     (setf ,parts-hint (get-parts-hint ,parts-hint))
+(defmacro with-parsed-options ((args size parts) &body body)
+  `(multiple-value-bind (,args ,size ,parts) (parse-options ,args)
      ,@body))

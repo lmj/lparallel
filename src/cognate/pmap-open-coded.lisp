@@ -89,9 +89,9 @@
 ;;;; PMAP-INTO and PMAP
 
 (define-compiler-macro pmap-into (&whole whole
-                                  result-sequence function &rest sequences)
+                                  result-sequence function &rest args)
   "Open-coding for 1 vector mapped to vector."
-  (multiple-value-bind (size-form parts-form) (pop-options sequences)
+  (multiple-value-bind (sequences size-form parts-form) (%parse-options args)
     (if (eql 1 (length sequences))
         (with-gensyms (dst fn src size parts)
           `(let* ((,src ,(first sequences))
@@ -111,9 +111,9 @@
                    (pmap-into ,dst ,fn :size ,size :parts ,parts ,src)))))
         whole)))
 
-(define-compiler-macro pmap (&whole whole result-type function &rest sequences)
+(define-compiler-macro pmap (&whole whole result-type function &rest args)
   "Open-coding for 1 vector mapped to vector."
-  (multiple-value-bind (size-form parts-form) (pop-options sequences)
+  (multiple-value-bind (sequences size-form parts-form) (%parse-options args)
     (if (and (eql 1 (length sequences))
              ;; reject literal result-type of nil, 'list, etc immediately
              (not (null result-type))
