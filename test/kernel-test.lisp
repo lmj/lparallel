@@ -500,6 +500,16 @@
     (is (equal '(inner outer)
                (extract-queue q)))))
 
+(base-test task-handler-bind-syntax-test
+  (signals error
+    (macroexpand '(task-handler-bind ((())))))
+  (signals error
+    (macroexpand '(task-handler-bind (()))))
+  (signals error
+    (macroexpand '(task-handler-bind ((x)))))
+  (signals error
+    (macroexpand '(task-handler-bind ((x y z))))))
+
 (full-test print-kernel-test
   (is (plusp (length (with-output-to-string (s)
                        (print *kernel* s))))))

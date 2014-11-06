@@ -62,8 +62,8 @@ that were created in `body'."
   (let ((forms (loop
                   :for clause :in clauses
                   :for (name fn . more) := clause
-                  :do (unless (and (symbolp name) (not more))
-                        (error "Wrong format in TASK-HANDLER-BIND clause: ~a"
+                  :do (unless (and name (symbolp name) fn (not more))
+                        (error "Ill-formed binding in `task-handler-bind': ~a"
                                clause))
                   :collect `(cons ',name ,fn))))
     `(let ((*client-handlers* (list* ,@forms *client-handlers*)))
