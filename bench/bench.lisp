@@ -44,14 +44,9 @@
      :for pos :on list :by (partial-apply 'nthcdr n)
      :collect (subseq pos 0 n)))
 
-(defun identity-args (&rest args)
-  args)
-
-(defun zip (&rest args)
-  (apply #'mapcar 'identity-args args))
-
 (defun riffle (groups deck)
-  (apply #'zip (groups-of (/ (length deck) groups) deck)))
+  (apply #'mapcar #'list
+         (groups-of (/ (length deck) groups) deck)))
 
 ;;;; wall time
 
