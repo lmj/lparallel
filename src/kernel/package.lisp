@@ -71,3 +71,5 @@
            #:task-killed-error)
   (:import-from #:alexandria
                 #:simple-style-warning))
+
+(in-package #:lparallel.kernel)

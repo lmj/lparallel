@@ -77,3 +77,5 @@
                 #:simple-style-warning)
   (:import-from #:lparallel.slet
                 #:parse-bindings))
+
+(in-package #:lparallel.cognate)

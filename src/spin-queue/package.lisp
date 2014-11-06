@@ -41,3 +41,5 @@
            #:peek-spin-queue
            #:spin-queue-count
            #:spin-queue-empty-p))
+
+(in-package #:lparallel.spin-queue)

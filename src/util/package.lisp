@@ -68,3 +68,5 @@
                 #:format-symbol
                 #:array-index
                 #:curry))
+
+(in-package #:lparallel.util)

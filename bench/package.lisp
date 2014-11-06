@@ -50,3 +50,5 @@
 
 #+sbcl
 (require :sb-sprof)
+
+(in-package #:lparallel-bench)

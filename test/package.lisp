@@ -44,3 +44,5 @@
         #:lparallel.ptree
         #:lparallel-test.1am)
   (:export #:execute))
+
+(in-package #:lparallel-test)
