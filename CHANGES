@@ -2,6 +2,11 @@
 lparallel Changes
 =================
 
+= 2.7.4
+
+* more syntax checking for task-handler-bind
+* minor housekeeping
+
 = 2.7.3
 
 * when the stealing scheduler is enabled (default on SBCL), fixed
