@@ -28,90 +28,88 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-;;; 1am implements a minimal variant of the 5am/eos testing API. Some
-;;; reasons for its existence:
-;;;
-;;; * Compiling tests is ~8x faster than 5am/eos configured with
-;;; :compile-at :definition-time.
-;;;
-;;; * Compiling tests does not cause the default heap size to be
-;;; exceeded on some platforms (32-bit SBCL, Allegro Express).
-;;;
-;;; * Checks may occur inside threads.
-;;;
-;;; * Test order is randomized on each run.
-;;;
-;;; * Type inferencing works inside the `is' macro.
-;;;
-;;; * Tests are runnable as ordinary functions of the same name.
+;;; See https://github.com/lmj/1am
 
 (defpackage #:lparallel-test.1am
   (:use #:cl)
-  (:export #:is #:signals #:test #:run))
+  (:export #:test #:is #:signals #:run #:*tests*))
 
 (in-package #:lparallel-test.1am)
 
-(defvar *tests* nil)
-(defvar *pass-count* 0)
+(defvar *tests* nil "A list of tests; the default argument to `run'.")
+(defvar *pass-count* nil)
 (defvar *running* nil)
+(defvar *failed-random-state* nil)
 
-(defun passed ()
-  (incf *pass-count*)
-  (format t "."))
-
-(defmacro is (form)
-  `(progn
-     (assert ,form)
-     (passed)))
-
-(defun check-signals (expected fn)
-  (declare (optimize (speed 0) (safety 3) (debug 3)))
-  (flet ((handler (condition)
-           (when (typep condition expected)
-             (passed)
-             (return-from check-signals))
-           (error "Expected to signal ~s, but got ~s:~%~a"
-                  expected (type-of condition) condition)))
-    (handler-bind ((condition #'handler))
-      (funcall fn)))
-  (error "Expected to signal ~s, but got nothing." expected))
-
-(defmacro signals (condition &body body)
-  `(check-signals ',condition (lambda () ,@body)))
-
-(defun report (tests)
-  (format t "~&~%Success: ~s test~:p, ~s check~:p.~%"
-          (length tests) *pass-count*)
-  (values))
-
-(defun shuffle (vector)
-  (loop
-     :for i :downfrom (- (length vector) 1) :to 1
-     :do (rotatef (aref vector i) (aref vector (random (1+ i)))))
+(defun %shuffle (vector)
+  (loop for i downfrom (- (length vector) 1) to 1
+        do (rotatef (aref vector i) (aref vector (random (1+ i)))))
   vector)
 
-(defun run (&optional (tests *tests*))
-  (setf *pass-count* 0)
-  (let ((*running* t))
-    (map nil #'funcall (let ((*random-state* (make-random-state t)))
-                         (shuffle (map 'vector #'identity tests)))))
-  (report tests))
+(defun shuffle (sequence)
+  (%shuffle (map 'vector #'identity sequence)))
 
-(defun call-standalone-test (name fn)
-  (setf *pass-count* 0)
-  (multiple-value-prog1 (funcall fn)
-    (report (list name))))
+(defun call-with-random-state (fn)
+  (let ((*random-state* (or *failed-random-state*
+                            (load-time-value (make-random-state t)))))
+    (setf *failed-random-state* (make-random-state nil))
+    (multiple-value-prog1 (funcall fn)
+      (setf *failed-random-state* nil))))
+
+(defun report (test-count pass-count)
+  (format t "~&Success: ~s test~:p, ~s check~:p.~%" test-count pass-count))
+
+(defun %run (fn test-count)
+  (let ((*pass-count* 0))
+    (multiple-value-prog1 (call-with-random-state fn)
+      (report test-count *pass-count*))))
+
+(defun run (&optional (tests *tests*))
+  "Run each test in the sequence `tests'. Default is `*tests*'."
+  (let ((*running* t))
+    (%run (lambda () (map nil #'funcall (shuffle tests)))
+          (length tests)))
+  (values))
 
 (defun call-test (name fn)
-  (format t "~&~a~%" name)
+  (format t "~&~s" name)
   (finish-output)
   (if *running*
       (funcall fn)
-      (call-standalone-test name fn)))
+      (%run fn 1)))
 
 (defmacro test (name &body body)
+  "Define a test function and add it to `*tests*'."
   `(progn
      (defun ,name ()
        (call-test ',name (lambda () ,@body)))
      (pushnew ',name *tests*)
      ',name))
+
+(defun passed ()
+  (write-char #\.)
+  ;; Checks done outside a test run are not tallied.
+  (when *pass-count*
+    (incf *pass-count*))
+  (values))
+
+(defmacro is (form)
+  "Assert that `form' evaluates to non-nil."
+  `(progn
+     (assert ,form)
+     (passed)))
+
+(defun %signals (expected fn)
+  (flet ((handler (condition)
+           (cond ((typep condition expected)
+                  (passed)
+                  (return-from %signals (values)))
+                 (t (error "Expected to signal ~s, but got ~s:~%~a"
+                           expected (type-of condition) condition)))))
+    (handler-bind ((condition #'handler))
+      (funcall fn)))
+  (error "Expected to signal ~s, but got nothing." expected))
+
+(defmacro signals (condition &body body)
+  "Assert that `body' signals a condition of type `condition'."
+  `(%signals ',condition (lambda () ,@body)))
