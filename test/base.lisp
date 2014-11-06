@@ -30,39 +30,39 @@
 
 (in-package #:lparallel-test)
 
-(alias-function execute run)
-
-(alias-macro base-test test)
-
-(defvar *last-random-state* nil)
-
-(defmacro with-new-kernel ((&rest args) &body body)
-  `(let ((*kernel* (make-kernel ,@args)))
-     (unwind-protect
-          (progn ,@body)
-       (end-kernel :wait t))))
-
-(defmacro full-test (name &body body)
-  (with-gensyms (body-fn n)
-    `(base-test ,name
-       (let ((*random-state* (make-random-state t)))
-         (setf *last-random-state* (make-random-state *random-state*))
-         (dolist (,n '(1 2 4 8 16))
-           (flet ((,body-fn () ,@body))
-             (with-new-kernel (,n :spin-count 0)
-               (,body-fn))
-             ;; kludge for checking :use-caller
-             ,(when (search "defpun" (string-downcase (symbol-name name)))
-                `(with-new-kernel (,n :spin-count (random 5000) :use-caller t)
-                   (,body-fn)))
-             #+lparallel.with-stealing-scheduler
-             (with-new-kernel (,n :spin-count (random 5000))
-               (,body-fn))))))))
-
 (define-condition client-error (error) ())
 (define-condition foo-error (error) ())
 
 (defparameter *memo* nil)
+(defparameter *nil* nil)
+
+(alias-function execute run)
+(alias-macro base-test test)
+
+(defun call-with-new-kernel (args body-fn)
+  (let ((*kernel* (apply #'make-kernel args)))
+    (unwind-protect
+         (funcall body-fn)
+      (end-kernel :wait t))))
+
+(defmacro with-new-kernel (args &body body)
+  `(call-with-new-kernel (list ,@args) (lambda () ,@body)))
+
+(defun call-full-test (name body-fn)
+  (dolist (n '(1 2 4 8 16))
+    (with-new-kernel (n :spin-count 0)
+      (funcall body-fn))
+    ;; kludge for checking :use-caller
+    (when (search "defpun" (symbol-name name) :test #'equalp)
+      (with-new-kernel (n :spin-count (random 5000) :use-caller t)
+        (funcall body-fn)))
+    #+lparallel.with-stealing-scheduler
+    (with-new-kernel (n :spin-count (random 5000))
+      (funcall body-fn))))
+
+(defmacro full-test (name &body body)
+  `(base-test ,name
+     (call-full-test ',name (lambda () ,@body))))
 
 (defun extract-queue (queue)
   (loop
@@ -89,16 +89,16 @@
                :test-not #'string=)
   #-ccl (length (bordeaux-threads:all-threads)))
 
-(defmacro with-thread-count-check (&body body)
-  (with-gensyms (old-thread-count)
-    `(progn
-       (sleep 0.2)
-       (let ((,old-thread-count (thread-count)))
-         ,@body
-         (sleep 0.2)
-         (is (eql ,old-thread-count (thread-count)))))))
+(defun call-with-thread-count-check (body-fn)
+  (sleep 0.2)
+  (let ((old-thread-count (thread-count)))
+    (funcall body-fn)
+    (sleep 0.2)
+    (is (eql old-thread-count (thread-count)))))
 
-(defparameter *nil* nil)
+(defmacro with-thread-count-check (&body body)
+  `(call-with-thread-count-check (lambda () ,@body)))
+
 (defun infinite-loop () (loop :until *nil*))
 
 (defmacro collect-n (n &body body)
