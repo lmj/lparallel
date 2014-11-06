@@ -49,17 +49,19 @@
                 #:define-locking-fn
                 #:define-simple-locking-fn
                 #:with-countdown
-                #:time-remaining))
+                #:time-remaining)
+  (:import-from #:alexandria
+                #:array-length))
 
 (in-package #:lparallel.vector-queue)
 
 ;;;; raw-queue
 
-(deftype raw-queue-count () `(integer 0 ,array-dimension-limit))
+(deftype raw-queue-count () 'array-length)
 
 (defslots raw-queue ()
   ((data              :reader data            :type simple-array)
-   (start :initform 0                         :type raw-queue-count)
+   (start :initform 0                         :type index)
    (count :initform 0 :reader raw-queue-count :type raw-queue-count)))
 
 (defun make-raw-queue (capacity)
