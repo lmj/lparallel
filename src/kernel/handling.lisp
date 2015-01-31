@@ -116,7 +116,7 @@ control (or not)."
           (invoke-debugger condition)))))
 
 (defun transfer-error-report (stream)
-  (format stream "Transfer this error to dependent threads, if any."))
+  (format stream "Transfer this error to a dependent thread, if one exists."))
 
 (defconstant +current-task+ 'current-task)
 
