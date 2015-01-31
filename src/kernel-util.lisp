@@ -78,7 +78,7 @@
 
 (defmacro with-submit-counted (&body body)
   (with-gensyms (count channel)
-    `(let ((,count   0)
+    `(let ((,count 0)
            (,channel (make-channel)))
        (declare (fixnum ,count))
        (flet ((submit-counted (&rest args)
@@ -108,8 +108,8 @@
 (defmacro with-submit-cancelable (&body body)
   (with-gensyms (canceledp channel count)
     `(let ((,canceledp nil)
-           (,count     0)
-           (,channel   (make-channel)))
+           (,count 0)
+           (,channel (make-channel)))
        (flet ((submit-cancelable (fn &rest args)
                 (submit-task ,channel
                              (lambda ()
