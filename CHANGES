@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.7.5
+
+* added broadcast-task -- executes a given task inside each worker
+
 = 2.7.4
 
 * more syntax checking for task-handler-bind
