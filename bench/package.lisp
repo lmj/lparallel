@@ -36,6 +36,8 @@
         #:lparallel.cognate
         #:lparallel.defpun
         #:lparallel.kernel)
+  (:import-from #:lparallel.kernel-util
+                #:with-temp-kernel)
   (:export #:execute)
   #+sbcl
   (:export #:profile

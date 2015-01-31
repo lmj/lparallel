@@ -43,6 +43,8 @@
         #:lparallel.promise
         #:lparallel.ptree
         #:lparallel-test.1am)
+  (:import-from #:lparallel.kernel-util
+                #:with-temp-kernel)
   (:export #:execute))
 
 (in-package #:lparallel-test)

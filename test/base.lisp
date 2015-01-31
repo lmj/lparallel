@@ -39,25 +39,16 @@
 (alias-function execute run)
 (alias-macro base-test test)
 
-(defun call-with-new-kernel (args body-fn)
-  (let ((*kernel* (apply #'make-kernel args)))
-    (unwind-protect
-         (funcall body-fn)
-      (end-kernel :wait t))))
-
-(defmacro with-new-kernel (args &body body)
-  `(call-with-new-kernel (list ,@args) (lambda () ,@body)))
-
 (defun call-full-test (name body-fn)
   (dolist (n '(1 2 4 8 16))
-    (with-new-kernel (n :spin-count 0)
+    (with-temp-kernel (n :spin-count 0)
       (funcall body-fn))
     ;; kludge for checking :use-caller
     (when (search "defpun" (symbol-name name) :test #'equalp)
-      (with-new-kernel (n :spin-count (random 5000) :use-caller t)
+      (with-temp-kernel (n :spin-count (random 5000) :use-caller t)
         (funcall body-fn)))
     #+lparallel.with-stealing-scheduler
-    (with-new-kernel (n :spin-count (random 5000))
+    (with-temp-kernel (n :spin-count (random 5000))
       (funcall body-fn))))
 
 (defmacro full-test (name &body body)

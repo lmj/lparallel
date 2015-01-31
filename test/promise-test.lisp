@@ -104,7 +104,7 @@
 
 (base-test speculations-test
   (setf *memo* (make-queue))
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (sleep 0.2)
     (future (sleep 0.25))
     (future (sleep 0.50))
@@ -245,7 +245,7 @@
   ;; verify STORE-VALUE is thread-safe
   (loop
      :for n :from 1 :to 64
-     :do (with-new-kernel (n)
+     :do (with-temp-kernel (n)
            (let* ((channel (make-channel))
                   (counter (make-queue))
                   (future  (task-handler-bind
@@ -273,7 +273,7 @@
   (handler-bind ((warning (lambda (w)
                             (when-let (r (find-restart 'muffle-warning w))
                               (invoke-restart r)))))
-    (with-new-kernel (2)
+    (with-temp-kernel (2)
       (sleep 0.2)
       (let ((main-thread (current-thread)))
         (task-handler-bind
@@ -291,7 +291,7 @@
               (force future))))))))
 
 (base-test canceling-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (sleep 0.1)
     (let* ((a (promise))
            (filler1 (future (sleep 0.2)))
@@ -314,7 +314,7 @@
         (is (not (fulfilledp a)))))))
 
 (base-test error-during-stealing-force-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     ;; occupy workers
     (future (sleep 0.4))
     (future (sleep 0.4))
@@ -339,7 +339,7 @@
       (is (= 3 handle-count)))))
 
 (base-test error-during-stealing-force-2-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     ;; occupy workers
     (future (sleep 0.4))
     (future (sleep 0.4))

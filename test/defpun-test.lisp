@@ -93,7 +93,7 @@
 ;;; redefinitions
 
 (base-test redefined-defpun-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (setf *memo* 'foo)
     (handler-bind ((warning #'muffle-warning))
       (eval '(defpun foo (x) (* x x))))

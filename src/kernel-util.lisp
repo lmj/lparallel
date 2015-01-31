@@ -45,6 +45,7 @@
   (:export #:with-submit-cancelable
            #:submit-cancelable
            #:receive-cancelables)
+  (:export #:with-temp-kernel)
   (:import-from #:lparallel.kernel
                 #:*worker*
                 #:steal-work
@@ -122,3 +123,33 @@
                         ,',channel ,',count (lambda (,result) ,@body))))
            (unwind-protect (progn ,@body)
              (setf ,canceledp t)))))))
+
+(defun call-with-temp-kernel (fn &rest args)
+  ;; ensure that we end the same kernel we create
+  (let ((kernel (apply #'make-kernel args)))
+    (unwind-protect
+         (let ((*kernel* kernel))
+           (funcall fn))
+      (let ((*kernel* kernel))
+        (end-kernel :wait t)))))
+
+(defmacro with-temp-kernel ((&rest make-kernel-args) &body body)
+  "Create a temporary kernel for the duration of `body', ensuring that
+`end-kernel' is eventually called. `make-kernel' is given the
+arguments `make-kernel-args'.
+
+**NOTE**: Use this only if you understand its implications. Since
+`*kernel*' is unaffected outside `body', the REPL will be useless with
+respect to the temporary kernel. For instance calling `kill-tasks'
+from the REPL will not affect tasks that are running in the temporary
+kernel.
+
+Multiple uses of `with-temp-kernel' within the same application are
+prone to defeat the purpose and benefits of having a thread pool. This
+is an especial risk if `with-temp-kernel' appears inside a library,
+which is likely to be a suboptimal situation.
+
+While using `with-temp-kernel' is generally a bad idea, there are a
+few valid uses, such as for testing, where the code is non-critical or
+where convenience trumps other concerns."
+  `(call-with-temp-kernel (lambda () ,@body) ,@make-kernel-args))

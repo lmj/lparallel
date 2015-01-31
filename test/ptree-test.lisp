@@ -188,7 +188,7 @@
 (base-test ptree-node-kernel-test
   (let ((*ptree-node-kernel* (make-kernel 2)))
     (unwind-protect
-         (with-new-kernel (1)
+         (with-temp-kernel (1)
            (is (equal
                 '(63 9 7 1)
                 (ptree ((area   (width height) (* width height))
@@ -276,7 +276,8 @@
   (let ((memo (make-queue))
         (tree (make-ptree)))
     (ptree-fn 'inf '() #'infinite-loop tree)
-    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+    (with-temp-kernel
+        (2 :bindings `((*error-output* . (make-broadcast-stream))))
       (with-thread (:bindings `((*kernel* . ,*kernel*)))
         (handler-case
             (call-ptree 'inf tree)
@@ -299,7 +300,8 @@
     (ptree-fn 'area '(width height) (lambda (w h) (* w h)) tree)
     (ptree-fn 'height '() #'infinite-loop tree)
     (ptree-fn 'width '() (constantly 9) tree)
-    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+    (with-temp-kernel
+        (2 :bindings `((*error-output* . (make-broadcast-stream))))
       (with-thread (:bindings `((*kernel* . ,*kernel*)))
         (handler-case
             (call-ptree 'area tree)
@@ -326,7 +328,8 @@
                 (infinite-loop))
               tree)
     (ptree-fn 'five '() (constantly 5) tree)
-    (with-new-kernel (2 :bindings `((*error-output* . (make-broadcast-stream))))
+    (with-temp-kernel
+        (2 :bindings `((*error-output* . (make-broadcast-stream))))
       (with-thread (:bindings `((*kernel* . ,*kernel*)))
         (handler-case
             (call-ptree 'inf tree)
@@ -385,7 +388,7 @@
       (is (= 2 count)))))
 
 (base-test ptree-multi-error-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (task-handler-bind ((foo-error #'invoke-transfer-error))
       (let ((timer-finish-p nil))
         (with-thread ()

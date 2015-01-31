@@ -615,7 +615,7 @@
                                      (invoke-restart 'double-me 3))))
              (funcall fn))))
     (dolist (n '(1 2 3 4 5 6 10))
-      (let ((result (with-new-kernel (n :context #'my-worker-context)
+      (let ((result (with-temp-kernel (n :context #'my-worker-context)
                       (pmapcar (lambda (x)
                                  (declare (ignore x))
                                  (restart-case (warn 'foo-warning)
@@ -1042,7 +1042,7 @@
     (is (apply #'equalp (receive-result channel)))))
 
 (base-test cognate-steal-priority-test
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (let ((channel (make-channel))
           (flag nil))
       (with-thread ()
@@ -1055,7 +1055,7 @@
       (is (eq nil flag))
       (sleep 1)
       (is (eq t flag))))
-  (with-new-kernel (2)
+  (with-temp-kernel (2)
     (let ((channel (make-channel))
           (flag nil))
       (with-thread ()

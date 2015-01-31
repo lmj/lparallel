@@ -116,9 +116,3 @@ results are riffled for comparison."
                (mapcar (compose 'ping 'wall-time)
                        (mapcar 'exec-fn specs)
                        (mapcar (compose 'funcall 'args-fn) specs)))))))))
-
-(defmacro with-temp-kernel ((&rest make-kernel-args) &body body)
-  `(let ((*kernel* (make-kernel ,@make-kernel-args)))
-     (unwind-protect
-          (progn ,@body)
-       (end-kernel :wait t))))
