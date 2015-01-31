@@ -643,6 +643,58 @@
     (signals error
       (make-kernel 1 :context 'nonexistent-function))))
 
+(base-test broadcast-test
+  (setf *memo* 0)
+  (dolist (n '(1 2 3 4 7 8 15 16))
+    (with-temp-kernel (n :bindings '((*memo* . 1)))
+      (is (= 0 *memo*))
+      (let ((channel (make-channel)))
+        (repeat 100 (submit-task channel (lambda () *memo*)))
+        (repeat 100 (is (= 1 (receive-result channel)))))
+      (is (every (lambda (x) (= x 1))
+                 (broadcast-task (lambda () *memo*))))
+      (let ((channel (make-channel)))
+        (repeat (kernel-worker-count)
+          (submit-task channel #'sleep 0.2)))
+      (is (every (lambda (x) (= x 99))
+                 (broadcast-task (lambda () (setf *memo* 99)))))
+      (let ((channel (make-channel)))
+        (repeat 1000 (submit-task channel (lambda ()))))
+      (is (every (lambda (x) (= x 99))
+                 (broadcast-task (lambda () (setf *memo* 99)))))
+      (is (every (lambda (x) (= x 99))
+                 (broadcast-task (lambda () (setf *memo* 99)))))
+      (is (= 0 *memo*))
+      (let ((channel (make-channel)))
+        (repeat 100 (submit-task channel (lambda () *memo*)))
+        (repeat 100 (is (= 99 (receive-result channel)))))
+      (let ((channel (make-channel)))
+        (repeat 1000 (submit-task channel (lambda ()))))
+      (is (every (lambda (x) (= x 99))
+                 (broadcast-task (lambda () *memo*))))
+      (is (every (lambda (x) (= x 99))
+                 (broadcast-task (lambda () *memo*))))
+      (is (every (lambda (x) (= x 5))
+                 (broadcast-task #'+ 2 3))))))
+
+(full-test broadcast-error-test
+  (let ((*kernel* nil))
+    (signals no-kernel-error
+      (broadcast-task (lambda ()))))
+  (signals error
+    (broadcast-task 3))
+  (signals error
+    (broadcast-task "foo"))
+  (task-handler-bind ((error #'invoke-transfer-error))
+    (signals foo-error
+      (broadcast-task #'error 'foo-error))
+    (let ((channel (make-channel)))
+      (submit-task channel (lambda () (broadcast-task (lambda ()))))
+      (signals error
+        (receive-result channel)))
+    (signals error
+      (broadcast-task (lambda () (broadcast-task (lambda ())))))))
+
 ;;;; check for messed up imports
 
 (defun packages-matching (string)

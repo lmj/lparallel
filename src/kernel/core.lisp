@@ -471,6 +471,29 @@ each worker."
   (print-unreadable-object (kernel stream :type t :identity t)
     (format stream "~{~s~^ ~}" (kernel-info kernel))))
 
+(defun broadcast-task (function &rest args)
+  "Wait for current and pending tasks to complete, if any, then
+simultaneously execute the given task inside each worker. Wait until
+these tasks finish, then return the results in a vector.
+
+Calling `broadcast-task' from inside a worker is an error."
+  (when *worker*
+    (error "Cannot call `broadcast-task' from inside a worker."))
+  (let* ((function (ensure-function function))
+         (*kernel* (check-kernel))
+         (worker-count (kernel-worker-count))
+         (channel (make-channel))
+         ;; TODO: replace queues with semaphores
+         (from-workers (make-queue))
+         (to-workers (make-queue)))
+    (repeat worker-count (submit-task channel (lambda ()
+                                                (push-queue t from-workers)
+                                                (pop-queue to-workers)
+                                                (apply function args))))
+    (repeat worker-count (pop-queue from-workers))
+    (repeat worker-count (push-queue t to-workers))
+    (map-into (make-array worker-count) (lambda () (receive-result channel)))))
+
 (defun track-exit ()
   (setf *lisp-exiting-p* t))
 

@@ -49,6 +49,7 @@
            #:kernel-context)
   (:export #:make-channel
            #:submit-task
+           #:broadcast-task
            #:submit-timeout
            #:cancel-timeout
            #:receive-result
