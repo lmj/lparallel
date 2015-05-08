@@ -42,34 +42,32 @@
                               &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-preduce-context size parts
-    (loop
-       :for result-index :from 0
-       :while (next-part)
-       :do (apply #'submit-indexed
-                  result-index
-                  #'reduce
-                  function
-                  sequence
-                  :start (+ start (part-offset))
-                  :end   (+ start (part-offset) (part-size))
-                  keyword-args))))
+    (loop for result-index from 0
+          while (next-part)
+          do (apply #'submit-indexed
+                    result-index
+                    #'reduce
+                    function
+                    sequence
+                    :start (+ start (part-offset))
+                    :end   (+ start (part-offset) (part-size))
+                    keyword-args))))
 
 (defun preduce-partial/list (function sequence start size parts
                              &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-preduce-context size parts
-    (loop
-       :with subseq := (nthcdr start sequence)
-       :for result-index :from 0
-       :while (next-part)
-       :do (apply #'submit-indexed
-                  result-index
-                  #'reduce
-                  function
-                  subseq
-                  :end (part-size)
-                  keyword-args)
-       :do (setf subseq (nthcdr (part-size) subseq)))))
+    (loop with subseq = (nthcdr start sequence)
+          for result-index from 0
+          while (next-part)
+          do (apply #'submit-indexed
+                    result-index
+                    #'reduce
+                    function
+                    subseq
+                    :end (part-size)
+                    keyword-args)
+             (setf subseq (nthcdr (part-size) subseq)))))
 
 (defun %preduce-partial (function sequence start size parts
                          &rest keyword-args)

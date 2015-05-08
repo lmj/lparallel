@@ -59,13 +59,12 @@ user receives the return value of this function."
 (defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but handles conditions signaled inside tasks
 that were created in `body'."
-  (let ((forms (loop
-                  :for clause :in clauses
-                  :for (name fn . more) := clause
-                  :do (unless (and name (symbolp name) fn (not more))
-                        (error "Ill-formed binding in `task-handler-bind': ~a"
-                               clause))
-                  :collect `(cons ',name ,fn))))
+  (let ((forms (loop for clause in clauses
+                     for (name fn . more) = clause
+                     do (unless (and name (symbolp name) fn (not more))
+                          (error "Ill-formed binding in `task-handler-bind': ~a"
+                                 clause))
+                     collect `(cons ',name ,fn))))
     `(let ((*client-handlers* (list* ,@forms *client-handlers*)))
        ,@body)))
 
@@ -78,12 +77,11 @@ This is a convenience function for use in `task-handler-bind'."
 (defun condition-handler (condition)
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
-  (loop
-     :for ((condition-type . handler) . rest) :on *client-handlers*
-     :do (when (typep condition condition-type)
-           (let ((*client-handlers* rest))
-             (handler-bind ((condition #'condition-handler))
-               (funcall handler condition)))))
+  (loop for ((condition-type . handler) . rest) on *client-handlers*
+        do (when (typep condition condition-type)
+             (let ((*client-handlers* rest))
+               (handler-bind ((condition #'condition-handler))
+                 (funcall handler condition)))))
   (when (and (typep condition 'error)
              (not *debug-tasks-p*))
     (invoke-transfer-error condition)))

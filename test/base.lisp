@@ -56,9 +56,8 @@
      (call-full-test ',name (lambda () ,@body))))
 
 (defun extract-queue (queue)
-  (loop
-     :until (queue-empty-p queue)
-     :collect (pop-queue queue)))
+  (loop until (queue-empty-p queue)
+        collect (pop-queue queue)))
 
 (defun invoke-abort-thread ()
   (flet ((fail () (error "Can't find an abort-like restart in this CL!")))
@@ -90,11 +89,11 @@
 (defmacro with-thread-count-check (&body body)
   `(call-with-thread-count-check (lambda () ,@body)))
 
-(defun infinite-loop () (loop :until *nil*))
+(defun infinite-loop () (loop until *nil*))
 
 (defmacro collect-n (n &body body)
   "Execute `body' `n' times, collecting the results into a list."
-  `(loop :repeat ,n :collect (progn ,@body)))
+  `(loop repeat ,n collect (progn ,@body)))
 
 (defun make-random-list (size)
   (collect-n size (random 1.0)))

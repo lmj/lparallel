@@ -34,9 +34,8 @@
 
 (defmacro check-symbols (&rest syms)
   `(progn
-     ,@(loop
-          :for sym :in syms
-          :collect `(check-type ,sym symbol))))
+     ,@(loop for sym in syms
+             collect `(check-type ,sym symbol))))
 
 (defmacro defmacro/syms (name params &body body)
   "Like `defmacro' but requires all parameters to be symbols."

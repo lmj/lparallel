@@ -91,14 +91,13 @@
              (pmapl 'identity :parts 4 '(0 1 2 3)))))
 
 (full-test pmap-nil-test
-  (loop
-     :for n :in '(0 1 2 3 4 5 6 7 8 9 10 100 1000)
-     :do (let ((a (loop :for x :from 0 :repeat n :collect x))
-               (b (loop :for x :from 0 :repeat n :collect (* 2 x)))
-               (q (make-queue)))
-           (pmap nil (lambda (x y) (push-queue (+ x y) q)) a b)
-           (is (equal (sort (extract-queue q) #'<)
-                      (loop :for x :from 0 :repeat n :collect (* 3 x)))))))
+  (loop for n in '(0 1 2 3 4 5 6 7 8 9 10 100 1000)
+        do (let ((a (loop for x from 0 repeat n collect x))
+                 (b (loop for x from 0 repeat n collect (* 2 x)))
+                 (q (make-queue)))
+             (pmap nil (lambda (x y) (push-queue (+ x y) q)) a b)
+             (is (equal (sort (extract-queue q) #'<)
+                        (loop for x from 0 repeat n collect (* 3 x)))))))
 
 (full-test pmapcar-test
   (is (equal '(15 17 19)
@@ -138,9 +137,8 @@
                (lambda (i x y z)
                  (push-queue (cons i (f x y z)) *memo*))
                :parts parts
-               (loop
-                  :for i :from 0 :below (apply #'min (mapcar #'length lists))
-                  :collect i)
+               (loop for i from 0 below (apply #'min (mapcar #'length lists))
+                     collect i)
                lists)
         (is (= (length expected)
                (queue-count *memo*)))
@@ -172,9 +170,8 @@
     (apply #'pmapl
            (lambda (i x y)
              (push-queue (list i (vector x y)) *memo*))
-           (loop
-              :for i :from 0 :below (apply #'min (mapcar #'length lists))
-              :collect i)
+           (loop for i from 0 below (apply #'min (mapcar #'length lists))
+                 collect i)
            lists)
     (is (equalp expected
                 (map 'list
@@ -214,37 +211,33 @@
                    (+ (* (aref a 2) (aref b 0)) (* (aref a 3) (aref b 2)))
                    (+ (* (aref a 2) (aref b 1)) (* (aref a 3) (aref b 3)))))
          (verify (test &rest args)
-           (loop :for parts :from 1 :to 10 :do
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce args)))
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce
-                                  (append args
-                                          (list :parts parts)))))
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce
-                                  (append args
-                                          (list :from-end t)))))
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce
-                                  (append args
-                                          (list :recurse t)))))
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce
-                                  (append args
-                                          (list :recurse t :parts parts)))))
-              (is (funcall test
-                           (apply #'reduce args)
-                           (apply #'preduce
-                                  (append args
-                                          (list :recurse t
-                                                :parts parts
-                                                :from-end t))))))))
+           (loop for parts from 1 to 10
+                 do (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce args)))
+                    (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce
+                                        (append args (list :parts parts)))))
+                    (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce
+                                        (append args (list :from-end t)))))
+                    (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce
+                                        (append args (list :recurse t)))))
+                    (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce
+                                        (append args (list :recurse t
+                                                           :parts parts)))))
+                    (is (funcall test
+                                 (apply #'reduce args)
+                                 (apply #'preduce
+                                        (append args (list :recurse t
+                                                           :parts parts
+                                                           :from-end t))))))))
     (let ((a '(0 1 2 3 4 5 6 7))
           (b '((9 . 0) (9 . 1) (9 . 2) (9 . 3)))
           (c (collect-n 100 (random 100)))
@@ -301,13 +294,12 @@
 
 (full-test grind-pevery-test
   (flet ((verify (&rest args)
-           (loop
-              :for (regular parallel) :in '((some     psome)
-                                            (every    pevery)
-                                            (notany   pnotany)
-                                            (notevery pnotevery))
-              :do (is (eql (apply regular args)
-                           (apply parallel args))))))
+           (loop for (regular parallel) in '((some     psome)
+                                             (every    pevery)
+                                             (notany   pnotany)
+                                             (notevery pnotevery))
+                 do (is (eql (apply regular args)
+                             (apply parallel args))))))
     (let ((a (collect-n 200 (random 100)))
           (b (collect-n 200 (random 100))))
       (verify (lambda (x) (< x 100)) a)
@@ -325,29 +317,29 @@
 
 (full-test parts-arg-test
   (flet ((sq (x) (* x x)))
-    (loop
-       :for parts :from 1 :to 8
-       :do (loop
-              :for n :from 1 :to 6
-              :do (let ((a (collect-n n (random n))))
-                    (is (equalp ( map-into (make-array n) #'sq a)
-                                (pmap-into (make-array n) #'sq :parts parts a)))
-                    (is (equal  ( map-into (make-list n) #'sq a)
-                                (pmap-into (make-list n) #'sq :parts parts a)))
-                    (is (equalp ( map 'vector #'sq a)
-                                (pmap 'vector #'sq :parts parts a)))
-                    (is (equal  ( map 'list #'sq a)
-                                (pmap 'list #'sq :parts parts a)))
-                    (is (equal  ( mapcar #'sq a)
-                                (pmapcar #'sq :parts parts a)))
-                    (is (equal  ( maplist #'car a)
-                                (pmaplist #'car :parts parts a)))
-                    (is (equal  ( mapcan #'list a)
-                                (pmapcan #'list :parts parts a)))
-                    (is (equal  ( mapcon #'list a)
-                                (pmapcon #'list :parts parts a)))
-                    (pmapc #'sq :parts parts a)
-                    (pmapl #'cdr :parts parts a))))))
+    (loop for parts from 1 to 8
+          do (loop for n from 1 to 6
+                   do (let ((a (collect-n n (random n))))
+                        (is (equalp ( map-into (make-array n) #'sq a)
+                                    (pmap-into (make-array n) #'sq
+                                               :parts parts a)))
+                        (is (equal  ( map-into (make-list n) #'sq a)
+                                    (pmap-into (make-list n) #'sq
+                                               :parts parts a)))
+                        (is (equalp ( map 'vector #'sq a)
+                                    (pmap 'vector #'sq :parts parts a)))
+                        (is (equal  ( map 'list #'sq a)
+                                    (pmap 'list #'sq :parts parts a)))
+                        (is (equal  ( mapcar #'sq a)
+                                    (pmapcar #'sq :parts parts a)))
+                        (is (equal  ( maplist #'car a)
+                                    (pmaplist #'car :parts parts a)))
+                        (is (equal  ( mapcan #'list a)
+                                    (pmapcan #'list :parts parts a)))
+                        (is (equal  ( mapcon #'list a)
+                                    (pmapcon #'list :parts parts a)))
+                        (pmapc #'sq :parts parts a)
+                        (pmapl #'cdr :parts parts a))))))
 
 (defmacro define-plet-test (test-name fn-name defun store-value-p)
   ;; use assert since this may execute in another thread
@@ -538,51 +530,46 @@
                     (psort b #'> :granularity granularity)))))))
 
 (full-test premove-if-test
-  (loop
-     :for size :below 100
-     :for where := (random 1.0)
-     :for source := (collect-n size (random 1.0))
-     :do (is (equal (remove-if  (partial-apply #'< where) source)
-                    (premove-if (partial-apply #'< where) source)))))
+  (loop for size below 100
+        for where = (random 1.0)
+        for source = (collect-n size (random 1.0))
+        do (is (equal (remove-if  (partial-apply #'< where) source)
+                      (premove-if (partial-apply #'< where) source)))))
 
 (full-test second-premove-if-test
-  (loop
-     :for (std par) :in '((remove-if-not premove-if-not)
-                          (remove-if     premove-if))
-     :do (loop
-            :for size :below 100
-            :for where := (random 1.0)
-            :for a := (make-random-list size)
-            :for b := (make-random-vector size)
-            :do (is (equal (funcall std (partial-apply #'< where) a)
-                           (funcall par (partial-apply #'< where) a)))
-            :do (is (equalp (funcall std (partial-apply #'< where) b)
-                            (funcall par (partial-apply #'< where) b)))
-            :do (when (>= size 77)
-                  (is (equal (funcall std (partial-apply #'< where) a
-                                      :start 20)
-                             (funcall par (partial-apply #'< where) a
-                                      :start 20)))
-                  (is (equal (funcall std (partial-apply #'< where) a
-                                      :start 20 :end 77)
-                             (funcall par (partial-apply #'< where) a
-                                      :start 20 :end 77)))))))
+  (loop for (std par) in '((remove-if-not premove-if-not)
+                           (remove-if     premove-if))
+        do (loop for size below 100
+                 for where = (random 1.0)
+                 for a = (make-random-list size)
+                 for b = (make-random-vector size)
+                 do (is (equal (funcall std (partial-apply #'< where) a)
+                               (funcall par (partial-apply #'< where) a)))
+                    (is (equalp (funcall std (partial-apply #'< where) b)
+                                (funcall par (partial-apply #'< where) b)))
+                    (when (>= size 77)
+                      (is (equal (funcall std (partial-apply #'< where) a
+                                          :start 20)
+                                 (funcall par (partial-apply #'< where) a
+                                          :start 20)))
+                      (is (equal (funcall std (partial-apply #'< where) a
+                                          :start 20 :end 77)
+                                 (funcall par (partial-apply #'< where) a
+                                          :start 20 :end 77)))))))
 
 (full-test premove-test
-  (loop
-     :for size :below 100
-     :for where := (random 1.0)
-     :for a := (make-random-list size)
-     :for b := (make-random-vector size)
-     :do (progn
-           (is (equal (remove  where a :test #'<)
+  (loop for size below 100
+        for where = (random 1.0)
+        for a = (make-random-list size)
+        for b = (make-random-vector size)
+        do (is (equal (remove  where a :test #'<)
                       (premove where a :test #'<)))
            (is (equal (remove  where a :test-not #'>=)
                       (premove where a :test-not #'>=)))
            (is (equalp (remove  where b :test #'<)
                        (premove where b :test #'<)))
            (is (equalp (remove  where b :test-not (complement #'<))
-                       (premove where b :test-not (complement #'<))))))
+                       (premove where b :test-not (complement #'<)))))
   (is (equal (remove  3 (list 0 1 2 3 4 9 3 2 3 9 1))
              (premove 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
   (is (equalp (remove  3 (make-array 11
@@ -772,51 +759,46 @@
   (is (zerop (pcount-if 'non-function #())))
   (signals error
     (pcount-if 'non-function '() :start 2))
-  (loop
-     :for size :from 1 :below 100
-     :for where := (random 1.0)
-     :for source := (collect-n size (random 1.0))
-     :do (is (equal (count-if  (partial-apply #'< where) source)
-                    (pcount-if (partial-apply #'< where) source)))))
+  (loop for size from 1 below 100
+        for where = (random 1.0)
+        for source = (collect-n size (random 1.0))
+        do (is (equal (count-if  (partial-apply #'< where) source)
+                      (pcount-if (partial-apply #'< where) source)))))
 
 (full-test second-pcount-if-test
-  (loop
-     :for (std par) :in '((count-if-not pcount-if-not)
-                          (count-if     pcount-if))
-     :do (loop
-            :for size :from 1 :below 100
-            :for where := (random 1.0)
-            :for a := (make-random-list size)
-            :for b := (make-random-vector size)
-            :do (is (equal  (funcall std (partial-apply #'< where) a)
-                            (funcall par (partial-apply #'< where) a)))
-            :do (is (equalp (funcall std (partial-apply #'< where) b)
-                            (funcall par (partial-apply #'< where) b)))
-            :do (when (>= size 77)
-                  (is (equal (funcall std (partial-apply #'< where) a
-                                      :start 20)
-                             (funcall par (partial-apply #'< where) a
-                                      :start 20)))
-                  (is (equal (funcall std (partial-apply #'< where) a
-                                      :start 20 :end 77)
-                             (funcall par (partial-apply #'< where) a
-                                      :start 20 :end 77)))))))
+  (loop for (std par) in '((count-if-not pcount-if-not)
+                           (count-if     pcount-if))
+        do (loop for size from 1 below 100
+                 for where = (random 1.0)
+                 for a = (make-random-list size)
+                 for b = (make-random-vector size)
+                 do (is (equal  (funcall std (partial-apply #'< where) a)
+                                (funcall par (partial-apply #'< where) a)))
+                    (is (equalp (funcall std (partial-apply #'< where) b)
+                                (funcall par (partial-apply #'< where) b)))
+                    (when (>= size 77)
+                      (is (equal (funcall std (partial-apply #'< where) a
+                                          :start 20)
+                                 (funcall par (partial-apply #'< where) a
+                                          :start 20)))
+                      (is (equal (funcall std (partial-apply #'< where) a
+                                          :start 20 :end 77)
+                                 (funcall par (partial-apply #'< where) a
+                                          :start 20 :end 77)))))))
 
 (full-test pcount-test
-  (loop
-     :for size :from 1 :below 100
-     :for where := (random 1.0)
-     :for a := (make-random-list size)
-     :for b := (make-random-vector size)
-     :do (progn
-           (is (equal  (count  where a :test #'<)
+  (loop for size from 1 below 100
+        for where = (random 1.0)
+        for a = (make-random-list size)
+        for b = (make-random-vector size)
+        do (is (equal  (count  where a :test #'<)
                        (pcount where a :test #'<)))
            (is (equal  (count  where a :test-not (complement #'<))
                        (pcount where a :test-not (complement #'<))))
            (is (equalp (count  where b :test #'<)
                        (pcount where b :test #'<)))
            (is (equalp (count  where b :test-not (complement #'<))
-                       (pcount where b :test-not (complement #'<))))))
+                       (pcount where b :test-not (complement #'<)))))
   (is (equal (count  3 (list 0 1 2 3 4 9 3 2 3 9 1))
              (pcount 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
   (is (equalp (count  3 (make-array 11
@@ -824,9 +806,9 @@
                                     :initial-contents
                                     (list 0 1 2 3 4 9 3 2 3 9 1)))
               (pcount 3 (make-array 11
-                                     :adjustable t
-                                     :initial-contents
-                                     (list 0 1 2 3 4 9 3 2 3 9 1)))))
+                                    :adjustable t
+                                    :initial-contents
+                                    (list 0 1 2 3 4 9 3 2 3 9 1)))))
   (let ((x (cons nil nil)))
     (is (equal (count  x (list 3 4 x 4 9 x 2))
                (pcount x (list 3 4 x 4 9 x 2)))))
@@ -855,51 +837,47 @@
          (pfind-if-not (lambda (x) (>= x 5)) '(9 9 6 7 3 9 6))
          (find-if-not  (lambda (x) (>= x 5)) #(9 9 6 7 3 9 6))
          (pfind-if-not (lambda (x) (>= x 5)) #(9 9 6 7 3 9 6))))
-  (loop
-     :for size :from 1 :below 100
-     :for source := (collect-n size (random 1.0))
-     :do (setf (elt source (random size)) 999)
-     :do (is (eql (find-if  (partial-apply #'eql 999) source)
-                  (pfind-if (partial-apply #'eql 999) source)))))
+  (loop for size from 1 below 100
+        for source = (collect-n size (random 1.0))
+        do (setf (elt source (random size)) 999)
+           (is (eql (find-if  (partial-apply #'eql 999) source)
+                    (pfind-if (partial-apply #'eql 999) source)))))
 
 (full-test second-pfind-if-test
-  (loop
-     :for (std par) :in '((find-if pfind-if))
-     :do (loop
-            :for size :from 1 :below 100
-            :for a := (make-random-list size)
-            :for b := (make-random-vector size)
-            :for target := (let ((index (random size)))
-                             (setf (elt a index) 99.0
-                                   (elt b index) 99.0))
-            :do (is (equal  (funcall std (partial-apply #'eql target) a)
-                            (funcall par (partial-apply #'eql target) a)))
-            :do (is (equalp (funcall std (partial-apply #'eql target) b)
-                            (funcall par (partial-apply #'eql target) b)))
-            :do (when (>= size 77)
-                  (is (equal (funcall std (partial-apply #'eql target) a
-                                      :start 20)
-                             (funcall par (partial-apply #'eql target) a
-                                      :start 20)))
-                  (is (equal (funcall std (partial-apply #'eql target) a
-                                      :start 20 :end 77)
-                             (funcall par (partial-apply #'eql target) a
-                                      :start 20 :end 77)))))))
+  (loop for (std par) in '((find-if pfind-if))
+        do (loop for size from 1 below 100
+                 for a = (make-random-list size)
+                 for b = (make-random-vector size)
+                 for target = (let ((index (random size)))
+                                (setf (elt a index) 99.0
+                                      (elt b index) 99.0))
+                 do (is (equal  (funcall std (partial-apply #'eql target) a)
+                                (funcall par (partial-apply #'eql target) a)))
+                    (is (equalp (funcall std (partial-apply #'eql target) b)
+                                (funcall par (partial-apply #'eql target) b)))
+                    (when (>= size 77)
+                      (is (equal (funcall std (partial-apply #'eql target) a
+                                          :start 20)
+                                 (funcall par (partial-apply #'eql target) a
+                                          :start 20)))
+                      (is (equal (funcall std (partial-apply #'eql target) a
+                                          :start 20 :end 77)
+                                 (funcall par (partial-apply #'eql target) a
+                                          :start 20 :end 77)))))))
 
 (full-test pfind-test
   (signals error
     (pfind 3 '(3 3 3) :test #'eql :test-not #'eql))
-  (loop
-     :for size :from 1 :below 100
-     :for a := (make-random-list size)
-     :for b := (make-random-vector size)
-     :for target := (let ((index (random size)))
-                      (setf (elt a index) 99.0
-                            (elt b index) 99.0))
-     :do (is (equal  (find  target a)
-                     (pfind target a)))
-     :do (is (equalp (find  target b)
-                     (pfind target b))))
+  (loop for size from 1 below 100
+        for a = (make-random-list size)
+        for b = (make-random-vector size)
+        for target = (let ((index (random size)))
+                       (setf (elt a index) 99.0
+                             (elt b index) 99.0))
+        do (is (equal  (find  target a)
+                       (pfind target a)))
+           (is (equalp (find  target b)
+                       (pfind target b))))
   (is (equal (find  3 (list 0 1 2 3 4 9 3 2 3 9 1))
              (pfind 3 (list 0 1 2 3 4 9 3 2 3 9 1))))
   (is (equalp (find  3 (make-array 11
@@ -993,7 +971,7 @@
 (full-test pmap-compiler-macro-parts-test
   (dotimes (parts 25)
     (let ((src (make-array
-                20 :initial-contents (loop :for i :below 20 :collect i)))
+                20 :initial-contents (loop for i below 20 collect i)))
           (dst (make-array 20)))
       (is (equalp src (pmap 'vector 'identity src)))
       (is (equalp src (pmap-into dst 'identity src)))

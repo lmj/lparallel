@@ -76,13 +76,13 @@ not present then no docstring is parsed."
   (multiple-value-list (eval (read *query-io*))))
 
 (defmacro while (test &body body)
-  `(loop :while ,test :do (progn ,@body)))
+  `(loop while ,test do ,@body))
 
 (defmacro until (test &body body)
-  `(loop :until ,test :do (progn ,@body)))
+  `(loop until ,test do ,@body))
 
 (defmacro repeat (n &body body)
-  `(loop :repeat ,n :do (progn ,@body)))
+  `(loop repeat ,n do ,@body))
 
 (defmacro dosequence ((var sequence &optional return) &body body)
   (with-gensyms (body-fn)

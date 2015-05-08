@@ -53,14 +53,12 @@
          (rotatef (aref vec mid)
                   (aref vec lo))
          (loop
-            (loop
-               :do (incf i)
-               :until (or (> i hi)
-                          (funcall compare p (,call-key (aref vec i)))))
-            (loop
-               :do (decf j)
-               :until (or (<= j lo)
-                          (funcall compare (,call-key (aref vec j)) p)))
+            (loop do (incf i)
+                  until (or (> i hi)
+                            (funcall compare p (,call-key (aref vec i)))))
+            (loop do (decf j)
+                  until (or (<= j lo)
+                            (funcall compare (,call-key (aref vec j)) p)))
             (when (< j i)
               (return))
             (rotatef (aref vec i)

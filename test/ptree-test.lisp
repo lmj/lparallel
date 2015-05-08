@@ -154,9 +154,8 @@
     (is (typep (pop-queue memo) 'foo-error))))
 
 (defmacro/once for-range ((var &once pair) &body body)
-  `(loop
-      :for ,var :from (first ,pair) :to (second ,pair)
-      :do (progn ,@body)))
+  `(loop for ,var from (first ,pair) to (second ,pair)
+         do ,@body))
 
 (full-test grind-ptree-test
   (let ((level-range '(1 5))

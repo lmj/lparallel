@@ -46,31 +46,29 @@
 (defun pfind-if/vector (predicate sequence
                         &key from-end (start 0) end key parts)
   (with-pfind-context sequence start end parts
-    (loop
-       :with index := start
-       :while (next-part)
-       :do (submit-cancelable #'find-if
-                              predicate
-                              sequence
-                              :from-end from-end
-                              :start index
-                              :end (+ index (part-size))
-                              :key key)
-       :do (incf index (part-size)))))
+    (loop with index = start
+          while (next-part)
+          do (submit-cancelable #'find-if
+                                predicate
+                                sequence
+                                :from-end from-end
+                                :start index
+                                :end (+ index (part-size))
+                                :key key)
+             (incf index (part-size)))))
 
 (defun pfind-if/list (predicate sequence
                       &key from-end (start 0) end key parts)
   (with-pfind-context sequence start end parts
-    (loop
-       :with sublist := (nthcdr start sequence)
-       :while (next-part)
-       :do (submit-cancelable #'find-if
-                              predicate
-                              sublist
-                              :from-end from-end
-                              :end (part-size)
-                              :key key)
-       :do (setf sublist (nthcdr (part-size) sublist)))))
+    (loop with sublist = (nthcdr start sequence)
+          while (next-part)
+          do (submit-cancelable #'find-if
+                                predicate
+                                sublist
+                                :from-end from-end
+                                :end (part-size)
+                                :key key)
+             (setf sublist (nthcdr (part-size) sublist)))))
 
 (defun pfind-if (predicate sequence
                  &rest args

@@ -44,10 +44,9 @@
 
 (base-test end-kernel-test
   (repeat 10
-    (loop
-       :for n :from 1 :below 32
-       :do (with-temp-kernel (n)
-             (is (= 1 1))))))
+    (loop for n from 1 below 32
+          do (with-temp-kernel (n)
+               (is (= 1 1))))))
 
 (full-test many-task-test
   (let ((channel (make-channel)))
@@ -236,7 +235,7 @@
                                                          queue))))
                   (submit-task (make-channel) #'error "X"))))))
         (is (equal '((D . "X") (C . "X") (B . "Y") (A . "Z"))
-                   (loop :repeat 4 :collect (pop-queue queue))))))))
+                   (loop repeat 4 collect (pop-queue queue))))))))
 
 (base-test kernel-worker-context-test
   (with-temp-kernel (2 :context (lambda (run)

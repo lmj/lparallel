@@ -163,12 +163,11 @@
 
 (defmacro define-big-sequential ()
   `(full-test big-sequential-test
-     ,(loop
-         :with vars := (collect-n 100 (gensym))
-         :for (a b) :on vars
-         :when b :collect `(,b (future (force ,a))) :into binds
-         :finally (return `(let* ((,(car vars) (future 4)) ,@binds)
-                             (is (= 4 (force ,(car (last vars))))))))))
+     ,(loop with vars = (collect-n 100 (gensym))
+            for (a b) on vars
+            when b collect `(,b (future (force ,a))) into binds
+            finally (return `(let* ((,(car vars) (future 4)) ,@binds)
+                               (is (= 4 (force ,(car (last vars))))))))))
 
 (define-big-sequential)
 
@@ -243,31 +242,29 @@
 
 (base-test multi-future-store-value-test
   ;; verify STORE-VALUE is thread-safe
-  (loop
-     :for n :from 1 :to 64
-     :do (with-temp-kernel (n)
-           (let* ((channel (make-channel))
-                  (counter (make-queue))
-                  (future  (task-handler-bind
-                               ((foo-error #'invoke-transfer-error))
-                             (future (error 'foo-error)))))
-             (sleep 0.1)
-             (repeat n
-               (submit-task
-                channel
-                (lambda ()
-                  (handler-bind
-                      ((foo-error (lambda (e)
-                                    (declare (ignore e))
-                                    (push-queue nil counter)
-                                    (invoke-restart
-                                     'store-value
-                                     (queue-count counter)))))
-                    (force future)))))
-             (let ((results (loop
-                               :repeat n
-                               :collect (receive-result channel))))
-               (is (every #'= results (rest results))))))))
+  (loop for n from 1 to 64
+        do (with-temp-kernel (n)
+              (let* ((channel (make-channel))
+                     (counter (make-queue))
+                     (future  (task-handler-bind
+                                  ((foo-error #'invoke-transfer-error))
+                                (future (error 'foo-error)))))
+                (sleep 0.1)
+                (repeat n
+                  (submit-task
+                   channel
+                   (lambda ()
+                     (handler-bind
+                         ((foo-error (lambda (e)
+                                       (declare (ignore e))
+                                       (push-queue nil counter)
+                                       (invoke-restart
+                                        'store-value
+                                        (queue-count counter)))))
+                       (force future)))))
+                (let ((results (loop repeat n
+                                     collect (receive-result channel))))
+                  (is (every #'= results (rest results))))))))
 
 (base-test abort-future-test
   (handler-bind ((warning (lambda (w)

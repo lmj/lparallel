@@ -84,7 +84,8 @@
   (format nil "~&n ~6d | ~15,a ~8,d~%" n fn time))
 
 (defmacro with-fns (fns &body body)
-  `(let ,(loop :for fn :in fns :collect `(,fn (symbol-function ,fn)))
+  `(let ,(loop for fn in fns
+               collect `(,fn (symbol-function ,fn)))
      ,@body))
 
 (defun reset ()

@@ -69,12 +69,10 @@ error will be signaled."
        (deftype ,name () `(cons ,',(slot-type a)
                                 ,',(slot-type b)))
        (alias-function ,(symbolicate '#:make- name '#:-instance) cons)
-       ,@(loop
-            :for slot :in `(,a ,b)
-            :for fn   :in '(car cdr)
-            :for readers := (plist-values-for-key (slot-props slot) :reader)
-            :when readers
-            :collect `(progn
-                        ,@(loop
-                             :for reader :in readers
-                             :collect `(alias-function ,reader ,fn)))))))
+       ,@(loop for slot in `(,a ,b)
+               for fn in '(car cdr)
+               for readers = (plist-values-for-key (slot-props slot) :reader)
+               when readers
+               collect `(progn
+                          ,@(loop for reader in readers
+                                  collect `(alias-function ,reader ,fn)))))))

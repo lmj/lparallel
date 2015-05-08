@@ -38,10 +38,9 @@
          (kernel-worker-count))))
 
 (defmacro pop-plist (list)
-  `(loop
-      :while (keywordp (first ,list))
-      :collect (pop ,list)
-      :collect (pop ,list)))
+  `(loop while (keywordp (first ,list))
+         collect (pop ,list)
+         collect (pop ,list)))
 
 (defun %parse-options (args)
   (destructuring-bind (&key size parts) (pop-plist args)

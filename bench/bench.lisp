@@ -40,9 +40,8 @@
        (nreverse ,result))))
 
 (defun groups-of (n list)
-  (loop
-     :for pos :on list :by (partial-apply 'nthcdr n)
-     :collect (subseq pos 0 n)))
+  (loop for pos on list by (partial-apply 'nthcdr n)
+        collect (subseq pos 0 n)))
 
 (defun riffle (groups deck)
   (apply #'mapcar #'list

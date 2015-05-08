@@ -64,7 +64,7 @@
          (is (= 4 a))
          (is (not (null b))))
        (is (equal '(5 6 7)
-                  (loop :repeat 3 :collect (,pop-queue q))))
+                  (loop repeat 3 collect (,pop-queue q))))
        (is (eq t (,queue-empty-p q)))
        (multiple-value-bind (a b) (,try-pop-queue q)
          (is (null a))
@@ -152,7 +152,7 @@
                     (,push-queue t done-queue)))
                 (repeat consumer-count
                   (with-thread ()
-                    (loop :until (eq :end (,pop-queue data-queue)))
+                    (loop until (eq :end (,pop-queue data-queue)))
                     (,push-queue t done-queue)))
                 (repeat producer-count
                   (,pop-queue done-queue))
@@ -249,40 +249,39 @@
     :queue-count lparallel.biased-queue:biased-queue-count)
 
 (base-test filled-queue-test
-  (loop
-     :for n :from 1 :to 3
-     :do (let ((queue (make-queue :fixed-capacity n)))
-           (repeat n
-             (is (not (queue-full-p queue)))
-             (push-queue :x queue))
-           (repeat 3
-             (is (queue-full-p queue))
-             (let ((pushedp nil))
-               (with-thread ()
-                 (push-queue :x queue)
-                 (setf pushedp t))
-               (sleep 0.2)
-               (is (null pushedp))
-               (is (eq :x (pop-queue queue)))
-               (sleep 0.2)
-               (is (eq t pushedp))))))
-  (loop
-     :for n :from 1 :to 3
-     :do (let ((queue (make-queue :fixed-capacity n)))
-           (repeat n
-             (is (not (queue-full-p queue)))
-             (push-queue :x queue))
-           (repeat 3
-             (is (queue-full-p queue))
-             (let ((pushedp nil))
-               (with-thread ()
-                 (push-queue :x queue)
-                 (setf pushedp t))
-               (sleep 0.2)
-               (is (null pushedp))
-               (is (equal '(:x t) (multiple-value-list (try-pop-queue queue))))
-               (sleep 0.2)
-               (is (eq t pushedp)))))))
+  (loop for n from 1 to 3
+        do (let ((queue (make-queue :fixed-capacity n)))
+             (repeat n
+               (is (not (queue-full-p queue)))
+               (push-queue :x queue))
+             (repeat 3
+               (is (queue-full-p queue))
+               (let ((pushedp nil))
+                 (with-thread ()
+                   (push-queue :x queue)
+                   (setf pushedp t))
+                 (sleep 0.2)
+                 (is (null pushedp))
+                 (is (eq :x (pop-queue queue)))
+                 (sleep 0.2)
+                 (is (eq t pushedp))))))
+  (loop for n from 1 to 3
+        do (let ((queue (make-queue :fixed-capacity n)))
+             (repeat n
+               (is (not (queue-full-p queue)))
+               (push-queue :x queue))
+             (repeat 3
+               (is (queue-full-p queue))
+               (let ((pushedp nil))
+                 (with-thread ()
+                   (push-queue :x queue)
+                   (setf pushedp t))
+                 (sleep 0.2)
+                 (is (null pushedp))
+                 (is (equal '(:x t)
+                            (multiple-value-list (try-pop-queue queue))))
+                 (sleep 0.2)
+                 (is (eq t pushedp)))))))
 
 (base-test queue-initial-contents-test
   (let ((q (make-queue :initial-contents '(3 4 5))))
@@ -365,13 +364,12 @@
 (base-test queue-small-timeout-test
   (dolist (q (list (make-queue) (make-queue :fixed-capacity 1)))
     (dolist (use-float-p '(nil t))
-      (loop
-         :for e :from -3 :downto -20
-         :for timeout := (let ((value (expt 10 e)))
-                           (if use-float-p
-                               (float value)
-                               value))
-         :do (repeat 10
-               (multiple-value-bind (a b) (try-pop-queue q :timeout timeout)
-                 (is (null a))
-                 (is (null b))))))))
+      (loop for e from -3 downto -20
+            for timeout = (let ((value (expt 10 e)))
+                            (if use-float-p
+                                (float value)
+                                value))
+            do (repeat 10
+                 (multiple-value-bind (a b) (try-pop-queue q :timeout timeout)
+                   (is (null a))
+                   (is (null b))))))))

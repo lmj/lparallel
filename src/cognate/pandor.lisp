@@ -32,9 +32,8 @@
 
 (defmacro with-forms-submitted (forms &body body)
   `(with-submit-cancelable
-     ,@(loop
-          :for form :in forms
-          :collect `(submit-cancelable (lambda () ,form)))
+     ,@(loop for form in forms
+             collect `(submit-cancelable (lambda () ,form)))
      ,@body))
 
 (defmacro pand (&rest forms)

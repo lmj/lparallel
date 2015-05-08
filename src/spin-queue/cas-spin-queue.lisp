@@ -131,7 +131,7 @@
        (return-from spin-queue-count count))))
 
 (defun peek-spin-queue (queue)
-  (loop :until (try-each-elem (lambda (elem)
-                                (return-from peek-spin-queue (values elem t)))
-                              queue))
+  (loop until (try-each-elem (lambda (elem)
+                               (return-from peek-spin-queue (values elem t)))
+                             queue))
   (values nil nil))

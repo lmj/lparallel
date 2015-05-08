@@ -31,15 +31,13 @@
 (in-package #:lparallel.util)
 
 (defun plist-keys (plist)
-  (loop
-     :for x :in plist :by #'cddr
-     :collect x))
+  (loop for x in plist by #'cddr
+        collect x))
 
 (defun plist-values-for-key (plist target-key)
-  (loop
-     :for (key value) :on plist :by #'cddr
-     :when (eq key target-key)
-     :collect value))
+  (loop for (key value) on plist by #'cddr
+        when (eq key target-key)
+        collect value))
 
 (defun parse-defslots (supers slots options)
   (unless (<= (length supers) 1)
@@ -49,14 +47,13 @@
   (unless (or (null options)
               (eq (caar options) :documentation))
     (error "Option ~s in DEFSLOTS is not :DOCUMENTATION" (caar options)))
-  (loop
-     :with allowed := '(:initform :type :reader)
-     :for (nil . plist) :in slots
-     :for keys := (plist-keys plist)
-     :do (let ((diff (set-difference keys allowed)))
-           (unless (null diff)
-             (error "Slot option ~s in DEFSLOTS is not one of ~s"
-                    (first diff) allowed)))))
+  (loop with allowed = '(:initform :type :reader)
+        for (nil . plist) in slots
+        for keys = (plist-keys plist)
+        do (let ((diff (set-difference keys allowed)))
+             (unless (null diff)
+               (error "Slot option ~s in DEFSLOTS is not one of ~s"
+                      (first diff) allowed)))))
 
 (defun defslots-names (name)
   (values (symbolicate '#:make- name '#:-instance)
@@ -69,11 +66,10 @@
   (defmacro define-slots-macrolet (package conc-name entries instance
                                    &body body)
     `(symbol-macrolet
-         ,(loop
-             :for entry :in entries
-             :for (name slot) := (if (consp entry) entry `(,entry ,entry))
-             :for accessor := (symbolicate/package package conc-name slot)
-             :collect `(,name (,accessor ,instance)))
+         ,(loop for entry in entries
+                for (name slot) = (if (consp entry) entry `(,entry ,entry))
+                for accessor = (symbolicate/package package conc-name slot)
+                collect `(,name (,accessor ,instance)))
        ,@body))
 
   (defmacro define-with-slots-macro (name package conc-name)
@@ -86,13 +82,12 @@
                        (:constructor ,constructor)
                        ,@(unsplice (when supers `(:include ,(first supers)))))
        ,@(unsplice (getf (first options) :documentation))
-       ,@(loop
-            :for (slot-name . plist) :in slots
-            :for initform := (getf plist :initform
-                                   `(error "slot ~a in ~a not initialized"
-                                           ',slot-name ',name))
-            :for type := (getf plist :type)
-            :collect `(,slot-name ,initform ,@(when type `(:type ,type))))))
+       ,@(loop for (slot-name . plist) in slots
+               for initform = (getf plist :initform
+                                    `(error "slot ~a in ~a not initialized"
+                                            ',slot-name ',name))
+               for type = (getf plist :type)
+               collect `(,slot-name ,initform ,@(when type `(:type ,type))))))
 
   (defmacro define-reader (public private type struct)
     `(progn
@@ -102,14 +97,12 @@
 
   (defmacro define-readers (struct conc-name slots)
     `(progn
-       ,@(loop
-            :for (slot-name . plist) :in slots
-            :for private := (symbolicate conc-name slot-name)
-            :for type := (getf plist :type)
-            :nconc (loop
-                      :for public :in (plist-values-for-key plist :reader)
-                      :collect `(define-reader
-                                    ,public ,private ,type ,struct)))))
+       ,@(loop for (slot-name . plist) in slots
+               for private = (symbolicate conc-name slot-name)
+               for type = (getf plist :type)
+               append (loop for public in (plist-values-for-key plist :reader)
+                            collect `(define-reader
+                                         ,public ,private ,type ,struct)))))
 
   (defmacro %defslots (name supers slots options)
     (multiple-value-bind (constructor slots-macro-name conc-name package)
@@ -125,11 +118,10 @@
   (multiple-value-bind (constructor slots-macro-name) (defslots-names name)
     `(progn
        (defclass ,name ,supers
-         ,(loop
-             :for slot      :in (copy-list slots)
-             :for slot-name := (first slot)
-             :for initarg   := (intern (symbol-name slot-name) 'keyword)
-             :collect `(,@slot :initarg ,initarg))
+         ,(loop for slot in (copy-list slots)
+                for slot-name = (first slot)
+                for initarg = (intern (symbol-name slot-name) 'keyword)
+                collect `(,@slot :initarg ,initarg))
          ,@options)
        (defmacro ,slots-macro-name (slot-names instance &body body)
          `(with-slots ,slot-names ,instance ,@body))

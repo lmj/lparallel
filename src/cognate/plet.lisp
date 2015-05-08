@@ -105,17 +105,15 @@
            (zip-repeat #'cons list head)))))
 
 (defun decl-specs->typed-vars (decl-specs env)
-  (loop
-     :for decl-spec :in decl-specs
-     :if (decl-spec->typed-vars decl-spec env) :append it :into typed-vars
-     :else :collect decl-spec :into non-type-decl-specs
-     :finally (return (values typed-vars non-type-decl-specs))))
+  (loop for decl-spec in decl-specs
+        if (decl-spec->typed-vars decl-spec env) append it into typed-vars
+        else collect decl-spec into non-type-decl-specs
+        finally (return (values typed-vars non-type-decl-specs))))
 
 (defun declares->decl-specs (declares)
-  (loop
-     :for (first . rest) :in declares
-     :do (assert (eq 'declare first))
-     :append rest))
+  (loop for (first . rest) in declares
+        do (assert (eq 'declare first))
+        append rest))
 
 (defun declares->typed-vars (declares env)
   (decl-specs->typed-vars (declares->decl-specs declares) env))
@@ -145,11 +143,10 @@
        :future-var (sym '#:future-var)))))
 
 (defun partition (predicate list)
-  (loop
-     :for x :in list
-     :if (funcall predicate x) :collect x :into pass
-     :else :collect x :into fail
-     :finally (return (values pass fail))))
+  (loop for x in list
+        if (funcall predicate x) collect x into pass
+        else collect x into fail
+        finally (return (values pass fail))))
 
 (defun make-binding-data (bindings)
   (multiple-value-bind (normal-bindings null-bindings) (parse-bindings bindings)
@@ -161,9 +158,8 @@
               null-bindings))))
 
 (defun lookup-all (item alist &key (test #'eql))
-  (loop
-     :for (x . y) :in alist
-     :when (funcall test x item) :collect y))
+  (loop for (x . y) in alist
+        when (funcall test x item) collect y))
 
 (defun var-type (var typed-vars)
   `(and ,@(lookup-all var typed-vars)))
@@ -186,11 +182,10 @@
 
 (defun %mv-macrolet-bindings (typed-vars mv-binding-datum)
   (with-binding-datum-slots (vars future-result) mv-binding-datum
-    (loop
-       :for var :in vars
-       :for n :from 0
-       :collect `(,var (the ,(var-type var typed-vars)
-                         (nth-value ,n ,future-result))))))
+    (loop for var in vars
+          for n from 0
+          collect `(,var (the ,(var-type var typed-vars)
+                           (nth-value ,n ,future-result))))))
 
 (defun mv-macrolet-bindings (typed-vars mv-binding-data)
   (reduce #'append
@@ -275,9 +270,8 @@ If `predicate' evaluates to false, the behavior is the same as `slet'.
 (defmacro pfuncall (function &rest args)
   "Parallel version of `funcall'. Arguments in `args' may be executed
 in parallel, though not necessarily at the same time."
-  (let ((vars (loop
-                 :for index :below (length args)
-                 :collect (gensym (format nil "~a-~a-"
-                                          '#:pfuncall-arg index)))))
+  (let ((vars (loop for index below (length args)
+                    collect (gensym (format nil "~a-~a-"
+                                            '#:pfuncall-arg index)))))
     `(toplevel-plet ,(mapcar #'list vars args)
        (funcall ,function ,@vars))))

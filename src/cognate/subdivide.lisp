@@ -68,27 +68,25 @@
 
 (defun subdivide-list (list size parts-hint)
   (with-parts size parts-hint
-    (loop
-       :with p := list
-       :while (next-part)
-       :collect p
-       :do (setf p (nthcdr (part-size) p)))))
+    (loop with p = list
+          while (next-part)
+          collect p
+          do (setf p (nthcdr (part-size) p)))))
 
 (defun subdivide-list/slice (list size parts-hint)
   (with-parts size parts-hint
-    (loop
-       :with p := list
-       :while (next-part)
-       :collect p :into firsts
-       :collect (prog1 (setf p (nthcdr (1- (part-size)) p))
-                  (setf p (prog1 (cdr p) (setf (cdr p) nil)))) :into lasts
-       :finally (return (values firsts (lambda ()
-                                         ;; stitch it back together
-                                         (loop
-                                            :for last  :in lasts
-                                            :for first :in (cdr firsts)
-                                            :do (setf (cdr last) first)
-                                            :finally (setf (cdr last) p))))))))
+    (loop with p = list
+          while (next-part)
+          collect p into firsts
+          collect (prog1 (setf p (nthcdr (1- (part-size)) p))
+                    (setf p (prog1 (cdr p) (setf (cdr p) nil)))) into lasts
+          finally (return (values firsts
+                                  (lambda ()
+                                    ;; stitch it back together
+                                    (loop for last  in lasts
+                                          for first in (cdr firsts)
+                                          do (setf (cdr last) first)
+                                          finally (setf (cdr last) p))))))))
 
 (defun make-parts (result size parts-hint &key slicep)
   (if (listp result)

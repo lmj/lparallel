@@ -62,10 +62,9 @@
            ,@declares
            ;; for a simple arg list, also declare types
            ,@(when (not (intersection lambda-list lambda-list-keywords))
-               (loop
-                  :for type  :in arg-types
-                  :for param :in lambda-list
-                  :collect `(declare (type ,type ,param))))
+               (loop for type in arg-types
+                     for param in lambda-list
+                     collect `(declare (type ,type ,param))))
            (the ,return-type (progn ,@body))))))
 
   (defmacro defun/type/inline (name lambda-list arg-types return-type
@@ -87,10 +86,9 @@
            ,@declares
            ;; for a simple arg list, check types
            ,@(when (not (intersection lambda-list lambda-list-keywords))
-               (loop
-                  :for type  :in arg-types
-                  :for param :in lambda-list
-                  :collect `(check-type ,param ,type)))
+               (loop for type in arg-types
+                     for param in lambda-list
+                     collect `(check-type ,param ,type)))
            ;; for a simple values list, check types
            ,(if (intersection (ensure-list return-type) lambda-list-keywords)
                 `(progn ,@body)
@@ -104,10 +102,9 @@
                                                   (gensym)))
                                             return-types)))
                   `(multiple-value-bind ,return-vars (progn ,@body)
-                     ,@(loop
-                          :for type :in return-types
-                          :for var  :in return-vars
-                          :collect `(check-type ,var ,type))
+                     ,@(loop for type in return-types
+                             for var in return-vars
+                             collect `(check-type ,var ,type))
                      (values ,@return-vars))))))))
 
   (alias-macro defun/inline defun)

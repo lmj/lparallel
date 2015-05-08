@@ -129,19 +129,17 @@
         (remove-if-not #'valid-registered-name-p *registered-names*)))
 
 (defun registered-macrolets (kernel)
-  (loop
-     :for name :in *registered-names*
-     :collect `(,name (&rest args)
-                 `(,',(unchecked-name name) ,',kernel ,@args))))
+  (loop for name in *registered-names*
+        collect `(,name (&rest args)
+                   `(,',(unchecked-name name) ,',kernel ,@args))))
 
 (defmacro declaim-defpun (&rest names)
   "See `defpun'."
   ;; This is used outside of the defpun macro.
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (with-lock-held (*registration-lock*)
-       ,@(loop
-            :for name :in names
-            :collect `(register-name ',name)))))
+       ,@(loop for name in names
+               collect `(register-name ',name)))))
 
 (defun delete-registered-names (names)
   ;; This is used outside of the defpun macro.
@@ -199,15 +197,13 @@
   (reduce #'append binding-data :key #'second))
 
 (defun primary-temp-vars (binding-data)
-  (loop
-     :for (nil temp-vars nil) :in binding-data
-     :collect (first temp-vars)))
+  (loop for (nil temp-vars nil) in binding-data
+        collect (first temp-vars)))
 
 (defmacro with-temp-bindings (here-binding-datum spawn-binding-data &body body)
   `(let (,@(temp-vars (list here-binding-datum))
-         ,@(loop
-              :for var :in (temp-vars spawn-binding-data)
-              :collect `(,var +no-result+)))
+         ,@(loop for var in (temp-vars spawn-binding-data)
+                 collect `(,var +no-result+)))
      ,@body))
 
 (defmacro with-client-bindings (binding-data null-bindings &body body)
@@ -232,9 +228,8 @@
 (defmacro spawn-tasks (kernel spawn-binding-data)
   (check-type kernel symbol)
   `(progn
-     ,@(loop
-          :for (nil temp-vars form) :in spawn-binding-data
-          :collect `(spawn ,kernel ,temp-vars ,form))))
+     ,@(loop for (nil temp-vars form) in spawn-binding-data
+             collect `(spawn ,kernel ,temp-vars ,form))))
 
 (defmacro exec-task (here-binding-datum)
   (destructuring-bind (client-vars temp-vars form) here-binding-datum
@@ -246,22 +241,18 @@
   ;; reverse to check last spawn first
   (let ((temp-vars (reverse (temp-vars spawn-binding-data))))
     `(locally (declare #.*full-optimize*)
-       (loop
-          :with worker := *worker*
-          :while (or ,@(loop
-                          :for temp-var :in temp-vars
-                          :collect `(eq ,temp-var +no-result+)))
-          :do (progn
-                #+lparallel.with-green-threads (thread-yield)
-                (steal-work (the kernel ,kernel) worker))))))
+       (loop with worker = *worker*
+             while (or ,@(loop for temp-var in temp-vars
+                               collect `(eq ,temp-var +no-result+)))
+             do #+lparallel.with-green-threads (thread-yield)
+                (steal-work (the kernel ,kernel) worker)))))
 
 (defmacro scan-for-errors (binding-data)
   ;; a wrapped error would only appear as the primary return value
   `(locally (declare #.*full-optimize*)
-     ,@(loop
-          :for temp-var :in (primary-temp-vars binding-data)
-          :collect `(when (typep ,temp-var 'wrapped-error)
-                      (unwrap-result ,temp-var)))))
+     ,@(loop for temp-var in (primary-temp-vars binding-data)
+             collect `(when (typep ,temp-var 'wrapped-error)
+                        (unwrap-result ,temp-var)))))
 
 (defmacro %%%%plet (kernel bindings body)
   (multiple-value-bind (binding-data null-bindings) (make-binding-data bindings)

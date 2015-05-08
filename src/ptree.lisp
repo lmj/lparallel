@@ -380,12 +380,9 @@ For each `node-name', a symbol macro is defined which expands to a
         (error 'ptree-lambda-list-keyword-error :id id :llks llks))))
   (with-gensyms (tree)
     `(let ((,tree (make-ptree)))
-       ,@(loop
-            :for def :in defs
-            :collect (destructuring-bind (id args &rest forms) def
-                       `(ptree-fn
-                         ',id ',args (lambda ,args ,@forms) ,tree)))
-       (symbol-macrolet ,(loop
-                            :for (id nil nil) :in defs
-                            :collect `(,id (call-ptree ',id ,tree)))
+       ,@(loop for def in defs
+               collect (destructuring-bind (id args &rest forms) def
+                         `(ptree-fn ',id ',args (lambda ,args ,@forms) ,tree)))
+       (symbol-macrolet ,(loop for (id nil nil) in defs
+                               collect `(,id (call-ptree ',id ,tree)))
          ,@body))))

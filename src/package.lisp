@@ -34,11 +34,9 @@
           (:documentation ,documentation)
           (:use #:cl ,@list)
           (:export
-           ,@(loop
-                :for package :in list
-                :nconc (loop
-                          :for symbol :being :the :external-symbols :in package
-                          :collect (make-symbol (string symbol))))))))
+           ,@(loop for package in list
+                   append (loop for symbol being the external-symbols in package
+                                collect (make-symbol (string symbol))))))))
   (package #:lparallel
 "This is a convenience package which exports the external symbols of:
    lparallel.kernel

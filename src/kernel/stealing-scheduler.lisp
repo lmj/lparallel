@@ -147,10 +147,9 @@
                 :main    (with-lock-held (wait-lock)
                            (try-pop (tasks worker))
                            (try-pop low-priority-tasks)
-                           (loop
-                              :until   (plusp notify-count)
-                              :do      (condition-wait wait-cvar wait-lock)
-                              :finally (decf notify-count)))
+                           (loop until (plusp notify-count)
+                                 do (condition-wait wait-cvar wait-lock)
+                                 finally (decf notify-count)))
                 :cleanup (dec-counter wait-count)))
              (values)))
     (declare (dynamic-extent #'try-pop #'try-pop-all #'maybe-sleep))

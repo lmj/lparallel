@@ -83,9 +83,8 @@
         `(bind (,temp-vars ,form)
            (%slet ,more-binding-data ,full-binding-data ,null-bindings ,body)))
       `(let (,@null-bindings
-             ,@(loop
-                  :for (vars temp-vars nil) :in full-binding-data
-                  :append (mapcar #'list vars temp-vars)))
+             ,@(loop for (vars temp-vars nil) in full-binding-data
+                     append (mapcar #'list vars temp-vars)))
          ,@body)))
 
 (defmacro slet (bindings &body body)

@@ -34,10 +34,9 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun home-symbols (pkg)
-    (loop
-       :for sym :being :the :present-symbols :in pkg
-       :when (eq (find-package pkg) (symbol-package sym))
-       :collect sym))
+    (loop for sym being the present-symbols in pkg
+          when (eq (find-package pkg) (symbol-package sym))
+          collect sym))
 
   (defun home-functions (pkg)
     (remove-if-not #'fboundp (home-symbols pkg)))
@@ -59,9 +58,8 @@
 
 (defmacro profile-fns (syms)
   `(progn
-     ,@(loop
-          :for sym :in syms
-          :collect `(sb-profile:profile ,sym))))
+     ,@(loop for sym in syms
+             collect `(sb-profile:profile ,sym))))
 
 (defun enable-profiling ()
   (profile-fns #.(home-functions-in-packages-passing
