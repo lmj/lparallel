@@ -39,7 +39,7 @@
            (receive-indexed))))))
 
 (defun preduce-partial/vector (function sequence start size parts
-                              &rest keyword-args)
+                               &rest keyword-args)
   (declare (dynamic-extent keyword-args))
   (with-preduce-context size parts
     (loop for result-index from 0

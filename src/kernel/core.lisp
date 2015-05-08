@@ -92,8 +92,7 @@
     (with-lock-held (workers-lock)
       (let ((index (position worker workers :test #'eq)))
         (assert index)
-        (assert (eql index (with-worker-slots (index) worker
-                             index)))
+        (assert (eql index (worker-index worker)))
         (unwind-protect/ext
            :prepare (warn "lparallel: Replacing lost or dead worker.")
            :main    (let ((new-worker (make-worker kernel index

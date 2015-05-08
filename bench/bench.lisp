@@ -44,8 +44,7 @@
         collect (subseq pos 0 n)))
 
 (defun riffle (groups deck)
-  (apply #'mapcar #'list
-         (groups-of (/ (length deck) groups) deck)))
+  (apply #'mapcar #'list (groups-of (/ (length deck) groups) deck)))
 
 ;;;; wall time
 
@@ -85,7 +84,7 @@
 execution time of `exec-fn' is passed to `desc-fn', which returns a
 descriptive string."))
 
-(setf (symbol-function 'make-bench-spec) #'make-bench-spec-instance)
+(alias-function make-bench-spec make-bench-spec-instance)
 
 (defun print-chunk (chunk)
   (format t "~&")
