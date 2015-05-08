@@ -267,6 +267,11 @@
       (is (eq :worker (receive-result channel)))
       (is (eq :main *memo*)))))
 
+(full-test kernel-var-test
+  (let ((channel (make-channel)))
+    (submit-task channel (lambda () *kernel*))
+    (is (eq *kernel* (receive-result channel)))))
+
 (base-test task-categories-test
   (with-temp-kernel (2)
     (is (notany #'identity (task-categories-running)))
