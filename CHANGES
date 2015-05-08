@@ -2,9 +2,11 @@
 lparallel Changes
 =================
 
-= 2.7.5
+= 2.8.0
 
 * added broadcast-task -- executes a given task inside each worker
+* added kernel-worker-index -- determine if the current thread is a
+  worker thread, and if so, obtain its assigned index
 
 = 2.7.4
 
