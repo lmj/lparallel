@@ -295,6 +295,16 @@ MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
   "Return the number of workers in the current kernel."
   (%kernel-worker-count (check-kernel)))
 
+(defun kernel-worker-index ()
+  "If called from inside a worker, return the worker's assigned index,
+ranging from 0 to one less than (kernel-worker-count).
+
+If not called from inside a worker, return nil."
+  (let ((worker *worker*))
+    (if worker
+        (worker-index worker)
+        nil)))
+
 (defun %make-channel (&key fixed-capacity)
   (make-channel-instance
    :kernel (check-kernel)

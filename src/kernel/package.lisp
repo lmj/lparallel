@@ -44,6 +44,7 @@
            #:check-kernel
            #:end-kernel
            #:kernel-worker-count
+           #:kernel-worker-index
            #:kernel-bindings
            #:kernel-name
            #:kernel-context)

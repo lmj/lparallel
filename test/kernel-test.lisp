@@ -699,6 +699,19 @@
     (signals error
       (broadcast-task (lambda () (broadcast-task (lambda ())))))))
 
+(full-test worker-index-test
+  (is (null (kernel-worker-index)))
+  (let ((channel (make-channel)))
+    (repeat 1000
+      (submit-task channel #'kernel-worker-index))
+    (repeat 1000
+      (let ((x (receive-result channel)))
+        (is (and (>= x 0)
+                 (< x (kernel-worker-count)))))))
+  (loop for i across (sort (broadcast-task #'kernel-worker-index) #'<)
+        for j from 0
+        do (is (= i j))))
+
 ;;;; check for messed up imports
 
 (defun packages-matching (string)
