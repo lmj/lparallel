@@ -265,9 +265,9 @@
 
 (defun wait-for-compute (ptree)
   (with-ptree-slots (lock queue pending) ptree
-    (while (plusp pending)
-      (pop-queue queue)
-      (decf pending))))
+    (loop while (plusp pending)
+          do (pop-queue queue)
+             (decf pending))))
 
 (defun each-node (ptree fn)
   (maphash (lambda (id node)

@@ -40,14 +40,15 @@
                (let ((index part-offset)
                      (end (+ part-offset part-size)))
                  (declare (type fixnum index end))
-                 (while (< index end)
-                   (funcall fn index)
-                   (incf index)))))
+                 (loop while (< index end)
+                       do (funcall fn index)
+                          (incf index)))))
         (let ((parts (get-parts-hint parts))
               (channel (make-channel)))
           (with-parts size parts
-            (while (next-part)
-              (submit-task channel #'compute-part (part-offset) (part-size)))
+            (loop while (next-part)
+                  do (submit-task channel #'compute-part
+                                  (part-offset) (part-size)))
             (repeat (num-parts)
               (receive-result channel))))))))
 

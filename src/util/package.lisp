@@ -37,9 +37,7 @@
            #:unsplice
            #:symbolicate
            #:with-parsed-body)
-  (:export #:while
-           #:until
-           #:repeat
+  (:export #:repeat
            #:when-let
            #:dosequence
            #:alias-function

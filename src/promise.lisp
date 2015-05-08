@@ -115,23 +115,23 @@ unknown at the time it is created."
 (defun fulfill-promise (promise client-fn)
   (with-%promise-slots (result lock cvar availablep) promise
     ;; spin until it is claimed
-    (while availablep
-      (with-unfulfilled/no-wait promise
-        ;; client-fn could be expensive; set availablep in the meantime
-        (unwind-protect/ext
-         :prepare (setf availablep nil)
-         :main    (setf result (multiple-value-list (funcall client-fn)))
-         :abort   (setf availablep t))
-        (when cvar
-          (condition-notify cvar))
-        (return t)))))
+    (loop while availablep
+          do (with-unfulfilled/no-wait promise
+               ;; client-fn could be expensive; set availablep in the meantime
+               (unwind-protect/ext
+                :prepare (setf availablep nil)
+                :main    (setf result (multiple-value-list (funcall client-fn)))
+                :abort   (setf availablep t))
+               (when cvar
+                 (condition-notify cvar))
+               (return t)))))
 
 (defun force-promise (promise)
   (with-%promise-slots (result lock cvar) promise
     (unless cvar
       (setf cvar (make-condition-variable)))
-    (while (eq result +no-result+)
-      (condition-wait cvar lock))
+    (loop while (eq result +no-result+)
+          do (condition-wait cvar lock))
     (condition-notify cvar)))
 
 ;;;; plan

@@ -62,9 +62,9 @@
   (with-gensyms (index)
     `(let ((,index ,start))
        (declare (type index ,index))
-       (until (eql ,index ,end)
-         (setf (aref ,dst ,index) (funcall ,fn (aref ,src ,index)))
-         (incf ,index)))))
+       (loop until (eql ,index ,end)
+             do (setf (aref ,dst ,index) (funcall ,fn (aref ,src ,index)))
+                (incf ,index)))))
 
 (defmacro/syms pmap-into/vector/1-vector (dst fn src size parts)
   (with-gensyms (start end)
@@ -72,14 +72,14 @@
        (declare (type index ,start))
        (with-parts ,size ,parts
          (with-submit-counted
-           (while (next-part)
-             (submit-counted (let ((,start ,start)
-                                   (,end (+ ,start (part-size))))
-                               (declare (type index ,start ,end))
-                               (lambda ()
-                                 (map-into/vector/1-vector/range
-                                  ,dst ,fn ,src ,start ,end))))
-             (incf ,start (part-size)))
+           (loop while (next-part)
+                 do (submit-counted (let ((,start ,start)
+                                          (,end (+ ,start (part-size))))
+                                      (declare (type index ,start ,end))
+                                      (lambda ()
+                                        (map-into/vector/1-vector/range
+                                         ,dst ,fn ,src ,start ,end))))
+                    (incf ,start (part-size)))
            (receive-counted)))
        (when (array-has-fill-pointer-p ,dst)
          (setf (fill-pointer ,dst) ,size))
