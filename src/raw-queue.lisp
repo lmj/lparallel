@@ -69,17 +69,18 @@
 
 (defun/type pop-raw-queue (queue) (raw-queue) (values t boolean)
   (declare #.*full-optimize*)
-  (if (head queue)
-      (let ((node (head queue)))
+  (let ((node (head queue)))
+    (if node
         (multiple-value-prog1 (values (car node) t)
           (when (null (setf (head queue) (cdr node)))
             (setf (tail queue) nil))
           ;; clear node for conservative gcs
           (setf (car node) nil
-                (cdr node) nil)))
-      (values nil nil)))
+                (cdr node) nil))
+        (values nil nil))))
 
 (defun/inline raw-queue-count   (queue) (length (the list (head queue))))
 (defun/inline raw-queue-empty-p (queue) (not (head queue)))
-(defun/inline peek-raw-queue    (queue) (values (car (head queue))
-                                                (if (head queue) t nil)))
+(defun/inline peek-raw-queue    (queue) (let ((node (head queue)))
+                                          (values (car node)
+                                                  (if node t nil))))
