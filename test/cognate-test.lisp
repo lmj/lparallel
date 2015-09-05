@@ -1275,13 +1275,14 @@
       (is (equal '(1 2 3 4 5 6 7) (list a b c d e f g)))))
   (slet (a (b) ((c)) d (e))
     (declare (type null d c))
-    (is (equal '(nil nil nil nil nil) (list a b c d e))))
-  (signals unbound-variable
-    (funcall (handler-bind ((warning #'muffle-warning))
-               (compile nil '(lambda ()
-                              (slet ((a 3)
-                                     (b (1+ a)))
-                                (list a b))))))))
+    (is (equal '(nil nil nil nil nil) (list a b c d e)))))
+
+(base-test slet-unbound-test
+  (signals error
+    (funcall (compile/muffled nil '(lambda ()
+                                     (slet ((a 3)
+                                            (b (1+ a)))
+                                       (list a b)))))))
 
 (full-test plet-multiple-value-test
   (plet ((a 1) (b 2))
@@ -1300,11 +1301,12 @@
     (is (null b)))
   (plet (((a b)))
     (is (null a))
-    (is (null b)))
+    (is (null b))))
+
+(base-test plet-unbound-test
   (signals error
     (task-handler-bind ((error #'invoke-transfer-error))
-      (funcall (handler-bind ((warning #'muffle-warning))
-                 (compile nil '(lambda ()
-                                (plet ((a 3)
-                                       (b (1+ a)))
-                                  (list a b)))))))))
+      (funcall (compile/muffled nil '(lambda ()
+                                       (plet ((a 3)
+                                              (b (1+ a)))
+                                         (list a b))))))))

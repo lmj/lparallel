@@ -100,3 +100,10 @@
 
 (defun make-random-vector (size)
   (map-into (make-array size) (lambda () (random 1.0))))
+
+(defun compile/muffled (&rest args)
+  (handler-bind (((or warning
+                      #+ecl c:compiler-note
+                      #+sbcl sb-ext:compiler-note)
+                  #'muffle-warning))
+    (apply #'compile args)))
