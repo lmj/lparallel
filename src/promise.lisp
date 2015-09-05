@@ -247,7 +247,7 @@ If `object' is a promise that is either already fulfilled or actively
 being fulfilled, then `body' will not be executed and `fulfill'
 returns false.
 
-If `object' is a chain, call `fullfill' on the chained object.
+If `object' is a chain, call `fulfill' on the chained object.
 
 If `object' is not a promise and not a chain then false is returned
 immediately, with `body' being ignored."
