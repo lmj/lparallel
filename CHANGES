@@ -2,6 +2,14 @@
 lparallel Changes
 =================
 
+= 2.8.1
+
+* miscellaneous housekeeping
+* for ECL, version 16.0.0 or later is now required
+* fixed a couple tests that failed for ECL or when the compiler's
+  signaling behavior is different (i.e. when the global optimization
+  setting is high)
+
 = 2.8.0
 
 * added broadcast-task -- executes a given task inside each worker
