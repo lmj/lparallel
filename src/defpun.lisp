@@ -166,20 +166,18 @@
   `(locally (declare #.*full-optimize*)
      (limiter-accept-task-p (the kernel ,kernel))))
 
-(defun/type update-limiter-count/no-lock (kernel delta)
-    (kernel fixnum) #-ecl (values) #+ecl null
+(defun/type update-limiter-count/no-lock (kernel delta) (kernel fixnum) (values)
   (declare #.*full-optimize*)
   (incf (limiter-count kernel) delta)
   (setf (limiter-accept-task-p kernel)
         (to-boolean (plusp (the fixnum (limiter-count kernel)))))
-  #-ecl (values) #+ecl nil)
+  (values))
 
-(defun/type update-limiter-count (kernel delta)
-    (kernel fixnum) #-ecl (values) #+ecl null
+(defun/type update-limiter-count (kernel delta) (kernel fixnum) (values)
   (declare #.*full-optimize*)
   (with-spin-lock-held ((limiter-lock kernel))
     (update-limiter-count/no-lock kernel delta))
-  #-ecl (values) #+ecl nil)
+  (values))
 
 ;;;; plet
 

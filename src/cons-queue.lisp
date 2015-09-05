@@ -64,13 +64,12 @@
   `(with-lock-held ((lock ,queue))
      ,@body))
 
-(define-locking-fn push-cons-queue (object queue)
-    (t cons-queue) #-ecl (values) #+ecl null lock
+(define-locking-fn push-cons-queue (object queue) (t cons-queue) (values) lock
   (with-cons-queue-slots (impl cvar) queue
     (push-raw-queue object impl)
     (when cvar
       (condition-notify cvar)))
-  #-ecl (values) #+ecl nil)
+  (values))
 
 (define-locking-fn pop-cons-queue (queue) (cons-queue) t lock
   (with-cons-queue-slots (impl lock cvar) queue

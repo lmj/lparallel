@@ -79,14 +79,13 @@
   (let ((dummy (make-node +dummy+ nil)))
     (%make-spin-queue dummy dummy)))
 
-(defun/type push-spin-queue (value queue)
-    (t spin-queue) #-ecl (values) #+ecl null
+(defun/type push-spin-queue (value queue) (t spin-queue) (values)
   ;; Attempt CAS, repeat upon failure. Upon success update QUEUE-TAIL.
   (declare #.*full-optimize*)
   (let ((new (make-node value nil)))
     (loop (when (cas (node-cdr (spin-queue-tail queue)) nil new)
             (setf (spin-queue-tail queue) new)
-            (return #-ecl (values) #+ecl nil)))))
+            (return (values))))))
 
 (defun/type pop-spin-queue (queue) (spin-queue) (values t boolean)
   ;; Attempt to CAS QUEUE-HEAD with the next node, repeat upon

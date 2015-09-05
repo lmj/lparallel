@@ -68,11 +68,10 @@
                               :low  (make-raw-queue)))
 
 (defmacro define-push-fn (name slot)
-  `(define-simple-locking-fn ,name (object queue)
-       (t biased-queue) #-ecl (values) #+ecl null lock
+  `(define-simple-locking-fn ,name (object queue) (t biased-queue) (values) lock
      (push-raw-queue object (,slot queue))
      (condition-notify (cvar queue))
-     #-ecl (values) #+ecl nil))
+     (values)))
 
 (define-push-fn push-biased-queue     high)
 (define-push-fn push-biased-queue/low low)

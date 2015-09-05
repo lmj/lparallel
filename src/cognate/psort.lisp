@@ -41,7 +41,7 @@
   `(defpun/type ,name (vec lo hi compare ,@(unsplice gran) ,@(unsplice key))
        (vector fixnum fixnum function
         ,@(unsplice gran-type) ,@(unsplice key-type))
-       #-ecl (values) #+ecl null
+       (values)
      (declare #.*full-optimize*)
      #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
      (when (> hi lo)
@@ -92,7 +92,7 @@
                 `(plet ((right-result ,right)
                         (left-result ,left))
                    (declare (ignore right-result left-result)))))))
-     #-ecl (values) #+ecl nil))
+     (values)))
 
 (defmacro define-quicksort-fns ()
   (with-gensyms (iden call-key key gran)

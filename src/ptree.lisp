@@ -149,30 +149,29 @@
   (declare #.*full-optimize*)
   (zerop (lock-level node)))
 
-(defun/type propagate-error (node error-result)
-    (node wrapped-error) #-ecl (values) #+ecl null
+(defun/type propagate-error (node error-result) (node wrapped-error) (values)
   (declare #.*full-optimize*)
   (with-node-slots (result parents) node
     (setf result error-result)
     (dolist (parent parents)
       (propagate-error parent error-result)))
-  #-ecl (values) #+ecl nil)
+  (values))
 
-(defun/type lock-node (node) (node) #-ecl (values) #+ecl null
+(defun/type lock-node (node) (node) (values)
   (declare #.*full-optimize*)
   (with-node-slots (lock-level parents) node
     (incf lock-level)
     (dolist (parent parents)
       (lock-node parent)))
-  #-ecl (values) #+ecl nil)
+  (values))
 
-(defun/type unlock-node (node) (node) #-ecl (values) #+ecl null
+(defun/type unlock-node (node) (node) (values)
   (declare #.*full-optimize*)
   (with-node-slots (lock-level parents) node
     (decf lock-level)
     (dolist (parent parents)
       (unlock-node parent)))
-  #-ecl (values) #+ecl nil)
+  (values))
 
 (defun/type/inline children-done-p (node) (node) boolean
   (declare #.*full-optimize*)
@@ -205,12 +204,11 @@
                (funcall compute))))
          compute))))
 
-(defun/type submit-node (node queue kernel)
-    (node queue kernel) #-ecl (values) #+ecl null
+(defun/type submit-node (node queue kernel) (node queue kernel) (values)
   (declare #.*normal-optimize*)
   (let ((task (make-node-task queue node)))
     (submit-raw-task task kernel))
-  #-ecl (values) #+ecl nil)
+  (values))
 
 (defun/type find-node (node) (node) (or node null)
   (declare #.*full-optimize*)
