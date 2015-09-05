@@ -76,7 +76,7 @@ not present then no docstring is parsed."
   (multiple-value-list (eval (read *query-io*))))
 
 (defmacro repeat (n &body body)
-  `(loop repeat ,n do ,@body))
+  `(loop repeat ,n do (progn ,@body)))
 
 (defmacro dosequence ((var sequence &optional return) &body body)
   (with-gensyms (body-fn)
