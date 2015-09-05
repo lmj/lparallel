@@ -34,7 +34,7 @@
   (multiple-value-bind (quo rem) (floor size parts-hint)
     (values (if (zerop quo) rem parts-hint) quo rem)))
 
-(defmacro/once with-parts (&once seq-size &once parts-hint &body body)
+(defmacro with-parts (seq-size parts-hint &body body)
   (with-gensyms (quo rem index num-parts part-offset part-size)
     `(multiple-value-bind
            (,num-parts ,quo ,rem) (find-num-parts ,seq-size ,parts-hint)
