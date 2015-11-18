@@ -2,6 +2,10 @@
 lparallel Changes
 =================
 
+= 2.8.2
+
+* loop keywords no longer interned into cl-user
+
 = 2.8.1
 
 * miscellaneous housekeeping
