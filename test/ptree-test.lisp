@@ -155,7 +155,7 @@
 
 (defmacro/once for-range ((var &once pair) &body body)
   `(loop for ,var from (first ,pair) to (second ,pair)
-         do ,@body))
+         do (progn ,@body)))
 
 (full-test grind-ptree-test
   (let ((level-range '(1 5))
