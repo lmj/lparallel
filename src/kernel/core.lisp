@@ -502,13 +502,16 @@ Calling `broadcast-task' from inside a worker is an error."
     (repeat worker-count (push-queue t to-workers))
     (map-into (make-array worker-count) (lambda () (receive-result channel)))))
 
-(defun execute-task (fn &rest args)
+(defun submit-bare-task (fn &rest args)
   "Schedule a task to be run with the current value of `*kernel*'.
 
 The result of the function call is discarded."
   (declare #.*normal-optimize*)
   (submit-raw-task (make-task (task-lambda (apply fn args)))
                    *kernel*))
+
+(defmacro bare-task (&body body)
+  `(submit-bare-task (lambda () ,@body)))
 
 (defun track-exit ()
   (setf *lisp-exiting-p* t))

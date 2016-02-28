@@ -699,11 +699,11 @@
     (signals error
              (broadcast-task (lambda () (broadcast-task (lambda ())))))))
 
-(full-test execute-task-test
+(full-test bare-task-test
   (let ((queue (make-queue :fixed-capacity 1)))
-    (execute-task (lambda (v)
-                    (sleep 0.5)
-                    (push-queue v queue)) t)
+    (submit-bare-task (lambda (v)
+                        (sleep 0.5)
+                        (push-queue v queue)) t)
     (is (null (try-pop-queue queue :timeout 0)))
     (is (try-pop-queue queue :timeout 1))))
 
