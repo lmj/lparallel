@@ -1,6 +1,9 @@
 
 lparallel Changes
 =================
+= 2.8.4
+
+* fix compilation error in lparallel-test with recent sbcl
 
 = 2.8.3
 
