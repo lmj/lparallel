@@ -198,11 +198,11 @@
 
 (full-test grind-preduce-test
   (is (= 3
-         (reduce  (lambda () 3) nil)
-         (preduce (lambda () 3) nil)))
+         (reduce  (constantly 3) nil)
+         (preduce (constantly 3) nil)))
   (is (= 3
-         (reduce  (lambda (x) (* x x)) nil :initial-value 3)
-         (preduce (lambda (x) (* x x)) nil :initial-value 3)))
+         (reduce  (constantly 5) nil :initial-value 3)
+         (preduce (constantly 5) nil :initial-value 3)))
   (flet ((non-associative/non-commutative (x y)
            (+ (* 2 x) y))
          (associative/non-commutative (a b)
