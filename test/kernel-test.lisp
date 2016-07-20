@@ -697,7 +697,15 @@
       (signals error
         (receive-result channel)))
     (signals error
-      (broadcast-task (lambda () (broadcast-task (lambda ())))))))
+             (broadcast-task (lambda () (broadcast-task (lambda ())))))))
+
+(full-test bare-task-test
+  (let ((queue (make-queue :fixed-capacity 1)))
+    (submit-bare-task (lambda (v)
+                        (sleep 0.5)
+                        (push-queue v queue)) t)
+    (is (null (try-pop-queue queue :timeout 0)))
+    (is (try-pop-queue queue :timeout 1))))
 
 (full-test worker-index-test
   (is (null (kernel-worker-index)))

@@ -51,6 +51,8 @@
   (:export #:make-channel
            #:submit-task
            #:broadcast-task
+           #:submit-bare-task
+           #:bare-task
            #:submit-timeout
            #:cancel-timeout
            #:receive-result
