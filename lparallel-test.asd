@@ -45,7 +45,8 @@
                              (:file "cognate-test")
                              (:file "promise-test")
                              (:file "defpun-test")
-                             (:file "ptree-test")))))
+                             (:file "ptree-test")
+                             (:file "dynamic-task-test")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel-test))))
   (declare (ignore o c))

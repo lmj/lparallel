@@ -42,6 +42,7 @@
         #:lparallel.defpun
         #:lparallel.promise
         #:lparallel.ptree
+        #:lparallel.dynamic-task
         #:lparallel-test.1am)
   (:import-from #:lparallel.kernel-util
                 #:with-temp-kernel)

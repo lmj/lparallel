@@ -139,6 +139,7 @@ See http://lparallel.org for documentation and examples.
                                               (:file "pfind")
                                               (:file "pcount")
                                               (:file "psort")))
+                                    (:file "dynamic-task")
                                     (:file "package")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lparallel))))

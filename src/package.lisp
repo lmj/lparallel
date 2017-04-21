@@ -45,9 +45,11 @@
    lparallel.promise
    lparallel.defpun
    lparallel.cognate
-   lparallel.ptree"
+   lparallel.ptree
+   lparallel.dynamic-task"
     #:lparallel.kernel
     #:lparallel.promise
     #:lparallel.defpun
     #:lparallel.cognate
-    #:lparallel.ptree))
+    #:lparallel.ptree
+    #:lparallel.dynamic-task))
