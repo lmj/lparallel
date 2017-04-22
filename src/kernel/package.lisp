@@ -64,7 +64,8 @@
            #:*kernel-spin-count*
            #:*task-category*
            #:*task-priority*
-           #:*debug-tasks-p*)
+           #:*debug-tasks-p*
+           #:*transfer-specials*)
   (:export #:kernel
            #:channel
            #:transfer-error

@@ -712,6 +712,29 @@
         for j from 0
         do (is (= i j))))
 
+(full-test transfer-specials-test
+  (setf *memo* :global)
+
+  (let ((*memo* :dynamic)
+        (*transfer-specials* nil)
+        (channel (make-channel)))
+    (submit-task channel (lambda () *memo*))
+    (is (eq :global (receive-result channel))))
+
+  (let ((*memo* :dynamic)
+        (*transfer-specials* '(*memo*))
+        (channel (make-channel)))
+    (submit-task channel (lambda () *memo*))
+    (is (eq :dynamic (receive-result channel))))
+
+  (let ((*foo* 3)
+        (*bar* 4)
+        (*transfer-specials* '(*foo* *bar*))
+        (channel (make-channel)))
+    (declare (special *foo* *bar*))
+    (submit-task channel (lambda () (+ *foo* *bar*)))
+    (is (= 7 (receive-result channel)))))
+
 ;;;; check for messed up imports
 
 (defun packages-matching (string)

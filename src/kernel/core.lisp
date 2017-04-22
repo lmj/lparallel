@@ -331,17 +331,42 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
       Pass no arguments instead."))
   whole)
 
+;;; Record the values of the variables in `*transfer-specials*' and
+;;; return a handler that provides these values to tasks.
+(defun make-transfer-specials-handler ()
+  (let* ((vars (copy-list *transfer-specials*))
+         (vals (mapcar #'symbol-value vars)))
+    (lambda (condition)
+      (declare (ignore condition))
+      (invoke-restart 'transfer-specials vars vals))))
+
+;;; Add the machinery allowing tasks grab the values of the variables
+;;; in `*transfer-specials*' from the parent thread.
+(defun wrap-with-transfer-specials (task)
+  (task-handler-bind ((transfer-specials (make-transfer-specials-handler)))
+    (let ((client-handlers *client-handlers*))
+      (lambda ()
+        (let ((*client-handlers* client-handlers))
+          (restart-case (progn
+                          (signal 'transfer-specials)
+                          (error "bug: transfer-specials not handled"))
+            (transfer-specials (vars vals)
+              (progv vars vals
+                (funcall task)))))))))
+
 #-lparallel.without-task-handling
 (defmacro task-lambda (&body body)
   (with-gensyms (body-fn client-handlers)
     `(flet ((,body-fn () ,@body))
        (declare #.*full-optimize*)
-       (let ((,client-handlers *client-handlers*))
-         (if ,client-handlers
-             (lambda ()
-               (let ((*client-handlers* ,client-handlers))
-                 (,body-fn)))
-             #',body-fn)))))
+       (if *transfer-specials*
+           (wrap-with-transfer-specials #',body-fn)
+           (let ((,client-handlers *client-handlers*))
+             (if ,client-handlers
+                 (lambda ()
+                   (let ((*client-handlers* ,client-handlers))
+                     (,body-fn)))
+                 #',body-fn))))))
 
 #+lparallel.without-task-handling
 (defmacro task-lambda (&body body)

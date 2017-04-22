@@ -179,3 +179,9 @@ message from appearing in the future (N is the number of workers):
    "Failed to create a kernel.")
   (:documentation
    "Error signaled when `make-kernel' fails."))
+
+(define-condition transfer-specials () ()
+  (:documentation
+   "A task signals this condition to obtain the values of the
+   variables in `*transfer-specials*' in the parent thread at the time
+   of task submission." ))

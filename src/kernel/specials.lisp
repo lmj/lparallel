@@ -86,3 +86,7 @@
 
 (defvar *erroring-workers-lock* (make-lock)
   "Lock for *erroring-workers*.")
+
+(defvar *transfer-specials* nil
+  "A list of special variables to be bound inside tasks using values
+from the place where the task was submitted.")
