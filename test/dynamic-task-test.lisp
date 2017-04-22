@@ -40,6 +40,14 @@
     (is (equal '(104 105 106)
                (pmapcar #'add-foo-bar '(1 2 3)))))
 
+  (with-dynamic-tasks ((*foo* 0) (*bar* 0))
+    (declare (special *foo* *bar*))
+    (with-dynamic-tasks ((*foo* 3) (*bar* 100))
+      (declare (special *foo* *bar*))
+      (declare (special *foo* *bar*))
+      (is (equal '(104 105 106)
+                 (pmapcar #'add-foo-bar '(1 2 3))))))
+
   (let ((*dynamic-task-vars* '(*foo*)))
     (let ((*foo* 3))
       (declare (special *foo*))
@@ -84,4 +92,13 @@
   (let ((*dynamic-task-vars* nil))
     (with-dynamic-tasks ()
       (is (equal '(2 3 4)
-                 (pmapcar #'1+ '(1 2 3)))))))
+                 (pmapcar #'1+ '(1 2 3))))))
+
+  (let ((*memo* 3))
+    (is (= 12 (funcall (dynamic-task (x)
+                         (+ x *memo*))
+                       9))))
+
+  (let ((*foo* 3) (*bar* 4))
+    (declare (special *foo* *bar*))
+    (is (= 17 (add-foo-bar 10)))))

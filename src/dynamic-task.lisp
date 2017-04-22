@@ -43,36 +43,32 @@
 (in-package #:lparallel.dynamic-task)
 
 (defvar *dynamic-task-vars* nil
-  "The names of dynamic variables to be bound inside dynamic tasks.")
+  "A list of dynamic variables to be bound inside dynamic tasks.")
 
-(define-condition var-info ()
-  ((names :accessor var-info-names)
-   (vals :accessor var-info-vals))
-  (:documentation
-   "A dynamic task signals this condition to obtain the values of the
-variables in `*dynamic-task-vars*' in the parent thread at the time
-the task was submitted."))
+;;; A dynamic task signals this condition to obtain the values of the
+;;; variables in `*dynamic-task-vars*' in the parent thread at the
+;;; time `with-dynamic-tasks' was called.
+(define-condition get-vars () ())
 
-(defun var-info-handler ()
-  "Record the values of the variables in `*dynamic-task-vars*' and
-return a handler that puts these values in a `var-info' condition."
-  (let* ((names (copy-list *dynamic-task-vars*))
-         (vals (mapcar #'symbol-value names)))
+;;; Record the values of the variables in `*dynamic-task-vars*' and
+;;; return a handler that provides these values to dynamic tasks.
+(defun make-get-vars-handler ()
+  (let* ((vars (copy-list *dynamic-task-vars*))
+         (vals (mapcar #'symbol-value vars)))
     (lambda (condition)
-      (setf (var-info-names condition) names
-            (var-info-vals condition) vals))))
+      (declare (ignore condition))
+      (invoke-restart 'continue vars vals))))
 
 (defun call-with-dynamic-tasks (new-vars fn)
   (if (or *dynamic-task-vars* new-vars)
       (let ((*dynamic-task-vars* (union *dynamic-task-vars* new-vars)))
-        (task-handler-bind ((var-info (var-info-handler)))
+        (task-handler-bind ((get-vars (make-get-vars-handler)))
           (funcall fn)))
       (funcall fn)))
 
 (defmacro with-dynamic-tasks (bindings &body body)
-  "Tasks created within `body' will execute with the current bindings
-of the variables in `*dynamic-task-vars*' in the current (parent)
-thread.
+  "Tasks created within `body' execute with the current bindings of
+the variables in `*dynamic-task-vars*' from the current thread.
 
 Optionally add bindings with `bindings', which is a list of (variable
 value) pairs as in `let'. Any variables in `bindings' that are not
@@ -85,27 +81,30 @@ included in `*dynamic-task-vars*' will be included for the scope of
          (call-with-dynamic-tasks ',new-vars (lambda () ,@body))))))
 
 (defun call-dynamic-task (fn)
-  (let ((condition (make-condition 'var-info)))
-    (signal condition)
-    (progv (var-info-names condition) (var-info-vals condition)
-      (funcall fn))))
+  (restart-case (progn
+                  (signal 'get-vars)
+                  ;; not submitted inside `with-dynamic-tasks'
+                  (funcall fn))
+    (continue (vars vals)
+      (progv vars vals
+        (funcall fn)))))
 
-(defmacro define-dynamic-task (name lambda-list &body body)
-  "Define a function which, if submitted as a task within
-`with-dynamic-tasks', executes with the bindings of the variables in
-`*dynamic-task-vars*' from the thread in which the task was created.
-The semantics are the same as `defun'."
-  (with-parsed-body (body declares docstring)
-    `(defun ,name ,lambda-list
+(defmacro defdef (definer &optional name)
+  `(with-parsed-body (body declares docstring)
+    `(,',definer ,,@(unsplice name) ,lambda-list
        ,@(unsplice docstring)
        ,@declares
        (call-dynamic-task (lambda () ,@body)))))
 
+(defmacro define-dynamic-task (name lambda-list &body body)
+  "Define a function which, if submitted as a task within
+`with-dynamic-tasks', executes with the bindings of the variables in
+`*dynamic-task-vars*' at the point of the `with-dynamic-tasks' form in
+the thread in which the task was created. The semantics are the same
+as `defun'."
+  (defdef defun name))
+
 (defmacro dynamic-task (lambda-list &body body)
-  "Same as `define-dynamic-task' but for an unnamed lambda. The
-semantics are the same as `lambda'."
-  (with-parsed-body (body declares docstring)
-    `(lambda ,lambda-list
-      ,@(unsplice docstring)
-      ,@declares
-      (call-dynamic-task (lambda () ,@body)))))
+  "Like `define-dynamic-task' but for an unnamed lambda. The semantics
+are the same as `lambda'."
+  (defdef lambda))
