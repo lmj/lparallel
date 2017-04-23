@@ -334,7 +334,7 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
 ;;; Record the values of the variables in `*transfer-specials*' and
 ;;; return a handler that provides these values to tasks.
 (defun make-transfer-specials-handler ()
-  (let* ((vars (copy-list *transfer-specials*))
+  (let* ((vars (adjoin '*transfer-specials* (copy-list *transfer-specials*)))
          (vals (mapcar #'symbol-value vars)))
     (lambda (condition)
       (declare (ignore condition))
