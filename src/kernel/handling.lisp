@@ -56,6 +56,15 @@ user receives the return value of this function."
      ;; Most objects unwrap to themselves.
      result)))
 
+(defun call-task-handler-bind (handlers fn)
+  (let* ((task-info *task-info*)
+         (*task-info* (make-task-info-instance
+                       :handlers (nconc handlers
+                                        (and task-info
+                                             (task-handlers task-info)))
+                       :vars (and task-info (task-vars task-info)))))
+    (funcall fn)))
+
 (defmacro task-handler-bind (clauses &body body)
   "Like `handler-bind' but handles conditions signaled inside tasks
 that were created in `body'."
@@ -65,8 +74,7 @@ that were created in `body'."
                           (error "Ill-formed binding in `task-handler-bind': ~a"
                                  clause))
                      collect `(cons ',name ,fn))))
-    `(let ((*client-handlers* (list* ,@forms *client-handlers*)))
-       ,@body)))
+    `(call-task-handler-bind (list ,@forms) (lambda () ,@body))))
 
 (defun invoke-transfer-error (error)
   "Equivalent to (invoke-restart 'transfer-error error).
@@ -77,9 +85,15 @@ This is a convenience function for use in `task-handler-bind'."
 (defun condition-handler (condition)
   "Mimic the CL handling mechanism, calling handlers until one assumes
 control (or not)."
-  (loop for ((condition-type . handler) . rest) on *client-handlers*
+  (loop with task-info = *task-info*
+        with handlers = (if task-info
+                            (task-handlers task-info)
+                            nil)
+        for ((condition-type . handler) . rest) on handlers
         do (when (typep condition condition-type)
-             (let ((*client-handlers* rest))
+             (let ((*task-info* (make-task-info-instance
+                                 :handlers rest
+                                 :vars (task-vars task-info))))
                (handler-bind ((condition #'condition-handler))
                  (funcall handler condition)))))
   (when (and (typep condition 'error)

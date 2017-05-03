@@ -331,17 +331,37 @@ Note that a fixed capacity channel may cause a deadlocked kernel if
       Pass no arguments instead."))
   whole)
 
+(defun/type wrap-with-task-info (task-info task) (task-info function) function
+  (declare #.*full-optimize*)
+  (lambda ()
+    (let ((*task-info* task-info))
+      (funcall task))))
+
+(defun/type wrap-with-bindings (vars task) (list function) function
+  (declare #.*full-optimize*)
+  (let ((vals (mapcar #'symbol-value vars)))
+    (lambda ()
+      (progv vars vals
+        (funcall task)))))
+
+(defun wrap-task (task)
+  (declare #.*full-optimize*)
+  ;; *task-info* is non-nil
+  (let* ((task-info *task-info*)
+         (vars (task-vars task-info)))
+    (wrap-with-task-info task-info
+                         (if vars
+                             (wrap-with-bindings vars task)
+                             task))))
+
 #-lparallel.without-task-handling
 (defmacro task-lambda (&body body)
-  (with-gensyms (body-fn client-handlers)
+  (with-gensyms (body-fn)
     `(flet ((,body-fn () ,@body))
        (declare #.*full-optimize*)
-       (let ((,client-handlers *client-handlers*))
-         (if ,client-handlers
-             (lambda ()
-               (let ((*client-handlers* ,client-handlers))
-                 (,body-fn)))
-             #',body-fn)))))
+       (if *task-info*
+           (wrap-task #',body-fn)
+           #',body-fn))))
 
 #+lparallel.without-task-handling
 (defmacro task-lambda (&body body)
@@ -501,6 +521,16 @@ Calling `broadcast-task' from inside a worker is an error."
     (repeat worker-count (pop-queue from-workers))
     (repeat worker-count (push-queue t to-workers))
     (map-into (make-array worker-count) (lambda () (receive-result channel)))))
+
+(defun call-transfer-bindings (vars fn)
+  (let ((*task-info* (make-task-info-instance
+                      :vars vars
+                      :handlers (when-let (task-info *task-info*)
+                                  (task-handlers task-info)))))
+    (funcall fn)))
+
+(defmacro transfer-bindings (special-variables &body body)
+  `(call-transfer-bindings ,special-variables (lambda () ,@body)))
 
 (defun track-exit ()
   (setf *lisp-exiting-p* t))

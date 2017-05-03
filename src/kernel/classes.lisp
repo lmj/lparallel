@@ -150,3 +150,7 @@
   (deftype task () 'function)
   (defmacro make-task (fn) fn)
   (defmacro task-fn (x) x))
+
+(defslots task-info ()
+  ((handlers :reader task-handlers :initform nil)
+   (vars :reader task-vars :initform nil)))

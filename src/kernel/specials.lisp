@@ -36,9 +36,9 @@
 (defvar *handler-active-p* nil
   "Non-nil when handlers have been established via `call-with-task-handler'.")
 
-(defvar *client-handlers* nil
-  "Records handlers established with `task-handler-bind' in the
-  calling thread.")
+;;; Records handlers established with `task-handler-bind' as well as
+;;; variables from `transfer-bindings'.
+(defvar *task-info* nil)
 
 (defvar *task-category* :default
   "See `kill-tasks'. Default value is `:default'.")

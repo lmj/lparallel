@@ -109,8 +109,8 @@ See http://lparallel.org for documentation and examples.
                                      :components
                                              ((:file "package")
                                               (:file "specials")
-                                              (:file "handling")
                                               (:file "classes")
+                                              (:file "handling")
 #-lparallel.with-stealing-scheduler           (:file "central-scheduler")
 #+lparallel.with-stealing-scheduler           (:file "stealing-scheduler")
 #-lparallel.without-kill                      (:file "kill")

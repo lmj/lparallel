@@ -59,7 +59,8 @@
            #:kill-tasks
            #:task-handler-bind
            #:task-categories-running
-           #:invoke-transfer-error)
+           #:invoke-transfer-error
+           #:transfer-bindings)
   (:export #:*kernel*
            #:*kernel-spin-count*
            #:*task-category*
