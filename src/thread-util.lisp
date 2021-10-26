@@ -157,7 +157,7 @@
   `(progn ,@body))
 
 (defmacro with-thread ((&key bindings name) &body body)
-  `(let ((*default-special-bindings* ,bindings))
+  `(let ((*default-special-bindings* (append ,bindings *default-special-bindings*)))
      (make-thread (lambda ()
                     (with-abort-restart
                       ,@body))
