@@ -275,6 +275,16 @@ MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
           (check-type value kernel)
           (setf *kernel* value)))))
 
+(defun ensure-kernel (worker-count &rest other-keys)
+  "Return `*kernel*', a kernel instance featuring WORKER-COUNT."
+  ;; Notice that when *kernel* exists with 2 workers, then calling:
+  ;; (ensure-kernel 2 :name "a-different-name-from-the-one-set-in-*kernel*")
+  ;; has no effect since the number of workers matches.
+  (if (and *kernel*
+           (eq (length (workers *kernel*)) worker-count))
+      *kernel*
+      (setf *kernel* (apply #'make-kernel worker-count other-keys))))
+
 (defmacro define-worker-info-reader (name slot &optional (result slot))
   `(defun ,name ()
      ,(format nil "Return the ~a passed to `make-kernel'."

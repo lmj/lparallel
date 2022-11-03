@@ -42,6 +42,7 @@
         #+lparallel.with-stealing-scheduler #:lparallel.spin-queue)
   (:export #:make-kernel
            #:check-kernel
+           #:ensure-kernel
            #:end-kernel
            #:kernel-worker-count
            #:kernel-worker-index
